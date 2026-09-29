@@ -82,6 +82,25 @@ jeito, mostrando id no lugar do nome do curador e caindo em
 `hs_nextactivitydate` para a tarefa — que só enxerga atividade futura. O motivo
 aparece numa tarja na tela.
 
+## Tarefas
+
+Medido em 29/09/2026 nos 440 tickets abertos, lendo o objeto task pela
+associação:
+
+| | |
+|---|---|
+| com tarefa em aberto | 126 — 29% |
+| dela, vencida | 103 |
+| dela, em dia | 23 |
+| sem tarefa nenhuma | 314 — 71% |
+
+A propriedade `hs_nextactivitydate` do ticket mostrava só 26 desses 126, porque
+ela guarda apenas atividade futura e descarta tarefa vencida. Por isso o painel
+lê as tarefas pela associação em vez de usar a propriedade.
+
+O número também explica por que a régua do painel é por etapa e não por tarefa:
+em 71% dos tickets não há tarefa nenhuma para medir.
+
 ## Pendências conhecidas
 
 - O snapshot em data/snapshot.json foi capturado antes de o campo proprietário
