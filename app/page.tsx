@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 const PRIORIDADE = { vermelho: 0, amarelo: 1, cinza: 2, verde: 3 }
 
 export default async function Page() {
-  const { tickets, aoVivo, capturadoEm } = await carregar()
+  const { tickets, owners, aoVivo, capturadoEm } = await carregar()
   const hoje = Date.now()
 
   const linhas = tickets
@@ -22,8 +22,8 @@ export default async function Page() {
         evento: t.evento,
         diasEvento: diasParaEvento(t, hoje),
         diasNaEtapa: diasNaEtapa(t, hoje),
-        curador: nomeCurador(t.curador),
-        curadorInativo: curadorInativo(t.curador),
+        curador: nomeCurador(owners, t.curador),
+        curadorInativo: curadorInativo(owners, t.curador),
         ...a,
       }
     })
