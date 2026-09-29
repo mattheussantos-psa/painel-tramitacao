@@ -1,6 +1,8 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+
+const POR_PAGINA = 48
 import type { Cor, Regua } from '@/lib/sinaleira'
 
 export type Linha = {
@@ -36,6 +38,35 @@ function prazo(l: Linha) {
   if (l.dias > 0) return `${l.dias} ${l.dias === 1 ? 'dia' : 'dias'} de atraso`
   if (l.dias === 0) return 'Vence hoje'
   return `Vence em ${-l.dias} ${-l.dias === 1 ? 'dia' : 'dias'}`
+}
+
+function Passo({
+  rotulo,
+  ativo,
+  aoClicar,
+}: {
+  rotulo: string
+  ativo: boolean
+  aoClicar: () => void
+}) {
+  return (
+    <button
+      onClick={aoClicar}
+      disabled={!ativo}
+      style={{
+        border: '1px solid var(--line)',
+        background: 'transparent',
+        color: ativo ? 'var(--text-2)' : 'var(--text-3)',
+        borderRadius: 8,
+        padding: '6px 12px',
+        fontSize: 13,
+        cursor: ativo ? 'pointer' : 'default',
+        opacity: ativo ? 1 : 0.45,
+      }}
+    >
+      {rotulo}
+    </button>
+  )
 }
 
 function Pessoa({ papel, nome, inativo }: { papel: string; nome: string | null; inativo: boolean }) {
@@ -104,6 +135,14 @@ export default function Painel({
   const [proprietario, setProprietario] = useState('')
   const [etapa, setEtapa] = useState('')
   const [semDono, setSemDono] = useState(false)
+  const [pagina, setPagina] = useState(0)
+  const [rankingInteiro, setRankingInteiro] = useState(false)
+
+  // Qualquer filtro muda o conjunto: ficar na página 5 de um recorte que agora
+  // tem 3 cards deixa a tela vazia sem explicação.
+  useEffect(() => {
+    setPagina(0)
+  }, [regua, cor, curador, proprietario, etapa, semDono])
 
   const daRegua = useMemo(() => linhas.filter((l) => l.regua === regua), [linhas, regua])
 
@@ -163,6 +202,25 @@ export default function Painel({
   const proprietarios = useMemo(() => nomes('proprietario'), [daRegua])
 
   const visiveis = comEtapa.filter((l) => !cor || l.cor === cor)
+
+  const paginas = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA))
+  const atual = Math.min(pagina, paginas - 1)
+  const naTela = visiveis.slice(atual * POR_PAGINA, (atual + 1) * POR_PAGINA)
+
+  // Ranking lê a aba inteira de propósito: se respeitasse o filtro de
+  // proprietário, viraria uma linha só e deixaria de servir para escolher.
+  const ranking = useMemo(() => {
+    const m = new Map<string, { vermelho: number; amarelo: number; verde: number; cinza: number }>()
+    for (const l of daRegua) {
+      const nome = l.proprietario ?? 'sem proprietário'
+      const r = m.get(nome) ?? { vermelho: 0, amarelo: 0, verde: 0, cinza: 0 }
+      r[l.cor]++
+      m.set(nome, r)
+    }
+    return [...m.entries()]
+      .map(([nome, r]) => ({ nome, ...r, total: r.vermelho + r.amarelo + r.verde + r.cinza }))
+      .sort((a, b) => b.vermelho - a.vermelho || b.total - a.total)
+  }, [daRegua])
 
   return (
     <main style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 24px 64px' }}>
@@ -364,12 +422,87 @@ export default function Painel({
 
       <div
         style={{
+          background: 'var(--card)',
+          border: '1px solid var(--line)',
+          borderRadius: 'var(--radius)',
+          padding: '14px 16px',
+          marginBottom: 20,
+        }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 56px 56px 56px',
+            gap: 8,
+            fontSize: 12,
+            color: 'var(--text-3)',
+            paddingBottom: 8,
+            borderBottom: '1px solid var(--line)',
+          }}
+        >
+          <span>Proprietário</span>
+          <span style={{ textAlign: 'right' }}>Atraso</span>
+          <span style={{ textAlign: 'right' }}>Atenção</span>
+          <span style={{ textAlign: 'right' }}>Em dia</span>
+        </div>
+
+        {(rankingInteiro ? ranking : ranking.slice(0, 8)).map((r) => (
+          <button
+            key={r.nome}
+            onClick={() => setProprietario(proprietario === r.nome ? '' : r.nome)}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 56px 56px 56px',
+              gap: 8,
+              width: '100%',
+              textAlign: 'left',
+              border: 0,
+              borderRadius: 6,
+              background: proprietario === r.nome ? 'var(--cinza-bg)' : 'transparent',
+              padding: '7px 4px',
+              fontSize: 13,
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {r.nome}
+            </span>
+            <span style={{ textAlign: 'right', color: r.vermelho ? 'var(--vermelho)' : 'var(--text-3)' }}>
+              {r.vermelho}
+            </span>
+            <span style={{ textAlign: 'right', color: r.amarelo ? 'var(--amarelo)' : 'var(--text-3)' }}>
+              {r.amarelo}
+            </span>
+            <span style={{ textAlign: 'right', color: r.verde ? 'var(--verde)' : 'var(--text-3)' }}>
+              {r.verde}
+            </span>
+          </button>
+        ))}
+
+        {ranking.length > 8 && (
+          <button
+            onClick={() => setRankingInteiro(!rankingInteiro)}
+            style={{
+              border: 0,
+              background: 'transparent',
+              color: 'var(--text-3)',
+              fontSize: 13,
+              textDecoration: 'underline',
+              padding: '8px 4px 0',
+            }}
+          >
+            {rankingInteiro ? 'mostrar só o topo' : `mostrar todos os ${ranking.length}`}
+          </button>
+        )}
+      </div>
+
+      <div
+        style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(268px, 1fr))',
           gap: 12,
         }}
       >
-        {visiveis.map((l) => (
+        {naTela.map((l) => (
           <a
             key={l.id}
             href={l.link}
@@ -442,6 +575,48 @@ export default function Painel({
 
       {visiveis.length === 0 && (
         <p style={{ color: 'var(--text-3)' }}>Nenhum ticket com esse filtro.</p>
+      )}
+
+      {paginas > 1 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            marginTop: 24,
+            flexWrap: 'wrap',
+          }}
+        >
+          <Passo rotulo="Anterior" ativo={atual > 0} aoClicar={() => setPagina(atual - 1)} />
+          {Array.from({ length: paginas }, (_, i) => i).map((i) => (
+            <button
+              key={i}
+              onClick={() => setPagina(i)}
+              aria-current={i === atual ? 'page' : undefined}
+              style={{
+                border: `1px solid ${i === atual ? 'var(--text-2)' : 'var(--line)'}`,
+                background: i === atual ? 'var(--cinza-bg)' : 'transparent',
+                color: i === atual ? 'var(--text)' : 'var(--text-2)',
+                borderRadius: 8,
+                minWidth: 34,
+                padding: '6px 8px',
+                fontSize: 13,
+              }}
+            >
+              {i + 1}
+            </button>
+          ))}
+          <Passo
+            rotulo="Próxima"
+            ativo={atual < paginas - 1}
+            aoClicar={() => setPagina(atual + 1)}
+          />
+          <span style={{ color: 'var(--text-3)', fontSize: 13, marginLeft: 8 }}>
+            {atual * POR_PAGINA + 1}–{Math.min((atual + 1) * POR_PAGINA, visiveis.length)} de{' '}
+            {visiveis.length}
+          </span>
+        </div>
       )}
     </main>
   )
