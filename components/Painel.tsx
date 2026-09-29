@@ -105,11 +105,24 @@ export default function Painel({
 
   const daRegua = useMemo(() => linhas.filter((l) => l.regua === regua), [linhas, regua])
 
+  // Curador e proprietário entram na contagem: o número no card tem que ser o
+  // do recorte que a pessoa está olhando. A cor fica de fora de propósito —
+  // se entrasse, clicar em "Atrasado" zerava os outros três.
+  const filtradas = useMemo(
+    () =>
+      daRegua.filter(
+        (l) =>
+          (!curador || l.curador === curador) &&
+          (!proprietario || l.proprietario === proprietario),
+      ),
+    [daRegua, curador, proprietario],
+  )
+
   const contagem = useMemo(() => {
     const c: Record<Cor, number> = { vermelho: 0, amarelo: 0, verde: 0, cinza: 0 }
-    for (const l of daRegua) c[l.cor]++
+    for (const l of filtradas) c[l.cor]++
     return c
-  }, [daRegua])
+  }, [filtradas])
 
   const nomes = (campo: 'curador' | 'proprietario') =>
     Array.from(new Set(daRegua.map((l) => l[campo]).filter(Boolean) as string[])).sort((a, b) =>
@@ -119,12 +132,7 @@ export default function Painel({
   const curadores = useMemo(() => nomes('curador'), [daRegua])
   const proprietarios = useMemo(() => nomes('proprietario'), [daRegua])
 
-  const visiveis = daRegua.filter(
-    (l) =>
-      (!cor || l.cor === cor) &&
-      (!curador || l.curador === curador) &&
-      (!proprietario || l.proprietario === proprietario),
-  )
+  const visiveis = filtradas.filter((l) => !cor || l.cor === cor)
 
   return (
     <main style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 24px 64px' }}>
