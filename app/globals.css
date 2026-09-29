@@ -9,6 +9,9 @@
 }
 
 :root {
+  /* Faz o Chrome desenhar os controles nativos, inclusive o popup do select,
+     no tema certo. Sem isso o popup vem com fundo branco sempre. */
+  color-scheme: light;
   --display: 'Bruta Pro Compressed', 'Haettenschweiler', 'Arial Narrow', sans-serif;
   --bg: #f5f5f7;
   --card: #ffffff;
@@ -36,6 +39,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    color-scheme: dark;
     --bg: #000000;
     --card: #1c1c1e;
     --text: #f5f5f7;
@@ -99,4 +103,15 @@ button {
 .cartao:hover {
   background: var(--cinza-bg);
   border-color: var(--text-3);
+}
+
+/* O popup do select e desenhado pelo sistema: se a cor do controle for a
+   cinza-clara de placeholder, a lista sai ilegivel sobre fundo claro. */
+select {
+  color: var(--text);
+}
+
+select option {
+  color: var(--text);
+  background: var(--card);
 }

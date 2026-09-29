@@ -71,6 +71,156 @@ function Grupo({
   )
 }
 
+const FAIXAS: { rotulo: string; de: number; ate: number }[] = [
+  { rotulo: '0–7 dias', de: 0, ate: 7 },
+  { rotulo: '8–15 dias', de: 8, ate: 15 },
+  { rotulo: '16–30 dias', de: 16, ate: 30 },
+]
+
+// Texto sobre a barra: no laranja o branco não passa no contraste, então vai
+// escuro. Nos outros dois o branco é o que lê.
+const SOBRE_BARRA: Record<Cor, string> = {
+  vermelho: '#fff',
+  amarelo: '#3d2400',
+  verde: '#04340f',
+  cinza: '#fff',
+}
+
+// Horizonte por data prevista do evento. Só existe na aba de evento futuro:
+// depois do evento não há prazo a antecipar.
+function Horizonte({ linhas }: { linhas: Linha[] }) {
+  const cores: Cor[] = ['vermelho', 'amarelo', 'verde', 'cinza']
+
+  const faixas = FAIXAS.map((f) => {
+    const dentro = linhas.filter((l) => l.diasEvento >= f.de && l.diasEvento <= f.ate)
+    const por = Object.fromEntries(
+      cores.map((c) => [c, dentro.filter((l) => l.cor === c).length]),
+    ) as Record<Cor, number>
+    return { ...f, total: dentro.length, por }
+  })
+
+  const total = faixas.reduce((s, f) => s + f.total, 0)
+  if (!total) return null
+
+  return (
+    <Grupo style={{ marginBottom: 18, padding: '18px 20px 20px' }}>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '0.07em',
+          textTransform: 'uppercase',
+          color: 'var(--text-2)',
+        }}
+      >
+        Evento em até 30 dias
+      </div>
+      <div
+        style={{
+          fontFamily: 'var(--display)',
+          fontSize: 40,
+          fontWeight: 800,
+          lineHeight: 1.1,
+          marginTop: 2,
+        }}
+      >
+        {total}
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>
+        Data prevista do evento nos próximos 30 dias · por sinal
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+        {CORES.filter((c) => faixas.some((f) => f.por[c.cor] > 0)).map(({ cor, label }) => (
+          <span
+            key={cor}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 12,
+              color: 'var(--text-2)',
+            }}
+          >
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 3,
+                background: `var(--${cor}-ponto)`,
+              }}
+            />
+            {label}
+          </span>
+        ))}
+      </div>
+
+      {faixas.map((f) => (
+        <div key={f.rotulo} style={{ marginBottom: 14 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 12,
+              marginBottom: 6,
+            }}
+          >
+            <span style={{ fontSize: 14 }}>
+              {f.rotulo}{' '}
+              <span style={{ color: 'var(--text-2)' }}>
+                {f.total} {f.total === 1 ? 'ticket' : 'tickets'}
+              </span>
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
+              {f.por.vermelho > 0 ? (
+                <>
+                  <b style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{f.por.vermelho}</b> em
+                  atraso
+                </>
+              ) : (
+                'nenhum em atraso'
+              )}
+            </span>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              height: 26,
+              borderRadius: 6,
+              overflow: 'hidden',
+              background: 'var(--cinza-bg)',
+            }}
+          >
+            {cores
+              .filter((c) => f.por[c] > 0)
+              .map((c) => (
+                <div
+                  key={c}
+                  style={{
+                    flexGrow: f.por[c],
+                    flexBasis: 0,
+                    minWidth: 26,
+                    background: `var(--${c}-ponto)`,
+                    color: SOBRE_BARRA[c],
+                    fontSize: 12,
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {f.por[c]}
+                </div>
+              ))}
+          </div>
+        </div>
+      ))}
+    </Grupo>
+  )
+}
+
 // Os cards se ajustam à largura: em tela larga viram 5 colunas em vez de
 // deixar meia tela vazia dos dois lados.
 function Grade({ children }: { children: React.ReactNode }) {
@@ -87,12 +237,45 @@ function Grade({ children }: { children: React.ReactNode }) {
   )
 }
 
-// Curador e proprietário na mesma linha, sem rótulo e sem travessão quando
-// faltam. A versão com "Curador —" repetido em todo card era só ruído.
-function pessoas(l: Linha) {
-  const nomes = [l.curador, l.proprietario].filter(Boolean) as string[]
-  const unicos = [...new Set(nomes)]
-  return unicos.length ? unicos.join(' · ') : 'sem responsável'
+// Papel rotulado, mas sem linha vazia quando o campo falta: a versão com
+// "Curador —" fixo em todo card era ruído. Quando as duas pessoas são a mesma,
+// sai um rótulo só em vez do nome repetido.
+function Pessoas({ l }: { l: Linha }) {
+  const mesma = l.curador && l.curador === l.proprietario
+  const papeis: { papel: string; nome: string; inativo: boolean }[] = mesma
+    ? [{ papel: 'Curador e proprietário', nome: l.curador!, inativo: l.curadorInativo }]
+    : [
+        ...(l.curador ? [{ papel: 'Curador', nome: l.curador, inativo: l.curadorInativo }] : []),
+        ...(l.proprietario
+          ? [{ papel: 'Proprietário', nome: l.proprietario, inativo: l.proprietarioInativo }]
+          : []),
+      ]
+
+  if (!papeis.length) {
+    return <span style={{ color: 'var(--vermelho)' }}>Sem curador e sem proprietário</span>
+  }
+
+  return (
+    <>
+      {papeis.map(({ papel, nome, inativo }) => (
+        <span
+          key={papel}
+          style={{
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span style={{ color: 'var(--text-3)' }}>{papel} </span>
+          <span style={{ color: inativo ? 'var(--vermelho)' : 'var(--text-2)' }}>
+            {nome}
+            {inativo ? ' · inativo' : ''}
+          </span>
+        </span>
+      ))}
+    </>
+  )
 }
 
 function Filtro({
@@ -117,7 +300,7 @@ function Filtro({
         borderRadius: 8,
         border: 0,
         background: 'var(--cinza-bg)',
-        color: valor ? 'var(--text)' : 'var(--text-2)',
+        color: 'var(--text)',
         maxWidth: 210,
       }}
     >
@@ -386,6 +569,8 @@ export default function Painel({
         </div>
       </Grupo>
 
+      {regua === 'pre' && <Horizonte linhas={comEtapa} />}
+
       <div
         style={{
           display: 'flex',
@@ -540,19 +725,8 @@ export default function Painel({
             >
               {l.etapa} · {l.diasNaEtapa}d parado
             </span>
-            <span
-              style={{
-                display: 'block',
-                fontSize: 12,
-                marginTop: 2,
-                color:
-                  l.curadorInativo || l.proprietarioInativo ? 'var(--vermelho)' : 'var(--text-3)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {pessoas(l)}
+            <span style={{ display: 'block', fontSize: 12, marginTop: 3, lineHeight: 1.5 }}>
+              <Pessoas l={l} />
             </span>
           </a>
         ))}
