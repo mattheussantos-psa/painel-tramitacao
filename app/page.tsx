@@ -2,6 +2,8 @@ import { carregar, nomeCurador, curadorInativo, linkTicket } from '@/lib/hubspot
 import { avaliar, cliente, palestrante, diasParaEvento, diasNaEtapa } from '@/lib/sinaleira'
 import Painel from '@/components/Painel'
 
+// Nada de prerender no build: a pagina renderiza por requisicao e quem segura
+// o HubSpot e o cache com TTL dentro de carregar().
 export const dynamic = 'force-dynamic'
 
 // Quem precisa de ação primeiro. Dentro da mesma cor, o mais atrasado sobe.
@@ -45,7 +47,7 @@ export default async function Page() {
     return <Falha mensagem={e instanceof Error ? e.message : String(e)} />
   }
 
-  const { tickets, owners, aoVivo, capturadoEm, aviso } = fonte
+  const { tickets, owners, aoVivo, capturadoEm, atualizadoEm, aviso } = fonte
   const hoje = Date.now()
 
   const linhas = tickets
@@ -66,5 +68,5 @@ export default async function Page() {
     })
     .sort((a, b) => PRIORIDADE[a.cor] - PRIORIDADE[b.cor] || b.dias - a.dias)
 
-  return <Painel linhas={linhas} aoVivo={aoVivo} capturadoEm={capturadoEm} aviso={aviso} />
+  return <Painel linhas={linhas} aoVivo={aoVivo} capturadoEm={capturadoEm} atualizadoEm={atualizadoEm} aviso={aviso} />
 }

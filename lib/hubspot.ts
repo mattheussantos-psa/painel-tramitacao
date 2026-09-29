@@ -20,9 +20,28 @@ export type Fonte = {
   owners: Owners
   aoVivo: boolean
   capturadoEm: string
+  atualizadoEm: string
   aviso?: string
 }
 
+
+const espera = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// O search do HubSpot tem teto por segundo (policy SECONDLY, 4 req/s). Paginar
+// os 436 tickets em sequência já estoura sozinho, e o teto é da conta inteira:
+// outro integrador consumindo a cota derruba o painel do mesmo jeito. Então
+// espaça as chamadas e tenta de novo no 429 em vez de morrer.
+const PAUSA = 300
+
+async function chamar(url: string | URL, init: RequestInit, onde: string) {
+  for (let tentativa = 0; ; tentativa++) {
+    const res = await fetch(url, init)
+    if (res.status !== 429 || tentativa >= 4) return json(res, onde)
+
+    const retryAfter = Number(res.headers.get('Retry-After'))
+    await espera(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2 ** tentativa * 500)
+  }
+}
 
 async function json(res: Response, onde: string) {
   // O HubSpot devolve HTML em alguns erros (owner desativado, token sem scope).
@@ -42,30 +61,33 @@ async function buscarAoVivo(
   let after: string | undefined
 
   do {
-    const res = await fetch('https://api.hubapi.com/crm/v3/objects/tickets/search', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        filterGroups: [
-          {
-            filters: [
-              { propertyName: 'hs_pipeline', operator: 'EQ', value: pipeline },
-              { propertyName: 'hs_pipeline_stage', operator: 'IN', values: ETAPAS_ABERTAS },
-            ],
-          },
-        ],
-        properties: PROPS,
-        // Sem sort explícito a paginação do search do HubSpot não é estável:
-        // entre uma página e outra dá pra repetir e pular registro. Numa
-        // sinaleira, sumir com ticket é o pior defeito possível.
-        sorts: [{ propertyName: 'hs_object_id', direction: 'ASCENDING' }],
-        limit: 100,
-        after,
-      }),
-      cache: 'no-store',
-    })
+    if (after) await espera(PAUSA)
+    const pagina = await chamar(
+      'https://api.hubapi.com/crm/v3/objects/tickets/search',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filterGroups: [
+            {
+              filters: [
+                { propertyName: 'hs_pipeline', operator: 'EQ', value: pipeline },
+                { propertyName: 'hs_pipeline_stage', operator: 'IN', values: ETAPAS_ABERTAS },
+              ],
+            },
+          ],
+          properties: PROPS,
+          // Sem sort explícito a paginação do search do HubSpot não é estável:
+          // entre uma página e outra dá pra repetir e pular registro. Numa
+          // sinaleira, sumir com ticket é o pior defeito possível.
+          sorts: [{ propertyName: 'hs_object_id', direction: 'ASCENDING' }],
+          limit: 100,
+          after,
+        }),
+      },
+      'tickets/search',
+    )
 
-    const pagina = await json(res, 'tickets/search')
     for (const r of pagina.results ?? []) {
       const p = r.properties ?? {}
       // Sem data de evento não dá pra calcular prazo. Não some calado: o
@@ -103,11 +125,8 @@ async function buscarOwners(token: string): Promise<Owners> {
       if (arquivados) url.searchParams.set('archived', 'true')
       if (after) url.searchParams.set('after', after)
 
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: 'no-store',
-      })
-      const pagina = await json(res, 'owners')
+      await espera(PAUSA)
+      const pagina = await chamar(url, { headers: { Authorization: `Bearer ${token}` } }, 'owners')
       for (const o of pagina.results ?? []) {
         const nome = [o.firstName, o.lastName].filter(Boolean).join(' ').trim()
         owners[String(o.id)] = { nome: nome || o.email || `#${o.id}`, inativo: arquivados }
@@ -127,7 +146,7 @@ function ownersDoSnapshot(): Owners {
   return out
 }
 
-export async function carregar(): Promise<Fonte> {
+async function buscarTudo(): Promise<Fonte> {
   const token = process.env.HUBSPOT_TOKEN
   const pipeline = process.env.HUBSPOT_PIPELINE_CS ?? '748675953'
 
@@ -137,6 +156,7 @@ export async function carregar(): Promise<Fonte> {
       owners: ownersDoSnapshot(),
       aoVivo: false,
       capturadoEm: snapshot.capturadoEm,
+      atualizadoEm: '',
     }
   }
 
@@ -169,6 +189,11 @@ export async function carregar(): Promise<Fonte> {
     aviso: avisos.length ? avisos.join(' ') : undefined,
     aoVivo: true,
     capturadoEm: new Date().toISOString().slice(0, 10),
+    atualizadoEm: new Date().toLocaleTimeString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
   }
 }
 
@@ -189,4 +214,17 @@ export function nomeCurador(owners: Owners, id: string | null) {
 // precisa dizer isso, senão fica esperando ação de quem não existe mais.
 export function curadorInativo(owners: Owners, id: string | null) {
   return !!id && !!owners[id]?.inativo
+}
+
+// Cache em memória, por instância. O teto do search é por segundo e vale pra
+// conta inteira: sem isso cada carregamento da página refaz 5 chamadas, e dois
+// farmers abrindo o painel junto derrubam os dois. Erro não entra no cache.
+const TTL = 60_000
+let cache: { em: number; fonte: Fonte } | null = null
+
+export async function carregar(): Promise<Fonte> {
+  if (cache && Date.now() - cache.em < TTL) return cache.fonte
+  const fonte = await buscarTudo()
+  if (fonte.aoVivo) cache = { em: Date.now(), fonte }
+  return fonte
 }

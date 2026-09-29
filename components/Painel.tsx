@@ -40,11 +40,13 @@ export default function Painel({
   linhas,
   aoVivo,
   capturadoEm,
+  atualizadoEm,
   aviso,
 }: {
   linhas: Linha[]
   aoVivo: boolean
   capturadoEm: string
+  atualizadoEm: string
   aviso?: string
 }) {
   const [regua, setRegua] = useState<'pre' | 'pos'>('pre')
@@ -77,7 +79,7 @@ export default function Painel({
         <p style={{ color: 'var(--text-2)', margin: '6px 0 0' }}>
           Tramitação CS · {linhas.length} tickets abertos ·{' '}
           <span style={{ color: aoVivo ? 'var(--verde)' : 'var(--text-3)' }}>
-            {aoVivo ? 'ao vivo' : `snapshot de ${dataBr(capturadoEm)}`}
+            {aoVivo ? `ao vivo, ${atualizadoEm}` : `snapshot de ${dataBr(capturadoEm)}`}
           </span>
         </p>
       </header>
