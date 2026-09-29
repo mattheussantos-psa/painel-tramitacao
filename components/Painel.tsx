@@ -13,6 +13,8 @@ export type Linha = {
   diasNaEtapa: number
   curador: string | null
   curadorInativo: boolean
+  proprietario: string | null
+  proprietarioInativo: boolean
   cor: Cor
   regua: Regua
   dias: number
@@ -36,6 +38,53 @@ function prazo(l: Linha) {
   return `Vence em ${-l.dias} ${-l.dias === 1 ? 'dia' : 'dias'}`
 }
 
+function Pessoa({ papel, nome, inativo }: { papel: string; nome: string | null; inativo: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 3 }}>
+      <span>{papel}</span>
+      <span style={{ textAlign: 'right', color: inativo ? 'var(--vermelho)' : undefined }}>
+        {nome ?? '—'}
+        {inativo ? ' · inativo' : ''}
+      </span>
+    </div>
+  )
+}
+
+function Filtro({
+  vazio,
+  valor,
+  opcoes,
+  aoMudar,
+}: {
+  vazio: string
+  valor: string
+  opcoes: string[]
+  aoMudar: (v: string) => void
+}) {
+  return (
+    <select
+      value={valor}
+      onChange={(e) => aoMudar(e.target.value)}
+      style={{
+        font: 'inherit',
+        padding: '7px 12px',
+        borderRadius: 9,
+        border: '1px solid var(--line)',
+        background: 'var(--card)',
+        color: 'var(--text)',
+        maxWidth: 240,
+      }}
+    >
+      <option value="">{vazio}</option>
+      {opcoes.map((o) => (
+        <option key={o} value={o}>
+          {o}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 export default function Painel({
   linhas,
   aoVivo,
@@ -52,6 +101,7 @@ export default function Painel({
   const [regua, setRegua] = useState<'pre' | 'pos'>('pre')
   const [cor, setCor] = useState<Cor | null>(null)
   const [curador, setCurador] = useState('')
+  const [proprietario, setProprietario] = useState('')
 
   const daRegua = useMemo(() => linhas.filter((l) => l.regua === regua), [linhas, regua])
 
@@ -61,13 +111,19 @@ export default function Painel({
     return c
   }, [daRegua])
 
-  const curadores = useMemo(
-    () => Array.from(new Set(daRegua.map((l) => l.curador).filter(Boolean) as string[])).sort(),
-    [daRegua],
-  )
+  const nomes = (campo: 'curador' | 'proprietario') =>
+    Array.from(new Set(daRegua.map((l) => l[campo]).filter(Boolean) as string[])).sort((a, b) =>
+      a.localeCompare(b, 'pt-BR'),
+    )
+
+  const curadores = useMemo(() => nomes('curador'), [daRegua])
+  const proprietarios = useMemo(() => nomes('proprietario'), [daRegua])
 
   const visiveis = daRegua.filter(
-    (l) => (!cor || l.cor === cor) && (!curador || l.curador === curador),
+    (l) =>
+      (!cor || l.cor === cor) &&
+      (!curador || l.curador === curador) &&
+      (!proprietario || l.proprietario === proprietario),
   )
 
   return (
@@ -177,26 +233,22 @@ export default function Painel({
         ))}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <select
-          value={curador}
-          onChange={(e) => setCurador(e.target.value)}
-          style={{
-            font: 'inherit',
-            padding: '7px 12px',
-            borderRadius: 9,
-            border: '1px solid var(--line)',
-            background: 'var(--card)',
-            color: 'var(--text)',
-          }}
-        >
-          <option value="">Todos os curadores</option>
-          {curadores.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          marginBottom: 20,
+          flexWrap: 'wrap',
+        }}
+      >
+        <Filtro vazio="Todos os curadores" valor={curador} opcoes={curadores} aoMudar={setCurador} />
+        <Filtro
+          vazio="Todos os proprietários"
+          valor={proprietario}
+          opcoes={proprietarios}
+          aoMudar={setProprietario}
+        />
         <span style={{ color: 'var(--text-3)', fontSize: 13 }}>
           {visiveis.length} {visiveis.length === 1 ? 'ticket' : 'tickets'}
         </span>
@@ -265,9 +317,6 @@ export default function Painel({
 
             <div
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 8,
                 marginTop: 10,
                 paddingTop: 9,
                 borderTop: '1px solid var(--line)',
@@ -275,13 +324,9 @@ export default function Painel({
                 color: 'var(--text-3)',
               }}
             >
-              <span>{l.etapa}</span>
-              <span
-                style={{ textAlign: 'right', color: l.curadorInativo ? 'var(--vermelho)' : undefined }}
-              >
-                {l.curador ?? 'sem curador'}
-                {l.curadorInativo ? ' · inativo' : ''}
-              </span>
+              <div style={{ color: 'var(--text-2)' }}>{l.etapa}</div>
+              <Pessoa papel="Curador" nome={l.curador} inativo={l.curadorInativo} />
+              <Pessoa papel="Proprietário" nome={l.proprietario} inativo={l.proprietarioInativo} />
             </div>
           </a>
         ))}

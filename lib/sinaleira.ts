@@ -7,6 +7,7 @@ export type Ticket = {
   stage: string
   evento: string
   curador: string | null
+  proprietario: string | null
   entrouEtapa: string
 }
 
@@ -80,7 +81,12 @@ export function avaliar(t: Ticket, hoje: number = Date.now()): Avaliacao {
 
   const vencimento = dia(t.evento) + regra.prazo * DIA
   const atraso = emDias(hoje, vencimento)
-  const regua: Regua = regra.prazo <= 0 ? 'pre' : 'pos'
+
+  // A divisão do painel é sobre o EVENTO, não sobre a etapa. Enquanto ela saía
+  // do prazo da etapa, um ticket travado em "Em andamento" com a palestra
+  // realizada há 335 dias caía em "antes do evento" — o que não existe. Evento
+  // no futuro ainda dá pra prevenir; evento passado só dá pra fechar.
+  const regua: Regua = emDias(dia(t.evento), hoje) >= 0 ? 'pre' : 'pos'
   const base = { regua, dias: atraso, etapa: regra.label, vence: brasil(vencimento) }
 
   if (atraso > TOLERANCIA) return { cor: 'vermelho', ...base }

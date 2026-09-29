@@ -63,6 +63,8 @@ export default async function Page() {
         diasNaEtapa: diasNaEtapa(t, hoje),
         curador: nomeCurador(owners, t.curador),
         curadorInativo: curadorInativo(owners, t.curador),
+        proprietario: nomeCurador(owners, t.proprietario),
+        proprietarioInativo: curadorInativo(owners, t.proprietario),
         ...a,
       }
     })

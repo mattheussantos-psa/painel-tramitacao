@@ -102,7 +102,8 @@ async function buscarAoVivo(
         subject: p.subject ?? '(sem assunto)',
         stage: p.hs_pipeline_stage,
         evento,
-        curador: p.curador_responsavel_new || p.hubspot_owner_id || null,
+        curador: p.curador_responsavel_new || null,
+        proprietario: p.hubspot_owner_id || null,
         entrouEtapa: iso(p.hs_v2_date_entered_current_stage) || evento,
       })
     }

@@ -57,6 +57,17 @@ assert.equal(pagamento.cor, 'vermelho')
 assert.equal(pagamento.regua, 'pos')
 assert.equal(pagamento.dias, 228)
 
+// A divisao do painel segue o evento, nao a etapa. Ticket travado em uma etapa
+// de preparacao com a palestra ja realizada nao e "antes do evento".
+assert.equal(avaliar(t({ stage: '1088360205', evento: '2025-10-30' }), HOJE).regua, 'pos')
+assert.equal(avaliar(t({ stage: '1088360203', evento: '2026-08-01' }), HOJE).regua, 'pos')
+
+// E o inverso: etapa de fechamento com evento ainda por vir fica em "antes".
+assert.equal(avaliar(t({ stage: '1333136740', evento: '2026-12-01' }), HOJE).regua, 'pre')
+
+// O dia do evento ainda conta como "antes"
+assert.equal(avaliar(t({ stage: '1088360205', evento: '2026-09-29' }), HOJE).regua, 'pre')
+
 assert.equal(avaliar(t({ stage: '1333136740', evento: '2026-09-10' }), HOJE).cor, 'verde')
 assert.equal(avaliar(t({ stage: '1333136740', evento: '2026-08-25' }), HOJE).cor, 'amarelo')
 

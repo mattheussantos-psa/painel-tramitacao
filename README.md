@@ -73,6 +73,10 @@ Scopes: `crm.objects.tickets.read`, `crm.objects.owners.read`.
 
 ## Pendências conhecidas
 
+- O snapshot em data/snapshot.json foi capturado antes de o campo proprietário
+  existir, então ali ele aparece vazio. Ao vivo vem preenchido. Só afeta quem
+  roda local sem token.
+
 - `data/curadores.json` tem o `isActive` de apenas 6 owners, os que foram
   conferidos na API. O fetch ao vivo deve puxar de `/crm/v3/owners` para todos.
   Dos 6, **5 estão desativados** e aparecem marcados em vermelho no card.
