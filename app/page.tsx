@@ -1,5 +1,12 @@
 import { carregar, nomeCurador, curadorInativo, linkTicket } from '@/lib/hubspot'
-import { avaliar, cliente, palestrante, diasParaEvento, diasNaEtapa } from '@/lib/sinaleira'
+import {
+  avaliar,
+  cliente,
+  palestrante,
+  diasParaEvento,
+  diasNaEtapa,
+  diasParaTarefa,
+} from '@/lib/sinaleira'
 import Painel from '@/components/Painel'
 
 // Nada de prerender no build: a pagina renderiza por requisicao e quem segura
@@ -61,6 +68,8 @@ export default async function Page() {
         evento: t.evento,
         diasEvento: diasParaEvento(t, hoje),
         diasNaEtapa: diasNaEtapa(t, hoje),
+        diasTarefa: diasParaTarefa(t, hoje),
+        stage: t.stage,
         curador: nomeCurador(owners, t.curador),
         curadorInativo: curadorInativo(owners, t.curador),
         proprietario: nomeCurador(owners, t.proprietario),

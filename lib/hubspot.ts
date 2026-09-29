@@ -11,6 +11,7 @@ const PROPS = [
   'curador_responsavel_new',
   'hubspot_owner_id',
   'hs_v2_date_entered_current_stage',
+  'hs_nextactivitydate',
 ]
 
 export type Owner = { nome: string; inativo: boolean }
@@ -104,6 +105,7 @@ async function buscarAoVivo(
         evento,
         curador: p.curador_responsavel_new || null,
         proprietario: p.hubspot_owner_id || null,
+        proximaTarefa: iso(p.hs_nextactivitydate),
         entrouEtapa: iso(p.hs_v2_date_entered_current_stage) || evento,
       })
     }

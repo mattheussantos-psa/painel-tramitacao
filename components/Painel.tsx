@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Cor, Regua } from '@/lib/sinaleira'
+import { SLA, type Cor, type Regua } from '@/lib/sinaleira'
 
 const POR_PAGINA = 40
 
@@ -13,6 +13,8 @@ export type Linha = {
   evento: string
   diasEvento: number
   diasNaEtapa: number
+  diasTarefa: number | null
+  stage: string
   curador: string | null
   curadorInativo: boolean
   proprietario: string | null
@@ -38,6 +40,13 @@ const CONTROLE: React.CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
+// Deriva da mesma tabela de SLA da régua, ordenada pelo prazo — que é a ordem
+// do kanban. Duplicar a lista aqui faria o cabeçalho mentir assim que alguém
+// calibrasse os prazos em lib/sinaleira.
+const ETAPAS_KANBAN = Object.entries(SLA)
+  .map(([id, r]) => ({ id, ...r }))
+  .sort((a, b) => a.prazo - b.prazo)
+
 const LINHA_RANKING: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '1fr 56px 62px 56px 56px',
@@ -54,6 +63,19 @@ const CORES: { cor: Cor; label: string }[] = [
 ]
 
 const dataBr = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '—')
+
+// Só 6% dos tickets têm atividade futura agendada. "Sem tarefa" não é campo
+// vazio a esconder: é ticket que ninguém marcou para tocar.
+function tarefa(l: Linha) {
+  if (l.diasTarefa === null) return { texto: 'sem tarefa', cor: 'var(--text-3)' }
+  if (l.diasTarefa < 0)
+    return { texto: `tarefa venceu há ${-l.diasTarefa}d`, cor: 'var(--vermelho)' }
+  if (l.diasTarefa === 0) return { texto: 'tarefa hoje', cor: 'var(--amarelo)' }
+  return {
+    texto: `tarefa em ${l.diasTarefa}d`,
+    cor: l.diasTarefa <= 2 ? 'var(--amarelo)' : 'var(--text-2)',
+  }
+}
 
 function prazo(l: Linha) {
   if (l.cor === 'cinza') return 'sem prazo'
@@ -439,6 +461,105 @@ function Horizonte({
 
 // Os cards se ajustam à largura: em tela larga viram 5 colunas em vez de
 // deixar meia tela vazia dos dois lados.
+// Matriz ticket × etapa do kanban. Cada ticket está em uma etapa só, então a
+// linha marca onde ele parou e a cor diz o sinal. Serve para ver a carteira de
+// uma pessoa inteira sem abrir ticket por ticket.
+function Matriz({
+  linhas,
+  etapas,
+  aoAbrir,
+}: {
+  linhas: Linha[]
+  etapas: { id: string; label: string; prazo: number }[]
+  aoAbrir: (l: Linha) => void
+}) {
+  const grade = `minmax(180px, 1.4fr) 92px 96px repeat(${etapas.length}, minmax(86px, 1fr))`
+  const rotulo = (p: number) => (p === 0 ? 'no evento' : p < 0 ? `D-${-p}` : `D+${p}`)
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <div style={{ minWidth: 700 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: grade,
+            gap: 4,
+            padding: '10px 16px',
+            fontSize: 11,
+            color: 'var(--text-3)',
+          }}
+        >
+          <span>Ticket</span>
+          <span style={{ textAlign: 'right' }}>Evento</span>
+          <span style={{ textAlign: 'right' }}>Tarefa</span>
+          {etapas.map((e) => (
+            <span key={e.id} style={{ textAlign: 'center', lineHeight: 1.3 }}>
+              {e.label}
+              <span style={{ display: 'block', color: 'var(--text-3)', opacity: 0.75 }}>
+                {rotulo(e.prazo)}
+              </span>
+            </span>
+          ))}
+        </div>
+
+        {linhas.map((l) => (
+          <button
+            key={l.id}
+            onClick={() => aoAbrir(l)}
+            className="linha"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: grade,
+              gap: 4,
+              alignItems: 'center',
+              width: '100%',
+              textAlign: 'left',
+              border: 0,
+              borderTop: '1px solid var(--line)',
+              background: 'transparent',
+              color: 'var(--text)',
+              padding: '9px 16px',
+              fontSize: 13,
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {l.cliente}
+            </span>
+            <span style={{ textAlign: 'right', color: 'var(--text-2)', fontSize: 12 }}>
+              {dataBr(l.evento)}
+            </span>
+            <span style={{ textAlign: 'right', fontSize: 12, color: tarefa(l).cor }}>
+              {l.diasTarefa === null ? '—' : `${l.diasTarefa}d`}
+            </span>
+
+            {etapas.map((e) => (
+              <span key={e.id} style={{ display: 'flex', justifyContent: 'center' }}>
+                {l.stage === e.id ? (
+                  <span
+                    style={{
+                      background: `var(--${l.cor}-ponto)`,
+                      color: SOBRE_BARRA[l.cor],
+                      borderRadius: 6,
+                      padding: '3px 8px',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {prazo(l)}
+                  </span>
+                ) : (
+                  <span style={{ color: 'var(--line)' }}>·</span>
+                )}
+              </span>
+            ))}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function Grade({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -877,37 +998,28 @@ export default function Painel({
                 marginBottom: 10,
               }}
             >
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  color: `var(--${l.cor})`,
-                }}
-              >
-                <Ponto cor={l.cor} />
-                {prazo(l)}
+              <span style={{ fontSize: 12, color: tarefa(l).cor, fontWeight: 500 }}>
+                {tarefa(l).texto}
               </span>
-              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                {l.diasEvento >= 0 ? `D-${l.diasEvento}` : `D+${-l.diasEvento}`}
-              </span>
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{dataBr(l.evento)}</span>
             </span>
 
             <span
               style={{
-                display: 'block',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 7,
                 fontSize: 16,
                 fontWeight: 600,
                 letterSpacing: '-0.015em',
                 lineHeight: 1.25,
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
               }}
             >
-              {l.cliente}
+              <Ponto cor={l.cor} tamanho={9} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {l.cliente}
+              </span>
             </span>
             <span
               style={{
@@ -920,7 +1032,7 @@ export default function Painel({
                 whiteSpace: 'nowrap',
               }}
             >
-              {[l.palestrante, dataBr(l.evento)].filter(Boolean).join(' · ')}
+              {l.palestrante || '—'}
             </span>
 
             <span
@@ -936,7 +1048,8 @@ export default function Painel({
                 whiteSpace: 'nowrap',
               }}
             >
-              {l.etapa} · {l.diasNaEtapa}d parado
+              {l.etapa} · {l.diasNaEtapa}d parado ·{' '}
+              <span style={{ color: `var(--${l.cor})` }}>{prazo(l)}</span>
             </span>
             <span style={{ display: 'block', fontSize: 12, marginTop: 3, lineHeight: 1.5 }}>
               <Pessoas l={l} />
@@ -980,6 +1093,28 @@ export default function Painel({
           Sem corte de linhas: truncar em 6 escondia justamente quem tinha menos
           atraso mas muito volume. Clicar numa linha abre os tickets da pessoa,
           igual ao gráfico. */}
+      {proprietario ? (
+        <Grupo style={{ marginTop: 28 }}>
+          <div
+            style={{
+              padding: '14px 16px 2px',
+              fontSize: 15,
+              fontWeight: 600,
+            }}
+          >
+            {proprietario}
+            <span style={{ fontWeight: 400, color: 'var(--text-2)' }}>
+              {' '}
+              · {porPessoa.length} {porPessoa.length === 1 ? 'ticket aberto' : 'tickets abertos'}
+            </span>
+          </div>
+          <Matriz
+            linhas={[...porPessoa].sort((a, b) => b.dias - a.dias)}
+            etapas={ETAPAS_KANBAN}
+            aoAbrir={(l) => setDetalhe({ titulo: l.cliente, itens: [l] })}
+          />
+        </Grupo>
+      ) : (
       <Grupo style={{ marginTop: 28, maxWidth: 620 }}>
         <div style={{ ...LINHA_RANKING, color: 'var(--text-3)', fontSize: 12 }}>
           <span>Por proprietário · {ranking.length}</span>
@@ -1030,6 +1165,7 @@ export default function Painel({
           </button>
         ))}
       </Grupo>
+      )}
     </main>
   )
 }

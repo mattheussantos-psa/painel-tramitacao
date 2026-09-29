@@ -18,7 +18,8 @@
       ],
       "curador": "87159365",
       "entrouEtapa": "2026-09-01",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48720289122",
@@ -30,7 +31,8 @@
       ],
       "curador": "85002012",
       "entrouEtapa": "2026-09-25",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48571010666",
@@ -48,7 +50,8 @@
       ],
       "curador": "85002012",
       "entrouEtapa": "2026-09-16",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "45745052172",
@@ -65,7 +68,8 @@
       ],
       "curador": "80169394",
       "entrouEtapa": "2026-06-15",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47512920851",
@@ -90,7 +94,8 @@
       ],
       "curador": "86859895",
       "entrouEtapa": "2026-08-17",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47296919195",
@@ -107,7 +112,8 @@
       ],
       "curador": "86859895",
       "entrouEtapa": "2026-08-10",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "46740792616",
@@ -129,7 +135,8 @@
       ],
       "curador": "80454588",
       "entrouEtapa": "2026-07-20",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47435038551",
@@ -139,7 +146,8 @@
       "etapas": [],
       "curador": "80454588",
       "entrouEtapa": "2026-08-06",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47092886176",
@@ -152,7 +160,8 @@
       ],
       "curador": "80454588",
       "entrouEtapa": "2026-07-27",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47834986125",
@@ -170,7 +179,8 @@
       ],
       "curador": "80454584",
       "entrouEtapa": "2026-08-26",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "45051864201",
@@ -194,7 +204,8 @@
       ],
       "curador": "81033487",
       "entrouEtapa": "2026-05-04",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47352907610",
@@ -215,7 +226,8 @@
       ],
       "curador": "92333469",
       "entrouEtapa": "2026-08-05",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47968822937",
@@ -235,7 +247,8 @@
       ],
       "curador": "86859895",
       "entrouEtapa": "2026-09-14",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48058394248",
@@ -254,7 +267,8 @@
       ],
       "curador": "81035544",
       "entrouEtapa": "2026-09-15",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48618410880",
@@ -266,7 +280,8 @@
       ],
       "curador": "80651489",
       "entrouEtapa": "2026-09-25",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47097985568",
@@ -286,7 +301,8 @@
       ],
       "curador": "86859895",
       "entrouEtapa": "2026-07-28",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "46107439666",
@@ -316,7 +332,8 @@
       ],
       "curador": "86859895",
       "entrouEtapa": "2026-07-02",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47446626887",
@@ -337,7 +354,8 @@
       ],
       "curador": "80454586",
       "entrouEtapa": "2026-08-11",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "40904068004",
@@ -357,7 +375,8 @@
       ],
       "curador": "80169395",
       "entrouEtapa": "2026-02-06",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48716414563",
@@ -367,7 +386,8 @@
       "etapas": [],
       "curador": null,
       "entrouEtapa": "2026-09-24",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "44395867214",
@@ -390,7 +410,8 @@
       ],
       "curador": "80169395",
       "entrouEtapa": "2026-04-27",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48612282112",
@@ -410,7 +431,8 @@
       ],
       "curador": "80651489",
       "entrouEtapa": "2026-09-17",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "45744419080",
@@ -433,7 +455,8 @@
       ],
       "curador": "80169396",
       "entrouEtapa": "2026-06-17",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "44374336950",
@@ -456,7 +479,8 @@
       ],
       "curador": "80169395",
       "entrouEtapa": "2026-04-27",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "46769981966",
@@ -478,7 +502,8 @@
       ],
       "curador": "86859895",
       "entrouEtapa": "2026-07-28",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47445516611",
@@ -503,7 +528,8 @@
       ],
       "curador": "80454588",
       "entrouEtapa": "2026-08-14",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47434530957",
@@ -513,7 +539,8 @@
       "etapas": [],
       "curador": "80454586",
       "entrouEtapa": "2026-09-25",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48108424737",
@@ -530,7 +557,8 @@
       ],
       "curador": "80651489",
       "entrouEtapa": "2026-09-15",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "39430993832",
@@ -540,7 +568,8 @@
       "etapas": null,
       "curador": "80169394",
       "entrouEtapa": "2026-01-29",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "38511441673",
@@ -550,7 +579,8 @@
       "etapas": null,
       "curador": "80169394",
       "entrouEtapa": "2026-02-03",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "34388822442",
@@ -560,7 +590,8 @@
       "etapas": null,
       "curador": "82466383",
       "entrouEtapa": "2026-02-03",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "37838581325",
@@ -570,7 +601,8 @@
       "etapas": null,
       "curador": "80169394",
       "entrouEtapa": "2026-02-03",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "34922690870",
@@ -580,7 +612,8 @@
       "etapas": null,
       "curador": "79760744",
       "entrouEtapa": "2026-02-06",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "37963776041",
@@ -590,7 +623,8 @@
       "etapas": null,
       "curador": "80454577",
       "entrouEtapa": "2026-02-06",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "37342778180",
@@ -600,7 +634,8 @@
       "etapas": null,
       "curador": "80454586",
       "entrouEtapa": "2026-02-09",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "35293197983",
@@ -610,7 +645,8 @@
       "etapas": null,
       "curador": "80169396",
       "entrouEtapa": "2026-02-10",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "38195249814",
@@ -620,7 +656,8 @@
       "etapas": null,
       "curador": "80169397",
       "entrouEtapa": "2026-03-03",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "30963231253",
@@ -630,7 +667,8 @@
       "etapas": null,
       "curador": "80454583",
       "entrouEtapa": "2026-03-05",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "36303782409",
@@ -640,7 +678,8 @@
       "etapas": null,
       "curador": "80651489",
       "entrouEtapa": "2026-03-09",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "42525054074",
@@ -650,7 +689,8 @@
       "etapas": null,
       "curador": "80454586",
       "entrouEtapa": "2026-03-10",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "42316408991",
@@ -660,7 +700,8 @@
       "etapas": null,
       "curador": "80454583",
       "entrouEtapa": "2026-03-10",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "37607221764",
@@ -670,7 +711,8 @@
       "etapas": null,
       "curador": "80169396",
       "entrouEtapa": "2026-03-17",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "42479290168",
@@ -680,7 +722,8 @@
       "etapas": null,
       "curador": "80651489",
       "entrouEtapa": "2026-03-19",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "43239220881",
@@ -690,7 +733,8 @@
       "etapas": null,
       "curador": "80454583",
       "entrouEtapa": "2026-03-24",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "37745145754",
@@ -700,7 +744,8 @@
       "etapas": null,
       "curador": "80169394",
       "entrouEtapa": "2026-03-27",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "39862108024",
@@ -710,7 +755,8 @@
       "etapas": null,
       "curador": "80169396",
       "entrouEtapa": "2026-03-30",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "41681567622",
@@ -720,7 +766,8 @@
       "etapas": null,
       "curador": "80454586",
       "entrouEtapa": "2026-03-30",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "41322225999",
@@ -730,7 +777,8 @@
       "etapas": null,
       "curador": "80169396",
       "entrouEtapa": "2026-03-30",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "34713934516",
@@ -740,7 +788,8 @@
       "etapas": null,
       "curador": "80169396",
       "entrouEtapa": "2026-04-02",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "39443163550",
@@ -750,7 +799,8 @@
       "etapas": null,
       "curador": "82466383",
       "entrouEtapa": "2026-04-02",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48729302557",
@@ -760,7 +810,8 @@
       "etapas": [],
       "curador": "80651489",
       "entrouEtapa": "2026-09-25",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48723105159",
@@ -770,7 +821,8 @@
       "etapas": [],
       "curador": "80651489",
       "entrouEtapa": "2026-09-25",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48709778768",
@@ -780,7 +832,8 @@
       "etapas": [],
       "curador": "80651489",
       "entrouEtapa": "2026-09-25",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48737248371",
@@ -790,7 +843,8 @@
       "etapas": [],
       "curador": "80651489",
       "entrouEtapa": "2026-09-25",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48715432832",
@@ -800,7 +854,8 @@
       "etapas": [],
       "curador": "80651489",
       "entrouEtapa": "2026-09-25",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48742547200",
@@ -810,7 +865,8 @@
       "etapas": [],
       "curador": "80651489",
       "entrouEtapa": "2026-09-25",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48704043911",
@@ -820,7 +876,8 @@
       "etapas": [],
       "curador": null,
       "entrouEtapa": "2026-09-24",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48605112147",
@@ -830,7 +887,8 @@
       "etapas": [],
       "curador": null,
       "entrouEtapa": "2026-09-16",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48558346760",
@@ -840,7 +898,8 @@
       "etapas": [],
       "curador": "92333469",
       "entrouEtapa": "2026-09-16",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47951549978",
@@ -856,7 +915,8 @@
       ],
       "curador": "80454576",
       "entrouEtapa": "2026-09-14",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47647652439",
@@ -871,7 +931,8 @@
       ],
       "curador": "80454576",
       "entrouEtapa": "2026-09-23",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47930894741",
@@ -883,7 +944,8 @@
       ],
       "curador": "80454576",
       "entrouEtapa": "2026-08-26",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "48116108713",
@@ -898,7 +960,8 @@
       ],
       "curador": "80454586",
       "entrouEtapa": "2026-09-09",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     },
     {
       "id": "47469534006",
@@ -917,7 +980,8 @@
       ],
       "curador": "80454586",
       "entrouEtapa": "2026-09-09",
-      "proprietario": null
+      "proprietario": null,
+      "proximaTarefa": ""
     }
   ]
 }

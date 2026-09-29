@@ -8,6 +8,7 @@ export type Ticket = {
   evento: string
   curador: string | null
   proprietario: string | null
+  proximaTarefa: string
   entrouEtapa: string
 }
 
@@ -108,4 +109,10 @@ export function diasParaEvento(t: Ticket, hoje: number = Date.now()) {
 
 export function diasNaEtapa(t: Ticket, hoje: number = Date.now()) {
   return emDias(hoje, dia(t.entrouEtapa))
+}
+
+// Dias até a próxima atividade agendada. null quando não há nenhuma — que é o
+// caso de 94% dos tickets: o time praticamente não agenda tarefa aqui.
+export function diasParaTarefa(t: Ticket, hoje: number = Date.now()) {
+  return t.proximaTarefa ? emDias(dia(t.proximaTarefa), hoje) : null
 }
