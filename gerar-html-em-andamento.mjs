@@ -6,7 +6,7 @@
 // Lê HUBSPOT_TOKEN do ambiente ou de .env.local. Escreve em-andamento.html.
 
 import { readFileSync, writeFileSync } from 'node:fs'
-import { iso } from './lib/sinaleira.ts'
+import { iso, cliente, palestrante } from './lib/sinaleira.ts'
 
 const ETAPA = '1088360205' // Em andamento
 const PIPELINE = process.env.HUBSPOT_PIPELINE_CS ?? '748675953'
@@ -134,9 +134,14 @@ function valor(campo, p) {
 const linhas = tickets.map((t) => {
   const cels = CAMPOS.map((c) => valor(c, t.p))
   const dono = cels[0]
+  const subject = t.p.subject ?? '(sem assunto)'
   return {
     id: t.id,
-    subject: t.p.subject ?? '(sem assunto)',
+    subject,
+    // O subject traz "Cliente - Palestrante - data - formato - ID: n". Mostrar
+    // a string crua deixava o ID e o formato competindo com o nome do cliente.
+    cliente: cliente(subject) || subject,
+    palestrante: palestrante(subject),
     proprietario: dono.vazio ? 'Sem proprietário' : dono.texto,
     cels,
   }
@@ -173,13 +178,23 @@ h1{font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0}
 .resumo .n{font-size:22px;font-weight:600;margin-top:2px}
 .barra{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
 select,input{font:inherit;font-size:13px;height:34px;border:0;border-radius:8px;background:rgba(120,120,128,.14);color:var(--text);padding:0 10px}
+/* Sem isto o popup do select sai cinza sobre cinza no Chrome/Windows. */
+option{background:var(--card);color:var(--text)}
 .conta{color:var(--t3);font-size:13px}
-table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden}
-th{text-align:left;font-size:11px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;padding:11px 14px;white-space:nowrap}
-td{padding:11px 14px;font-size:13px;border-top:1px solid var(--line);vertical-align:top}
-td.tic{min-width:260px}
-td.tic a{color:inherit;font-weight:500;text-decoration:none}
-td.tic a:hover{text-decoration:underline}
+/* A tabela tem 7 colunas: em tela estreita ela precisa rolar dentro do
+   contêiner, senão o conteúdo some cortado na borda da página. */
+.rolagem{background:var(--card);border-radius:12px;overflow:auto;max-height:calc(100vh - 120px)}
+table{width:100%;border-collapse:separate;border-spacing:0;min-width:1100px}
+thead th{position:sticky;top:0;z-index:2;background:var(--card);text-align:left;font-size:11px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;padding:12px 14px;white-space:nowrap;border-bottom:1px solid var(--line)}
+td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:rgba(120,120,128,.09)}
+th:first-child,td:first-child{position:sticky;left:0;z-index:1;background:var(--card);min-width:300px;white-space:normal}
+tbody tr:hover td:first-child{background:var(--card)}
+.cli{font-weight:500;display:block}
+.cli a{color:inherit;text-decoration:none}
+.cli a:hover{text-decoration:underline}
+.pal{color:var(--t2);font-size:12px}
 .vazio{color:var(--vermelho)}
 .inativo{color:var(--vermelho);font-size:11px}
 a{color:#0071e3}
@@ -211,19 +226,21 @@ ${proprietarios.map((p) => `<option value="${esc(p)}">${esc(p)}</option>`).join(
 <span class="conta" id="conta"></span>
 </div>
 
+<div class="rolagem">
 <table>
 <thead><tr><th>Ticket</th>${CAMPOS.map((c) => `<th>${esc(c.rotulo)}</th>`).join('')}</tr></thead>
 <tbody>
 ${linhas
   .map(
     (l) => `<tr data-dono="${esc(l.proprietario)}" data-falta="${l.cels.some((c) => c.vazio) ? 1 : 0}" data-txt="${esc(l.subject.toLowerCase())}">
-<td class="tic"><a href="https://app.hubspot.com/contacts/${PORTAL}/record/0-5/${l.id}" target="_blank" rel="noreferrer">${esc(l.subject)}</a></td>
+<td><span class="cli"><a href="https://app.hubspot.com/contacts/${PORTAL}/record/0-5/${l.id}" target="_blank" rel="noreferrer">${esc(l.cliente)}</a></span><span class="pal">${esc(l.palestrante || '—')}</span></td>
 ${l.cels.map((c) => `<td>${c.html}</td>`).join('')}
 </tr>`,
   )
   .join('\n')}
 </tbody>
 </table>
+</div>
 </main>
 
 <script>
