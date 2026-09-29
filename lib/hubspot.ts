@@ -15,7 +15,13 @@ const PROPS = [
 
 export type Owner = { nome: string; inativo: boolean }
 export type Owners = Record<string, Owner>
-export type Fonte = { tickets: Ticket[]; owners: Owners; aoVivo: boolean; capturadoEm: string }
+export type Fonte = {
+  tickets: Ticket[]
+  owners: Owners
+  aoVivo: boolean
+  capturadoEm: string
+  aviso?: string
+}
 
 const iso = (ms: string | null | undefined) =>
   ms ? new Date(Number(ms)).toISOString().slice(0, 10) : ''
@@ -126,12 +132,28 @@ export async function carregar(): Promise<Fonte> {
     }
   }
 
-  // Com token configurado, falha é falha: não cai no snapshot em silêncio.
-  const [tickets, owners] = await Promise.all([
-    buscarAoVivo(token, pipeline),
-    buscarOwners(token),
-  ])
-  return { tickets, owners, aoVivo: true, capturadoEm: new Date().toISOString().slice(0, 10) }
+  // Sem ticket não tem painel: falha aqui é fatal e não cai no snapshot em
+  // silêncio — número velho passando por atual é pior que erro.
+  const tickets = await buscarAoVivo(token, pipeline)
+
+  // Nome de curador é acessório. Se faltar o scope crm.objects.owners.read o
+  // painel continua servindo, mostrando o id em vez do nome — mas o motivo
+  // aparece na tela, não vira silêncio.
+  let owners: Owners = {}
+  let aviso: string | undefined
+  try {
+    owners = await buscarOwners(token)
+  } catch (e) {
+    aviso = e instanceof Error ? e.message : String(e)
+  }
+
+  return {
+    tickets,
+    owners,
+    aviso,
+    aoVivo: true,
+    capturadoEm: new Date().toISOString().slice(0, 10),
+  }
 }
 
 // Portal PSA. Sem o id na URL o app.hubspot.com não resolve o registro e cai

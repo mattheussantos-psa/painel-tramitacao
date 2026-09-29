@@ -40,10 +40,12 @@ export default function Painel({
   linhas,
   aoVivo,
   capturadoEm,
+  aviso,
 }: {
   linhas: Linha[]
   aoVivo: boolean
   capturadoEm: string
+  aviso?: string
 }) {
   const [regua, setRegua] = useState<'pre' | 'pos'>('pre')
   const [cor, setCor] = useState<Cor | null>(null)
@@ -79,6 +81,21 @@ export default function Painel({
           </span>
         </p>
       </header>
+
+      {aviso && (
+        <p
+          style={{
+            background: 'var(--amarelo-bg)',
+            color: 'var(--amarelo)',
+            borderRadius: 'var(--radius)',
+            padding: '11px 14px',
+            fontSize: 13,
+            margin: '0 0 20px',
+          }}
+        >
+          Tickets carregados, mas os nomes dos curadores não — aparecem como id. {aviso}
+        </p>
+      )}
 
       <div
         style={{
