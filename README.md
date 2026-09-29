@@ -69,9 +69,13 @@ HUBSPOT_TOKEN=pat-na1-...
 HUBSPOT_PIPELINE_CS=748675953
 ```
 
-Scopes: `crm.objects.tickets.read`, `crm.objects.owners.read`, e o escopo de
-leitura de tarefa/engajamento da conta — o nome varia por conta e aparece na
-própria mensagem de erro do HubSpot na tarja do painel quando falta.
+Scopes: `crm.objects.tickets.read`, `crm.objects.owners.read` e
+`crm.objects.contacts.read`.
+
+O último é o que libera a leitura de **tarefas**: o HubSpot não tem escopo
+próprio para engajamento — tarefa, ligação, reunião e nota entram todos debaixo
+do escopo de contatos. Não procure por `crm.objects.tasks.read`, esse não
+existe.
 
 Os dois últimos são acessórios: sem eles o painel serve os tickets do mesmo
 jeito, mostrando id no lugar do nome do curador e caindo em

@@ -12,10 +12,14 @@ import { iso, tarefaMaisUrgente, SLA } from './lib/sinaleira.ts'
 function token() {
   if (process.env.HUBSPOT_TOKEN) return process.env.HUBSPOT_TOKEN
   try {
+    // replace(/^﻿/) porque Set-Content e Notepad no Windows podem gravar
+    // BOM, e aí a primeira linha não casa com startsWith.
     const linha = readFileSync('.env.local', 'utf8')
-      .split('\n')
+      .replace(/^﻿/, '')
+      .split(/\r?\n/)
+      .map((l) => l.trim())
       .find((l) => l.startsWith('HUBSPOT_TOKEN='))
-    if (linha) return linha.slice('HUBSPOT_TOKEN='.length).trim()
+    if (linha) return linha.slice('HUBSPOT_TOKEN='.length).trim().replace(/^["']|["']$/g, '')
   } catch {}
   console.error('Faltou o token. Crie .env.local com HUBSPOT_TOKEN=pat-na1-...')
   process.exit(1)
