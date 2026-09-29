@@ -102,13 +102,15 @@ export default function Painel({
   const [cor, setCor] = useState<Cor | null>(null)
   const [curador, setCurador] = useState('')
   const [proprietario, setProprietario] = useState('')
+  const [etapa, setEtapa] = useState('')
+  const [semDono, setSemDono] = useState(false)
 
   const daRegua = useMemo(() => linhas.filter((l) => l.regua === regua), [linhas, regua])
 
   // Curador e proprietário entram na contagem: o número no card tem que ser o
   // do recorte que a pessoa está olhando. A cor fica de fora de propósito —
   // se entrasse, clicar em "Atrasado" zerava os outros três.
-  const filtradas = useMemo(
+  const porPessoa = useMemo(
     () =>
       daRegua.filter(
         (l) =>
@@ -118,26 +120,64 @@ export default function Painel({
     [daRegua, curador, proprietario],
   )
 
+  // Ninguém ativo no ticket: nem curador, nem proprietário. Não adianta cobrar
+  // prazo de quem saiu da empresa — esses precisam de dono antes de qualquer
+  // outra coisa.
+  const orfao = (l: Linha) =>
+    (!l.curador || l.curadorInativo) && (!l.proprietario || l.proprietarioInativo)
+
+  const orfaos = useMemo(() => porPessoa.filter(orfao).length, [porPessoa])
+
+  const base = semDono ? porPessoa.filter(orfao) : porPessoa
+
+  // Onde o atraso se concentra. Responde "o que destravar primeiro", que a
+  // contagem por cor sozinha não responde.
+  const porEtapa = useMemo(() => {
+    const c = new Map<string, number>()
+    for (const l of base) c.set(l.etapa, (c.get(l.etapa) ?? 0) + 1)
+    return [...c.entries()].sort((a, b) => b[1] - a[1])
+  }, [base])
+
+  const comEtapa = etapa ? base.filter((l) => l.etapa === etapa) : base
+
   const contagem = useMemo(() => {
     const c: Record<Cor, number> = { vermelho: 0, amarelo: 0, verde: 0, cinza: 0 }
-    for (const l of filtradas) c[l.cor]++
+    for (const l of comEtapa) c[l.cor]++
     return c
-  }, [filtradas])
+  }, [comEtapa])
 
   const nomes = (campo: 'curador' | 'proprietario') =>
     Array.from(new Set(daRegua.map((l) => l[campo]).filter(Boolean) as string[])).sort((a, b) =>
       a.localeCompare(b, 'pt-BR'),
     )
 
+  const limpar = () => {
+    setCor(null)
+    setCurador('')
+    setProprietario('')
+    setEtapa('')
+    setSemDono(false)
+  }
+
   const curadores = useMemo(() => nomes('curador'), [daRegua])
   const proprietarios = useMemo(() => nomes('proprietario'), [daRegua])
 
-  const visiveis = filtradas.filter((l) => !cor || l.cor === cor)
+  const visiveis = comEtapa.filter((l) => !cor || l.cor === cor)
 
   return (
     <main style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 24px 64px' }}>
       <header style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 34, fontWeight: 600, letterSpacing: '-0.02em', margin: 0 }}>
+        <h1
+          style={{
+            fontFamily: 'var(--display)',
+            fontSize: 56,
+            fontWeight: 800,
+            letterSpacing: '0.01em',
+            lineHeight: 1,
+            margin: 0,
+            textTransform: 'uppercase',
+          }}
+        >
           Sinaleira
         </h1>
         <p style={{ color: 'var(--text-2)', margin: '6px 0 0' }}>
@@ -182,8 +222,7 @@ export default function Painel({
             key={v}
             onClick={() => {
               setRegua(v)
-              setCor(null)
-              setCurador('')
+              limpar()
             }}
             style={{
               border: 0,
@@ -208,7 +247,9 @@ export default function Painel({
           marginBottom: 20,
         }}
       >
-        {CORES.map(({ cor: c, label }) => (
+        {/* "Sem prazo" só aparece quando existe: com as 5 etapas mapeadas ele é
+            sempre zero, e tile zerado permanente é coluna gasta à toa. */}
+        {CORES.filter(({ cor: c }) => contagem[c] > 0 || c !== 'cinza').map(({ cor: c, label }) => (
           <button
             key={c}
             onClick={() => setCor(cor === c ? null : c)}
@@ -233,7 +274,14 @@ export default function Painel({
               <span style={{ fontSize: 13, color: `var(--${c})`, fontWeight: 500 }}>{label}</span>
             </div>
             <div
-              style={{ fontSize: 32, fontWeight: 600, color: `var(--${c})`, letterSpacing: '-0.02em' }}
+              style={{
+                fontFamily: 'var(--display)',
+                fontSize: 46,
+                fontWeight: 800,
+                color: `var(--${c})`,
+                lineHeight: 1.05,
+                letterSpacing: '0.01em',
+              }}
             >
               {contagem[c]}
             </div>
@@ -257,9 +305,61 @@ export default function Painel({
           opcoes={proprietarios}
           aoMudar={setProprietario}
         />
+
+        {orfaos > 0 && (
+          <button
+            onClick={() => setSemDono(!semDono)}
+            style={{
+              border: `1px solid ${semDono ? 'var(--vermelho)' : 'var(--line)'}`,
+              background: semDono ? 'var(--vermelho-bg)' : 'var(--card)',
+              color: semDono ? 'var(--vermelho)' : 'var(--text-2)',
+              borderRadius: 9,
+              padding: '7px 12px',
+              fontSize: 13,
+            }}
+          >
+            {orfaos} sem responsável ativo
+          </button>
+        )}
+
         <span style={{ color: 'var(--text-3)', fontSize: 13 }}>
           {visiveis.length} {visiveis.length === 1 ? 'ticket' : 'tickets'}
         </span>
+
+        {(cor || curador || proprietario || etapa || semDono) && (
+          <button
+            onClick={limpar}
+            style={{
+              border: 0,
+              background: 'transparent',
+              color: 'var(--text-3)',
+              fontSize: 13,
+              textDecoration: 'underline',
+              padding: 0,
+            }}
+          >
+            limpar filtros
+          </button>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+        {porEtapa.map(([nome, n]) => (
+          <button
+            key={nome}
+            onClick={() => setEtapa(etapa === nome ? '' : nome)}
+            style={{
+              border: `1px solid ${etapa === nome ? 'var(--text-2)' : 'var(--line)'}`,
+              background: etapa === nome ? 'var(--cinza-bg)' : 'transparent',
+              color: etapa === nome ? 'var(--text)' : 'var(--text-2)',
+              borderRadius: 999,
+              padding: '5px 13px',
+              fontSize: 13,
+            }}
+          >
+            {nome} <span style={{ color: 'var(--text-3)' }}>{n}</span>
+          </button>
+        ))}
       </div>
 
       <div

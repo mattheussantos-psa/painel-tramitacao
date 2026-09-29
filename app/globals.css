@@ -1,4 +1,15 @@
+/* Display face da marca. Compressed extrabold é para título e número grande —
+   em corpo de texto ela fecha demais e perde legibilidade. */
+@font-face {
+  font-family: 'Bruta Pro Compressed';
+  src: url('/fonts/BrutaProCompressed-ExtraBold.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
+  --display: 'Bruta Pro Compressed', 'Haettenschweiler', 'Arial Narrow', sans-serif;
   --bg: #f5f5f7;
   --card: #ffffff;
   --text: #1d1d1f;
