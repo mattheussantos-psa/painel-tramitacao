@@ -23,8 +23,15 @@
   --vermelho: #c41e14;
   --vermelho-bg: #fdecea;
   --cinza: #6e6e73;
-  --cinza-bg: #eeeef0;
-  --radius: 14px;
+  /* Ponto usa a cor viva do sistema; o texto usa a versao escura, que passa
+     no contraste. Usar a mesma para os dois deixava o ponto amarronzado. */
+  --vermelho-ponto: #ff3b30;
+  --amarelo-ponto: #ff9500;
+  --verde-ponto: #34c759;
+  --cinza-ponto: #8e8e93;
+  --cinza-bg: rgba(120, 120, 128, 0.12);
+  --link: #0071e3;
+  --radius: 12px;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -42,7 +49,12 @@
     --vermelho: #ff6961;
     --vermelho-bg: rgba(255, 59, 48, 0.18);
     --cinza: #a1a1a6;
-    --cinza-bg: rgba(142, 142, 147, 0.18);
+    --vermelho-ponto: #ff453a;
+    --amarelo-ponto: #ff9f0a;
+    --verde-ponto: #30d158;
+    --cinza-ponto: #98989d;
+    --cinza-bg: rgba(120, 120, 128, 0.24);
+    --link: #0a84ff;
   }
 }
 
@@ -54,6 +66,13 @@ html,
 body {
   margin: 0;
   padding: 0;
+}
+
+/* O padrão do sistema é seleção de texto; numa lista onde tudo é alvo de
+   clique, arrastar acabava selecionando meio painel. */
+button {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 body {
@@ -69,4 +88,14 @@ button {
   font: inherit;
   color: inherit;
   cursor: pointer;
+}
+
+/* Linha de lista precisa responder ao ponteiro: sem isso nada indica que o
+   item abre o ticket no HubSpot. */
+.linha {
+  transition: background 0.12s ease;
+}
+
+.linha:hover {
+  background: var(--cinza-bg);
 }

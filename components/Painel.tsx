@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-
-const POR_PAGINA = 48
 import type { Cor, Regua } from '@/lib/sinaleira'
+
+const POR_PAGINA = 40
 
 export type Linha = {
   id: string
@@ -34,49 +34,39 @@ const CORES: { cor: Cor; label: string }[] = [
 const dataBr = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '—')
 
 function prazo(l: Linha) {
-  if (l.cor === 'cinza') return 'Etapa sem prazo na régua'
-  if (l.dias > 0) return `${l.dias} ${l.dias === 1 ? 'dia' : 'dias'} de atraso`
-  if (l.dias === 0) return 'Vence hoje'
-  return `Vence em ${-l.dias} ${-l.dias === 1 ? 'dia' : 'dias'}`
+  if (l.cor === 'cinza') return 'sem prazo'
+  if (l.dias > 0) return `${l.dias}d de atraso`
+  if (l.dias === 0) return 'vence hoje'
+  return `em ${-l.dias}d`
 }
 
-function Passo({
-  rotulo,
-  ativo,
-  aoClicar,
-}: {
-  rotulo: string
-  ativo: boolean
-  aoClicar: () => void
-}) {
+function Ponto({ cor, tamanho = 8 }: { cor: Cor; tamanho?: number }) {
   return (
-    <button
-      onClick={aoClicar}
-      disabled={!ativo}
+    <span
       style={{
-        border: '1px solid var(--line)',
-        background: 'transparent',
-        color: ativo ? 'var(--text-2)' : 'var(--text-3)',
-        borderRadius: 8,
-        padding: '6px 12px',
-        fontSize: 13,
-        cursor: ativo ? 'pointer' : 'default',
-        opacity: ativo ? 1 : 0.45,
+        width: tamanho,
+        height: tamanho,
+        borderRadius: tamanho,
+        background: `var(--${cor}-ponto)`,
+        display: 'inline-block',
+        flexShrink: 0,
       }}
-    >
-      {rotulo}
-    </button>
+    />
   )
 }
 
-function Pessoa({ papel, nome, inativo }: { papel: string; nome: string | null; inativo: boolean }) {
+// Container agrupado: uma superfície, hairlines por dentro. É o padrão de lista
+// do iOS e do macOS — a alternativa era uma borda por item, que vira ruído.
+function Grupo({
+  children,
+  style,
+}: {
+  children: React.ReactNode
+  style?: React.CSSProperties
+}) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 3 }}>
-      <span>{papel}</span>
-      <span style={{ textAlign: 'right', color: inativo ? 'var(--vermelho)' : undefined }}>
-        {nome ?? '—'}
-        {inativo ? ' · inativo' : ''}
-      </span>
+    <div style={{ background: 'var(--card)', borderRadius: 12, overflow: 'hidden', ...style }}>
+      {children}
     </div>
   )
 }
@@ -98,12 +88,13 @@ function Filtro({
       onChange={(e) => aoMudar(e.target.value)}
       style={{
         font: 'inherit',
-        padding: '7px 12px',
-        borderRadius: 9,
-        border: '1px solid var(--line)',
-        background: 'var(--card)',
-        color: 'var(--text)',
-        maxWidth: 240,
+        fontSize: 13,
+        padding: '6px 10px',
+        borderRadius: 8,
+        border: 0,
+        background: 'var(--cinza-bg)',
+        color: valor ? 'var(--text)' : 'var(--text-2)',
+        maxWidth: 210,
       }}
     >
       <option value="">{vazio}</option>
@@ -113,6 +104,38 @@ function Filtro({
         </option>
       ))}
     </select>
+  )
+}
+
+function Passo({
+  rotulo,
+  ativo,
+  aoClicar,
+}: {
+  rotulo: string
+  ativo: boolean
+  aoClicar: () => void
+}) {
+  return (
+    <button
+      onClick={aoClicar}
+      disabled={!ativo}
+      aria-label={rotulo === '‹' ? 'Página anterior' : 'Próxima página'}
+      style={{
+        border: 0,
+        background: 'var(--cinza-bg)',
+        color: 'var(--text-2)',
+        borderRadius: 8,
+        width: 30,
+        height: 30,
+        fontSize: 16,
+        lineHeight: 1,
+        cursor: ativo ? 'pointer' : 'default',
+        opacity: ativo ? 1 : 0.35,
+      }}
+    >
+      {rotulo}
+    </button>
   )
 }
 
@@ -139,16 +162,13 @@ export default function Painel({
   const [rankingInteiro, setRankingInteiro] = useState(false)
 
   // Qualquer filtro muda o conjunto: ficar na página 5 de um recorte que agora
-  // tem 3 cards deixa a tela vazia sem explicação.
+  // tem 3 itens deixa a tela vazia sem explicação.
   useEffect(() => {
     setPagina(0)
   }, [regua, cor, curador, proprietario, etapa, semDono])
 
   const daRegua = useMemo(() => linhas.filter((l) => l.regua === regua), [linhas, regua])
 
-  // Curador e proprietário entram na contagem: o número no card tem que ser o
-  // do recorte que a pessoa está olhando. A cor fica de fora de propósito —
-  // se entrasse, clicar em "Atrasado" zerava os outros três.
   const porPessoa = useMemo(
     () =>
       daRegua.filter(
@@ -160,8 +180,7 @@ export default function Painel({
   )
 
   // Ninguém ativo no ticket: nem curador, nem proprietário. Não adianta cobrar
-  // prazo de quem saiu da empresa — esses precisam de dono antes de qualquer
-  // outra coisa.
+  // prazo de quem saiu da empresa — esses precisam de dono antes de tudo.
   const orfao = (l: Linha) =>
     (!l.curador || l.curadorInativo) && (!l.proprietario || l.proprietarioInativo)
 
@@ -169,8 +188,6 @@ export default function Painel({
 
   const base = semDono ? porPessoa.filter(orfao) : porPessoa
 
-  // Onde o atraso se concentra. Responde "o que destravar primeiro", que a
-  // contagem por cor sozinha não responde.
   const porEtapa = useMemo(() => {
     const c = new Map<string, number>()
     for (const l of base) c.set(l.etapa, (c.get(l.etapa) ?? 0) + 1)
@@ -179,27 +196,13 @@ export default function Painel({
 
   const comEtapa = etapa ? base.filter((l) => l.etapa === etapa) : base
 
+  // A cor fica de fora da contagem de propósito: se entrasse, clicar em
+  // "Atrasado" zerava os outros três e a pessoa perdia a visão do quadro.
   const contagem = useMemo(() => {
     const c: Record<Cor, number> = { vermelho: 0, amarelo: 0, verde: 0, cinza: 0 }
     for (const l of comEtapa) c[l.cor]++
     return c
   }, [comEtapa])
-
-  const nomes = (campo: 'curador' | 'proprietario') =>
-    Array.from(new Set(daRegua.map((l) => l[campo]).filter(Boolean) as string[])).sort((a, b) =>
-      a.localeCompare(b, 'pt-BR'),
-    )
-
-  const limpar = () => {
-    setCor(null)
-    setCurador('')
-    setProprietario('')
-    setEtapa('')
-    setSemDono(false)
-  }
-
-  const curadores = useMemo(() => nomes('curador'), [daRegua])
-  const proprietarios = useMemo(() => nomes('proprietario'), [daRegua])
 
   const visiveis = comEtapa.filter((l) => !cor || l.cor === cor)
 
@@ -210,9 +213,9 @@ export default function Painel({
   // Ranking lê a aba inteira de propósito: se respeitasse o filtro de
   // proprietário, viraria uma linha só e deixaria de servir para escolher.
   const ranking = useMemo(() => {
-    const m = new Map<string, { vermelho: number; amarelo: number; verde: number; cinza: number }>()
+    const m = new Map<string, Record<Cor, number>>()
     for (const l of daRegua) {
-      const nome = l.proprietario ?? 'sem proprietário'
+      const nome = l.proprietario ?? 'Sem proprietário'
       const r = m.get(nome) ?? { vermelho: 0, amarelo: 0, verde: 0, cinza: 0 }
       r[l.cor]++
       m.set(nome, r)
@@ -222,13 +225,32 @@ export default function Painel({
       .sort((a, b) => b.vermelho - a.vermelho || b.total - a.total)
   }, [daRegua])
 
+  const nomes = (campo: 'curador' | 'proprietario') =>
+    Array.from(new Set(daRegua.map((l) => l[campo]).filter(Boolean) as string[])).sort((a, b) =>
+      a.localeCompare(b, 'pt-BR'),
+    )
+
+  const curadores = useMemo(() => nomes('curador'), [daRegua])
+  const proprietarios = useMemo(() => nomes('proprietario'), [daRegua])
+
+  const limpar = () => {
+    setCor(null)
+    setCurador('')
+    setProprietario('')
+    setEtapa('')
+    setSemDono(false)
+  }
+
+  const filtrando = !!(cor || curador || proprietario || etapa || semDono)
+  const visiveisCores = CORES.filter(({ cor: c }) => c !== 'cinza' || contagem[c] > 0)
+
   return (
-    <main style={{ maxWidth: 1180, margin: '0 auto', padding: '40px 24px 64px' }}>
-      <header style={{ marginBottom: 28 }}>
+    <main style={{ maxWidth: 940, margin: '0 auto', padding: '48px 20px 72px' }}>
+      <header style={{ marginBottom: 24 }}>
         <h1
           style={{
             fontFamily: 'var(--display)',
-            fontSize: 56,
+            fontSize: 44,
             fontWeight: 800,
             letterSpacing: '0.01em',
             lineHeight: 1,
@@ -238,11 +260,9 @@ export default function Painel({
         >
           Sinaleira
         </h1>
-        <p style={{ color: 'var(--text-2)', margin: '6px 0 0' }}>
+        <p style={{ color: 'var(--text-2)', margin: '8px 0 0', fontSize: 14 }}>
           Tramitação CS · {linhas.length} tickets abertos ·{' '}
-          <span style={{ color: aoVivo ? 'var(--verde)' : 'var(--text-3)' }}>
-            {aoVivo ? `ao vivo, ${atualizadoEm}` : `snapshot de ${dataBr(capturadoEm)}`}
-          </span>
+          {aoVivo ? `ao vivo, ${atualizadoEm}` : `snapshot de ${dataBr(capturadoEm)}`}
         </p>
       </header>
 
@@ -251,7 +271,7 @@ export default function Painel({
           style={{
             background: 'var(--amarelo-bg)',
             color: 'var(--amarelo)',
-            borderRadius: 'var(--radius)',
+            borderRadius: 12,
             padding: '11px 14px',
             fontSize: 13,
             margin: '0 0 20px',
@@ -265,9 +285,9 @@ export default function Painel({
         style={{
           display: 'inline-flex',
           background: 'var(--cinza-bg)',
-          borderRadius: 10,
+          borderRadius: 9,
           padding: 2,
-          marginBottom: 20,
+          marginBottom: 18,
         }}
       >
         {(
@@ -284,12 +304,12 @@ export default function Painel({
             }}
             style={{
               border: 0,
-              borderRadius: 8,
-              padding: '7px 18px',
-              fontWeight: 500,
+              borderRadius: 7,
+              padding: '6px 16px',
+              fontSize: 14,
+              fontWeight: regua === v ? 500 : 400,
               background: regua === v ? 'var(--card)' : 'transparent',
               color: regua === v ? 'var(--text)' : 'var(--text-2)',
-              boxShadow: regua === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
             }}
           >
             {label}
@@ -297,94 +317,102 @@ export default function Painel({
         ))}
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: 12,
-          marginBottom: 20,
-        }}
-      >
-        {/* "Sem prazo" só aparece quando existe: com as 5 etapas mapeadas ele é
-            sempre zero, e tile zerado permanente é coluna gasta à toa. */}
-        {CORES.filter(({ cor: c }) => contagem[c] > 0 || c !== 'cinza').map(({ cor: c, label }) => (
-          <button
-            key={c}
-            onClick={() => setCor(cor === c ? null : c)}
-            style={{
-              textAlign: 'left',
-              border: cor === c ? `1.5px solid var(--${c})` : '1.5px solid transparent',
-              background: `var(--${c}-bg)`,
-              borderRadius: 'var(--radius)',
-              padding: '14px 16px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <span
-                style={{
-                  width: 9,
-                  height: 9,
-                  borderRadius: 5,
-                  background: `var(--${c})`,
-                  display: 'inline-block',
-                }}
-              />
-              <span style={{ fontSize: 13, color: `var(--${c})`, fontWeight: 500 }}>{label}</span>
-            </div>
-            <div
+      {/* Números sobre superfície neutra, cor só no ponto e no algarismo. A
+          versão anterior pintava três retângulos inteiros de cor semântica. */}
+      <Grupo style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex' }}>
+          {visiveisCores.map(({ cor: c, label }, i) => (
+            <button
+              key={c}
+              onClick={() => setCor(cor === c ? null : c)}
               style={{
-                fontFamily: 'var(--display)',
-                fontSize: 46,
-                fontWeight: 800,
-                color: `var(--${c})`,
-                lineHeight: 1.05,
-                letterSpacing: '0.01em',
+                flex: 1,
+                border: 0,
+                borderLeft: i ? '1px solid var(--line)' : 0,
+                background: cor === c ? 'var(--cinza-bg)' : 'transparent',
+                padding: '14px 18px',
+                textAlign: 'left',
               }}
             >
-              {contagem[c]}
-            </div>
-          </button>
-        ))}
-      </div>
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  color: 'var(--text-2)',
+                }}
+              >
+                <Ponto cor={c} />
+                {label}
+              </span>
+              <div
+                style={{
+                  fontSize: 30,
+                  fontWeight: 600,
+                  letterSpacing: '-0.02em',
+                  marginTop: 2,
+                  color: `var(--${c})`,
+                }}
+              >
+                {contagem[c]}
+              </div>
+            </button>
+          ))}
+        </div>
+      </Grupo>
 
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
-          marginBottom: 20,
+          gap: 8,
+          marginBottom: 18,
           flexWrap: 'wrap',
         }}
       >
-        <Filtro vazio="Todos os curadores" valor={curador} opcoes={curadores} aoMudar={setCurador} />
+        <Filtro vazio="Curador" valor={curador} opcoes={curadores} aoMudar={setCurador} />
         <Filtro
-          vazio="Todos os proprietários"
+          vazio="Proprietário"
           valor={proprietario}
           opcoes={proprietarios}
           aoMudar={setProprietario}
         />
 
+        {porEtapa.map(([nome, n]) => (
+          <button
+            key={nome}
+            onClick={() => setEtapa(etapa === nome ? '' : nome)}
+            style={{
+              border: 0,
+              background: etapa === nome ? 'var(--text)' : 'var(--cinza-bg)',
+              color: etapa === nome ? 'var(--card)' : 'var(--text-2)',
+              borderRadius: 8,
+              padding: '6px 11px',
+              fontSize: 13,
+            }}
+          >
+            {nome} {n}
+          </button>
+        ))}
+
         {orfaos > 0 && (
           <button
             onClick={() => setSemDono(!semDono)}
             style={{
-              border: `1px solid ${semDono ? 'var(--vermelho)' : 'var(--line)'}`,
-              background: semDono ? 'var(--vermelho-bg)' : 'var(--card)',
-              color: semDono ? 'var(--vermelho)' : 'var(--text-2)',
-              borderRadius: 9,
-              padding: '7px 12px',
+              border: 0,
+              background: semDono ? 'var(--vermelho)' : 'var(--cinza-bg)',
+              color: semDono ? 'var(--card)' : 'var(--text-2)',
+              borderRadius: 8,
+              padding: '6px 11px',
               fontSize: 13,
             }}
           >
-            {orfaos} sem responsável ativo
+            Sem responsável {orfaos}
           </button>
         )}
 
-        <span style={{ color: 'var(--text-3)', fontSize: 13 }}>
-          {visiveis.length} {visiveis.length === 1 ? 'ticket' : 'tickets'}
-        </span>
-
-        {(cor || curador || proprietario || etapa || semDono) && (
+        {filtrando && (
           <button
             onClick={limpar}
             style={{
@@ -392,84 +420,60 @@ export default function Painel({
               background: 'transparent',
               color: 'var(--text-3)',
               fontSize: 13,
-              textDecoration: 'underline',
-              padding: 0,
+              padding: '6px 2px',
             }}
           >
-            limpar filtros
+            Limpar
           </button>
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-        {porEtapa.map(([nome, n]) => (
-          <button
-            key={nome}
-            onClick={() => setEtapa(etapa === nome ? '' : nome)}
-            style={{
-              border: `1px solid ${etapa === nome ? 'var(--text-2)' : 'var(--line)'}`,
-              background: etapa === nome ? 'var(--cinza-bg)' : 'transparent',
-              color: etapa === nome ? 'var(--text)' : 'var(--text-2)',
-              borderRadius: 999,
-              padding: '5px 13px',
-              fontSize: 13,
-            }}
-          >
-            {nome} <span style={{ color: 'var(--text-3)' }}>{n}</span>
-          </button>
-        ))}
-      </div>
-
-      <div
-        style={{
-          background: 'var(--card)',
-          border: '1px solid var(--line)',
-          borderRadius: 'var(--radius)',
-          padding: '14px 16px',
-          marginBottom: 20,
-        }}
-      >
+      <Grupo style={{ marginBottom: 18 }}>
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 56px 56px 56px',
-            gap: 8,
+            gridTemplateColumns: '1fr 52px 52px 52px',
+            gap: 4,
+            padding: '11px 18px',
             fontSize: 12,
             color: 'var(--text-3)',
-            paddingBottom: 8,
-            borderBottom: '1px solid var(--line)',
           }}
         >
-          <span>Proprietário</span>
+          <span>Por proprietário</span>
           <span style={{ textAlign: 'right' }}>Atraso</span>
           <span style={{ textAlign: 'right' }}>Atenção</span>
           <span style={{ textAlign: 'right' }}>Em dia</span>
         </div>
 
-        {(rankingInteiro ? ranking : ranking.slice(0, 8)).map((r) => (
+        {(rankingInteiro ? ranking : ranking.slice(0, 6)).map((r) => (
           <button
             key={r.nome}
             onClick={() => setProprietario(proprietario === r.nome ? '' : r.nome)}
             style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 56px 56px 56px',
-              gap: 8,
+              gridTemplateColumns: '1fr 52px 52px 52px',
+              gap: 4,
               width: '100%',
               textAlign: 'left',
               border: 0,
-              borderRadius: 6,
+              borderTop: '1px solid var(--line)',
               background: proprietario === r.nome ? 'var(--cinza-bg)' : 'transparent',
-              padding: '7px 4px',
-              fontSize: 13,
+              padding: '11px 18px',
+              fontSize: 14,
+              color: 'var(--text)',
             }}
           >
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {r.nome}
             </span>
-            <span style={{ textAlign: 'right', color: r.vermelho ? 'var(--vermelho)' : 'var(--text-3)' }}>
+            <span
+              style={{ textAlign: 'right', color: r.vermelho ? 'var(--vermelho)' : 'var(--text-3)' }}
+            >
               {r.vermelho}
             </span>
-            <span style={{ textAlign: 'right', color: r.amarelo ? 'var(--amarelo)' : 'var(--text-3)' }}>
+            <span
+              style={{ textAlign: 'right', color: r.amarelo ? 'var(--amarelo)' : 'var(--text-3)' }}
+            >
               {r.amarelo}
             </span>
             <span style={{ textAlign: 'right', color: r.verde ? 'var(--verde)' : 'var(--text-3)' }}>
@@ -478,143 +482,122 @@ export default function Painel({
           </button>
         ))}
 
-        {ranking.length > 8 && (
+        {ranking.length > 6 && (
           <button
             onClick={() => setRankingInteiro(!rankingInteiro)}
             style={{
+              width: '100%',
+              textAlign: 'left',
               border: 0,
+              borderTop: '1px solid var(--line)',
               background: 'transparent',
-              color: 'var(--text-3)',
+              color: 'var(--link)',
               fontSize: 13,
-              textDecoration: 'underline',
-              padding: '8px 4px 0',
+              padding: '11px 18px',
             }}
           >
-            {rankingInteiro ? 'mostrar só o topo' : `mostrar todos os ${ranking.length}`}
+            {rankingInteiro ? 'Mostrar menos' : `Mostrar todos os ${ranking.length}`}
           </button>
         )}
-      </div>
+      </Grupo>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(268px, 1fr))',
-          gap: 12,
-        }}
-      >
-        {naTela.map((l) => (
+      {/* Lista agrupada no lugar da grade de cards: 227 registros se leem em
+          coluna, não em mosaico. É o padrão de Mail, Ajustes e Saúde. */}
+      <Grupo>
+        {naTela.map((l, i) => (
           <a
             key={l.id}
             href={l.link}
             target="_blank"
             rel="noreferrer"
+            className="linha"
             style={{
-              display: 'block',
+              display: 'grid',
+              gridTemplateColumns: 'auto 1fr auto',
+              alignItems: 'center',
+              gap: 12,
               textDecoration: 'none',
               color: 'inherit',
-              background: 'var(--card)',
-              border: '1px solid var(--line)',
-              borderRadius: 'var(--radius)',
-              padding: '14px 16px',
+              padding: '12px 18px',
+              borderTop: i ? '1px solid var(--line)' : 0,
             }}
           >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 9,
-              }}
-            >
+            <Ponto cor={l.cor} tamanho={9} />
+
+            <span style={{ minWidth: 0 }}>
               <span
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  background: `var(--${l.cor}-bg)`,
-                  color: `var(--${l.cor})`,
-                  borderRadius: 7,
-                  padding: '3px 9px',
-                  fontSize: 12,
+                  display: 'block',
+                  fontSize: 15,
                   fontWeight: 500,
+                  letterSpacing: '-0.01em',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                <span style={{ width: 7, height: 7, borderRadius: 4, background: `var(--${l.cor})` }} />
+                {l.cliente}
+              </span>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: 13,
+                  color: 'var(--text-2)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {[l.palestrante, dataBr(l.evento), l.etapa].filter(Boolean).join(' · ')}
+              </span>
+            </span>
+
+            <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+              <span style={{ display: 'block', fontSize: 14, color: `var(--${l.cor})` }}>
                 {prazo(l)}
               </span>
-              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                {l.diasEvento >= 0 ? `D-${l.diasEvento}` : `D+${-l.diasEvento}`}
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: 12,
+                  color:
+                    l.curadorInativo || l.proprietarioInativo ? 'var(--vermelho)' : 'var(--text-3)',
+                }}
+              >
+                {l.curador ?? l.proprietario ?? 'sem responsável'}
               </span>
-            </div>
-
-            <div style={{ fontWeight: 500, letterSpacing: '-0.01em' }}>{l.cliente}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
-              {l.palestrante || '—'} · evento {dataBr(l.evento)}
-            </div>
-
-            <div style={{ fontSize: 13, color: `var(--${l.cor})`, marginTop: 8 }}>
-              Sai da etapa até {dataBr(l.vence)} · {l.diasNaEtapa} dias parado
-            </div>
-
-            <div
-              style={{
-                marginTop: 10,
-                paddingTop: 9,
-                borderTop: '1px solid var(--line)',
-                fontSize: 12,
-                color: 'var(--text-3)',
-              }}
-            >
-              <div style={{ color: 'var(--text-2)' }}>{l.etapa}</div>
-              <Pessoa papel="Curador" nome={l.curador} inativo={l.curadorInativo} />
-              <Pessoa papel="Proprietário" nome={l.proprietario} inativo={l.proprietarioInativo} />
-            </div>
+            </span>
           </a>
         ))}
-      </div>
 
-      {visiveis.length === 0 && (
-        <p style={{ color: 'var(--text-3)' }}>Nenhum ticket com esse filtro.</p>
-      )}
+        {visiveis.length === 0 && (
+          <p style={{ color: 'var(--text-3)', padding: 18, margin: 0, fontSize: 14 }}>
+            Nenhum ticket com esse filtro.
+          </p>
+        )}
+      </Grupo>
 
       {paginas > 1 && (
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            marginTop: 24,
-            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            gap: 12,
+            marginTop: 16,
+            fontSize: 13,
           }}
         >
-          <Passo rotulo="Anterior" ativo={atual > 0} aoClicar={() => setPagina(atual - 1)} />
-          {Array.from({ length: paginas }, (_, i) => i).map((i) => (
-            <button
-              key={i}
-              onClick={() => setPagina(i)}
-              aria-current={i === atual ? 'page' : undefined}
-              style={{
-                border: `1px solid ${i === atual ? 'var(--text-2)' : 'var(--line)'}`,
-                background: i === atual ? 'var(--cinza-bg)' : 'transparent',
-                color: i === atual ? 'var(--text)' : 'var(--text-2)',
-                borderRadius: 8,
-                minWidth: 34,
-                padding: '6px 8px',
-                fontSize: 13,
-              }}
-            >
-              {i + 1}
-            </button>
-          ))}
-          <Passo
-            rotulo="Próxima"
-            ativo={atual < paginas - 1}
-            aoClicar={() => setPagina(atual + 1)}
-          />
-          <span style={{ color: 'var(--text-3)', fontSize: 13, marginLeft: 8 }}>
+          <span style={{ color: 'var(--text-3)' }}>
             {atual * POR_PAGINA + 1}–{Math.min((atual + 1) * POR_PAGINA, visiveis.length)} de{' '}
             {visiveis.length}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Passo rotulo="‹" ativo={atual > 0} aoClicar={() => setPagina(atual - 1)} />
+            <span style={{ color: 'var(--text-2)', padding: '0 8px' }}>
+              {atual + 1} de {paginas}
+            </span>
+            <Passo rotulo="›" ativo={atual < paginas - 1} aoClicar={() => setPagina(atual + 1)} />
           </span>
         </div>
       )}
