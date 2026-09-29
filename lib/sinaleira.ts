@@ -56,6 +56,19 @@ export const iso = (v: string | number | null | undefined) => {
   return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10)
 }
 
+export type Tarefa = { vence: string; aberta: boolean }
+
+// De todas as tarefas de um ticket, vale a aberta que vence primeiro —
+// inclusive se já venceu. Concluída não conta, e sem data não dá para cobrar.
+export function tarefaMaisUrgente(ids: string[], tarefas: Map<string, Tarefa>) {
+  const datas = ids
+    .map((i) => tarefas.get(i))
+    .filter((t): t is Tarefa => !!t && t.aberta && !!t.vence)
+    .map((t) => t.vence)
+    .sort()
+  return datas[0] ?? ''
+}
+
 export type Avaliacao = {
   cor: Cor
   regua: Regua

@@ -1,4 +1,4 @@
-import { SLA, iso, type Ticket } from './sinaleira'
+import { SLA, iso, tarefaMaisUrgente, type Tarefa, type Ticket } from './sinaleira'
 import snapshot from '@/data/snapshot.json'
 import curadores from '@/data/curadores.json'
 
@@ -115,6 +115,67 @@ async function buscarAoVivo(
   return { tickets, ignorados }
 }
 
+const pedacos = <T,>(xs: T[], n: number) =>
+  Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n))
+
+// hs_nextactivitydate só guarda atividade FUTURA: medido nos 438 abertos, zero
+// tickets com data no passado. Ou seja, tarefa vencida some do campo. Para
+// saber quem tem tarefa em aberto — vencida ou não — é preciso ler o objeto
+// task via associação.
+async function buscarTarefas(token: string, ticketIds: string[]) {
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+  const porTicket = new Map<string, string[]>()
+  for (const lote of pedacos(ticketIds, 100)) {
+    await espera(PAUSA)
+    const r = await chamar(
+      'https://api.hubapi.com/crm/v4/associations/tickets/tasks/batch/read',
+      { method: 'POST', headers, body: JSON.stringify({ inputs: lote.map((id) => ({ id })) }) },
+      'associations tickets→tasks',
+    )
+    for (const res of r.results ?? []) {
+      const de = res.from?.id
+      const para = (res.to ?? []).map((t: { toObjectId?: string; id?: string }) =>
+        String(t.toObjectId ?? t.id),
+      )
+      if (de && para.length) porTicket.set(String(de), para)
+    }
+  }
+
+  const idsTarefa = [...new Set([...porTicket.values()].flat())]
+  const tarefas = new Map<string, Tarefa>()
+
+  for (const lote of pedacos(idsTarefa, 100)) {
+    await espera(PAUSA)
+    const r = await chamar(
+      'https://api.hubapi.com/crm/v3/objects/tasks/batch/read',
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          properties: ['hs_timestamp', 'hs_task_status'],
+          inputs: lote.map((id) => ({ id })),
+        }),
+      },
+      'tasks/batch/read',
+    )
+    for (const t of r.results ?? []) {
+      tarefas.set(String(t.id), {
+        vence: iso(t.properties?.hs_timestamp),
+        // Qualquer coisa que não seja COMPLETED conta como pendente.
+        aberta: (t.properties?.hs_task_status ?? '') !== 'COMPLETED',
+      })
+    }
+  }
+
+  const proxima = new Map<string, string>()
+  for (const [ticket, ids] of porTicket) {
+    const vence = tarefaMaisUrgente(ids, tarefas)
+    if (vence) proxima.set(ticket, vence)
+  }
+  return proxima
+}
+
 // Os owners arquivados não vêm na listagem padrão, e são justamente os que
 // interessam: ticket parado com curador que saiu não tem quem atue.
 async function buscarOwners(token: string): Promise<Owners> {
@@ -177,6 +238,21 @@ async function buscarTudo(): Promise<Fonte> {
   } catch (e) {
     avisos.push(
       `Nomes dos curadores não carregaram, aparecem como id. ${e instanceof Error ? e.message : String(e)}`,
+    )
+  }
+
+  // Tarefa é acessório, igual aos owners: sem o escopo crm.objects.tasks.read o
+  // painel segue servindo, caindo no hs_nextactivitydate que já veio no ticket
+  // — que só enxerga atividade futura. O motivo aparece na tela.
+  try {
+    const proxima = await buscarTarefas(
+      token,
+      tickets.map((t) => t.id),
+    )
+    for (const t of tickets) t.proximaTarefa = proxima.get(t.id) ?? ''
+  } catch (e) {
+    avisos.push(
+      `Tarefas não carregaram; a coluna cai em hs_nextactivitydate, que ignora tarefa vencida. ${e instanceof Error ? e.message : String(e)}`,
     )
   }
 

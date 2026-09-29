@@ -693,6 +693,7 @@ export default function Painel({
   const [proprietario, setProprietario] = useState('')
   const [etapa, setEtapa] = useState('')
   const [semDono, setSemDono] = useState(false)
+  const [comTarefa, setComTarefa] = useState(false)
   const [detalhe, setDetalhe] = useState<{ titulo: string; itens: Linha[] } | null>(null)
   const [pagina, setPagina] = useState(0)
 
@@ -700,7 +701,7 @@ export default function Painel({
   // tem 3 itens deixa a tela vazia sem explicação.
   useEffect(() => {
     setPagina(0)
-  }, [regua, cor, curador, proprietario, etapa, semDono])
+  }, [regua, cor, curador, proprietario, etapa, semDono, comTarefa])
 
   const daRegua = useMemo(() => linhas.filter((l) => l.regua === regua), [linhas, regua])
 
@@ -721,7 +722,11 @@ export default function Painel({
 
   const orfaos = useMemo(() => porPessoa.filter(orfao).length, [porPessoa])
 
-  const base = semDono ? porPessoa.filter(orfao) : porPessoa
+  const comTarefas = useMemo(() => porPessoa.filter((l) => l.diasTarefa !== null).length, [porPessoa])
+
+  const base = porPessoa.filter(
+    (l) => (!semDono || orfao(l)) && (!comTarefa || l.diasTarefa !== null),
+  )
 
   const porEtapa = useMemo(() => {
     const c = new Map<string, number>()
@@ -775,9 +780,10 @@ export default function Painel({
     setProprietario('')
     setEtapa('')
     setSemDono(false)
+    setComTarefa(false)
   }
 
-  const filtrando = !!(cor || curador || proprietario || etapa || semDono)
+  const filtrando = !!(cor || curador || proprietario || etapa || semDono || comTarefa)
   const visiveisCores = CORES.filter(({ cor: c }) => c !== 'cinza' || contagem[c] > 0)
 
   return (
@@ -888,6 +894,19 @@ export default function Painel({
           </button>
         ))}
 
+
+        {comTarefas > 0 && (
+          <button
+            onClick={() => setComTarefa(!comTarefa)}
+            style={{
+              ...CONTROLE,
+              background: comTarefa ? 'var(--text)' : 'var(--cinza-bg)',
+              color: comTarefa ? 'var(--card)' : 'var(--text-2)',
+            }}
+          >
+            Com tarefa {comTarefas}
+          </button>
+        )}
 
         {orfaos > 0 && (
           <button

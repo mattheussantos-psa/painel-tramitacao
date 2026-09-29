@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { avaliar, iso, SLA, ENCERRADAS } from './lib/sinaleira.ts'
+import { avaliar, iso, tarefaMaisUrgente, SLA, ENCERRADAS } from './lib/sinaleira.ts'
 
 // A API v3 manda "2026-09-30", a camada de relatório manda epoch em ms.
 // Assumir um formato só derrubou o painel em produção com "Invalid time value".
@@ -91,3 +91,19 @@ for (const ticket of snap.tickets) {
 assert.equal(snap.tickets.length, 64)
 
 console.log('ok —', snap.tickets.length, 'tickets:', cores)
+
+// Tarefa que vale: a aberta que vence primeiro, mesmo se ja venceu.
+const tarefas = new Map([
+  ['a', { vence: '2026-10-10', aberta: true }],
+  ['b', { vence: '2026-09-01', aberta: false }],
+  ['c', { vence: '2026-09-20', aberta: true }],
+  ['d', { vence: '', aberta: true }],
+])
+assert.equal(tarefaMaisUrgente(['a', 'b', 'c', 'd'], tarefas), '2026-09-20')
+assert.equal(tarefaMaisUrgente(['a', 'b'], tarefas), '2026-10-10')
+assert.equal(tarefaMaisUrgente(['b'], tarefas), '', 'concluida nao conta')
+assert.equal(tarefaMaisUrgente(['d'], tarefas), '', 'sem data nao conta')
+assert.equal(tarefaMaisUrgente(['inexistente'], tarefas), '')
+assert.equal(tarefaMaisUrgente([], tarefas), '')
+
+console.log('ok — selecao de tarefa')
