@@ -71,11 +71,37 @@ function Grupo({
   )
 }
 
-const FAIXAS: { rotulo: string; de: number; ate: number }[] = [
-  { rotulo: '0–7 dias', de: 0, ate: 7 },
-  { rotulo: '8–15 dias', de: 8, ate: 15 },
-  { rotulo: '16–30 dias', de: 16, ate: 30 },
-]
+type Faixa = { rotulo: string; dentro: (l: Linha) => boolean }
+
+// Futuro: quanto falta para o evento. Passado: há quanto tempo ele aconteceu e
+// o ticket segue aberto. As faixas do passado são mais largas de propósito —
+// tem ticket com evento há mais de 300 dias, e 0–7 ali não separaria nada.
+const FAIXAS: Record<Regua, Faixa[]> = {
+  pre: [
+    { rotulo: '0–7 dias', dentro: (l) => l.diasEvento >= 0 && l.diasEvento <= 7 },
+    { rotulo: '8–15 dias', dentro: (l) => l.diasEvento >= 8 && l.diasEvento <= 15 },
+    { rotulo: '16–30 dias', dentro: (l) => l.diasEvento >= 16 && l.diasEvento <= 30 },
+  ],
+  pos: [
+    { rotulo: 'até 15 dias', dentro: (l) => -l.diasEvento <= 15 },
+    { rotulo: '16–30 dias', dentro: (l) => -l.diasEvento >= 16 && -l.diasEvento <= 30 },
+    { rotulo: '31–90 dias', dentro: (l) => -l.diasEvento >= 31 && -l.diasEvento <= 90 },
+    { rotulo: 'mais de 90 dias', dentro: (l) => -l.diasEvento > 90 },
+  ],
+}
+
+const TITULO: Record<Regua, { chapeu: string; descricao: string; preposicao: string }> = {
+  pre: {
+    chapeu: 'Evento em até 30 dias',
+    descricao: 'Data prevista do evento nos próximos 30 dias · por sinal',
+    preposicao: 'em',
+  },
+  pos: {
+    chapeu: 'Evento já realizado',
+    descricao: 'Ticket ainda aberto depois do evento · por sinal',
+    preposicao: 'há',
+  },
+}
 
 // Texto sobre a barra: no laranja o branco não passa no contraste, então vai
 // escuro. Nos outros dois o branco é o que lê.
@@ -86,29 +112,35 @@ const SOBRE_BARRA: Record<Cor, string> = {
   cinza: '#fff',
 }
 
-export const faixaDe = (rotulo: string) => FAIXAS.find((f) => f.rotulo === rotulo)
+// O mesmo rótulo existe nas duas réguas ("16–30 dias"), então a busca precisa
+// saber de qual lado veio.
+export const faixaDe = (regua: Regua, rotulo: string) =>
+  FAIXAS[regua].find((f) => f.rotulo === rotulo)
 
-// Horizonte por data prevista do evento. Só existe na aba de evento futuro:
-// depois do evento não há prazo a antecipar.
+// Horizonte por data do evento. Antes do evento mede o que falta; depois mede
+// há quanto tempo o ticket está aberto sem o evento existir mais.
 //
 // Lê o conjunto antes do próprio filtro de faixa, igual ao ranking: se lesse
-// depois, escolher uma faixa apagaria as outras duas barras e o gráfico
-// deixaria de servir para comparar.
+// depois, escolher uma faixa apagaria as outras barras e o gráfico deixaria de
+// servir para comparar.
 function Horizonte({
   linhas,
+  regua,
   faixa,
   cor,
   aoEscolher,
 }: {
   linhas: Linha[]
+  regua: Regua
   faixa: string
   cor: Cor | null
   aoEscolher: (faixa: string, cor: Cor | null) => void
 }) {
   const cores: Cor[] = ['vermelho', 'amarelo', 'verde', 'cinza']
+  const { chapeu, descricao, preposicao } = TITULO[regua]
 
-  const faixas = FAIXAS.map((f) => {
-    const dentro = linhas.filter((l) => l.diasEvento >= f.de && l.diasEvento <= f.ate)
+  const faixas = FAIXAS[regua].map((f) => {
+    const dentro = linhas.filter(f.dentro)
     const por = Object.fromEntries(
       cores.map((c) => [c, dentro.filter((l) => l.cor === c).length]),
     ) as Record<Cor, number>
@@ -129,7 +161,7 @@ function Horizonte({
           color: 'var(--text-2)',
         }}
       >
-        Evento em até 30 dias
+        {chapeu}
       </div>
       <div
         style={{
@@ -143,7 +175,7 @@ function Horizonte({
         {total}
       </div>
       <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>
-        Data prevista do evento nos próximos 30 dias · por sinal
+        {descricao}
       </div>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -232,7 +264,7 @@ function Horizonte({
                     <button
                       key={c}
                       onClick={() => aoEscolher(f.rotulo, c)}
-                      aria-label={`${f.por[c]} em ${CORES.find((x) => x.cor === c)?.label.toLowerCase()}, evento em ${f.rotulo}`}
+                      aria-label={`${f.por[c]} em ${CORES.find((x) => x.cor === c)?.label.toLowerCase()}, evento ${preposicao} ${f.rotulo}`}
                       style={{
                         flexGrow: f.por[c],
                         flexBasis: 0,
@@ -444,10 +476,8 @@ export default function Painel({
 
   const comEtapa = etapa ? base.filter((l) => l.etapa === etapa) : base
 
-  const intervalo = faixaDe(faixa)
-  const comFaixa = intervalo
-    ? comEtapa.filter((l) => l.diasEvento >= intervalo.de && l.diasEvento <= intervalo.ate)
-    : comEtapa
+  const intervalo = faixaDe(regua, faixa)
+  const comFaixa = intervalo ? comEtapa.filter(intervalo.dentro) : comEtapa
 
   // A cor fica de fora da contagem de propósito: se entrasse, clicar em
   // "Atrasado" zerava os outros três e a pessoa perdia a visão do quadro.
@@ -623,7 +653,7 @@ export default function Painel({
               fontSize: 13,
             }}
           >
-            Evento em {faixa} ✕
+            Evento {TITULO[regua].preposicao} {faixa} ✕
           </button>
         )}
 
@@ -704,19 +734,17 @@ export default function Painel({
         </div>
       </Grupo>
 
-      {regua === 'pre' && (
-        <Horizonte
-          linhas={comEtapa}
-          faixa={faixa}
-          cor={cor}
-          aoEscolher={(f, c) => {
-            const mesmo = faixa === f && cor === c
-            setFaixa(mesmo ? '' : f)
-            setCor(mesmo ? null : c)
-          }}
-        />
-      )}
-
+      <Horizonte
+        linhas={comEtapa}
+        regua={regua}
+        faixa={faixa}
+        cor={cor}
+        aoEscolher={(f, c) => {
+          const mesmo = faixa === f && cor === c
+          setFaixa(mesmo ? '' : f)
+          setCor(mesmo ? null : c)
+        }}
+      />
 
       <Grade>
         {naTela.map((l) => (
