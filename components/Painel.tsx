@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Cor, Regua } from '@/lib/sinaleira'
 
 const POR_PAGINA = 40
@@ -22,6 +22,20 @@ export type Linha = {
   dias: number
   etapa: string
   vence: string
+}
+
+// Todo controle da barra usa esta medida. Antes o segmented, os selects e os
+// chips tinham três alturas diferentes na mesma linha.
+const CONTROLE: React.CSSProperties = {
+  height: 34,
+  borderRadius: 8,
+  border: 0,
+  padding: '0 12px',
+  fontSize: 13,
+  lineHeight: '34px',
+  background: 'var(--cinza-bg)',
+  color: 'var(--text-2)',
+  whiteSpace: 'nowrap',
 }
 
 const CORES: { cor: Cor; label: string }[] = [
@@ -112,29 +126,148 @@ const SOBRE_BARRA: Record<Cor, string> = {
   cinza: '#fff',
 }
 
-// O mesmo rótulo existe nas duas réguas ("16–30 dias"), então a busca precisa
-// saber de qual lado veio.
-export const faixaDe = (regua: Regua, rotulo: string) =>
-  FAIXAS[regua].find((f) => f.rotulo === rotulo)
+// <dialog> nativo em vez de modal à mão: Esc, trava de foco e backdrop já vêm
+// no elemento, e ele fica na top layer, sem briga de z-index.
+function Detalhe({
+  titulo,
+  itens,
+  aoFechar,
+}: {
+  titulo: string
+  itens: Linha[]
+  aoFechar: () => void
+}) {
+  const ref = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const d = ref.current
+    if (!d) return
+    if (!d.open) d.showModal()
+  }, [])
+
+  const ordenados = [...itens].sort((a, b) => b.dias - a.dias)
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={aoFechar}
+      onClick={(e) => {
+        // Clique no backdrop chega no próprio <dialog>; no conteúdo, não.
+        if (e.target === ref.current) ref.current?.close()
+      }}
+      style={{
+        width: 'min(680px, calc(100vw - 32px))',
+        maxHeight: '76vh',
+        padding: 0,
+        border: 0,
+        borderRadius: 14,
+        background: 'var(--card)',
+        color: 'var(--text)',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '15px 18px',
+          borderBottom: '1px solid var(--line)',
+        }}
+      >
+        <span>
+          <span style={{ display: 'block', fontSize: 15, fontWeight: 600 }}>{titulo}</span>
+          <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
+            {itens.length} {itens.length === 1 ? 'ticket' : 'tickets'} · abre no HubSpot
+          </span>
+        </span>
+        <button
+          onClick={() => ref.current?.close()}
+          aria-label="Fechar"
+          style={{ ...CONTROLE, width: 34, padding: 0, fontSize: 16, color: 'var(--text-2)' }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div style={{ overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(76vh - 68px)' }}>
+        {ordenados.map((l, i) => (
+          <a
+            key={l.id}
+            href={l.link}
+            target="_blank"
+            rel="noreferrer"
+            className="linha"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'auto 1fr auto',
+              alignItems: 'center',
+              gap: 12,
+              padding: '11px 18px',
+              borderTop: i ? '1px solid var(--line)' : 0,
+              textDecoration: 'none',
+              color: 'inherit',
+            }}
+          >
+            <Ponto cor={l.cor} />
+            <span style={{ minWidth: 0 }}>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {l.cliente}
+              </span>
+              <span
+                style={{
+                  display: 'block',
+                  fontSize: 12,
+                  color: 'var(--text-3)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {l.proprietario ? `Proprietário ${l.proprietario}` : 'Sem proprietário'}
+                {l.proprietarioInativo ? ' · inativo' : ''}
+              </span>
+            </span>
+            <span
+              style={{
+                fontSize: 13,
+                color: `var(--${l.cor})`,
+                whiteSpace: 'nowrap',
+                textAlign: 'right',
+              }}
+            >
+              {prazo(l)}
+            </span>
+          </a>
+        ))}
+      </div>
+    </dialog>
+  )
+}
 
 // Horizonte por data do evento. Antes do evento mede o que falta; depois mede
 // há quanto tempo o ticket está aberto sem o evento existir mais.
 //
-// Lê o conjunto antes do próprio filtro de faixa, igual ao ranking: se lesse
-// depois, escolher uma faixa apagaria as outras barras e o gráfico deixaria de
-// servir para comparar.
+// Clicar abre a lista daquele recorte num diálogo, em vez de filtrar o painel:
+// a pergunta é "quais são esses", e o filtro obrigava a rolar até os cards.
 function Horizonte({
   linhas,
   regua,
-  faixa,
-  cor,
-  aoEscolher,
+  aoAbrir,
 }: {
   linhas: Linha[]
   regua: Regua
-  faixa: string
-  cor: Cor | null
-  aoEscolher: (faixa: string, cor: Cor | null) => void
+  aoAbrir: (titulo: string, itens: Linha[]) => void
 }) {
   const cores: Cor[] = ['vermelho', 'amarelo', 'verde', 'cinza']
   const { chapeu, descricao, preposicao } = TITULO[regua]
@@ -204,9 +337,8 @@ function Horizonte({
       </div>
 
       {faixas.map((f) => {
-        const ativa = faixa === f.rotulo
         return (
-          <div key={f.rotulo} style={{ marginBottom: 14, opacity: faixa && !ativa ? 0.45 : 1 }}>
+          <div key={f.rotulo} style={{ marginBottom: 14 }}>
             <div
               style={{
                 display: 'flex',
@@ -217,7 +349,7 @@ function Horizonte({
               }}
             >
               <button
-                onClick={() => aoEscolher(f.rotulo, null)}
+                onClick={() => aoAbrir(`Evento ${preposicao} ${f.rotulo}`, linhas.filter(f.dentro))}
                 disabled={!f.total}
                 style={{
                   border: 0,
@@ -226,7 +358,8 @@ function Horizonte({
                   fontSize: 14,
                   color: 'var(--text)',
                   cursor: f.total ? 'pointer' : 'default',
-                  textDecoration: ativa && !cor ? 'underline' : 'none',
+                  textDecoration: f.total ? 'underline' : 'none',
+                  textDecorationColor: 'var(--text-3)',
                   textUnderlineOffset: 3,
                 }}
               >
@@ -259,12 +392,17 @@ function Horizonte({
               {cores
                 .filter((c) => f.por[c] > 0)
                 .map((c) => {
-                  const marcado = ativa && cor === c
+                  const rotuloCor = CORES.find((x) => x.cor === c)?.label.toLowerCase()
                   return (
                     <button
                       key={c}
-                      onClick={() => aoEscolher(f.rotulo, c)}
-                      aria-label={`${f.por[c]} em ${CORES.find((x) => x.cor === c)?.label.toLowerCase()}, evento ${preposicao} ${f.rotulo}`}
+                      onClick={() =>
+                        aoAbrir(
+                          `${CORES.find((x) => x.cor === c)?.label} · evento ${preposicao} ${f.rotulo}`,
+                          linhas.filter((l) => f.dentro(l) && l.cor === c),
+                        )
+                      }
+                      aria-label={`Ver ${f.por[c]} em ${rotuloCor}, evento ${preposicao} ${f.rotulo}`}
                       style={{
                         flexGrow: f.por[c],
                         flexBasis: 0,
@@ -277,8 +415,6 @@ function Horizonte({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        boxShadow: marcado ? 'inset 0 0 0 2px var(--text)' : 'none',
-                        filter: faixa && !marcado ? 'saturate(0.75)' : 'none',
                       }}
                     >
                       {f.por[c]}
@@ -365,16 +501,7 @@ function Filtro({
     <select
       value={valor}
       onChange={(e) => aoMudar(e.target.value)}
-      style={{
-        font: 'inherit',
-        fontSize: 13,
-        padding: '6px 10px',
-        borderRadius: 8,
-        border: 0,
-        background: 'var(--cinza-bg)',
-        color: 'var(--text)',
-        maxWidth: 210,
-      }}
+      style={{ ...CONTROLE, font: 'inherit', fontSize: 13, color: 'var(--text)', maxWidth: 210 }}
     >
       <option value="">{vazio}</option>
       {opcoes.map((o) => (
@@ -437,7 +564,7 @@ export default function Painel({
   const [proprietario, setProprietario] = useState('')
   const [etapa, setEtapa] = useState('')
   const [semDono, setSemDono] = useState(false)
-  const [faixa, setFaixa] = useState('')
+  const [detalhe, setDetalhe] = useState<{ titulo: string; itens: Linha[] } | null>(null)
   const [pagina, setPagina] = useState(0)
   const [rankingInteiro, setRankingInteiro] = useState(false)
 
@@ -445,7 +572,7 @@ export default function Painel({
   // tem 3 itens deixa a tela vazia sem explicação.
   useEffect(() => {
     setPagina(0)
-  }, [regua, cor, curador, proprietario, etapa, semDono, faixa])
+  }, [regua, cor, curador, proprietario, etapa, semDono])
 
   const daRegua = useMemo(() => linhas.filter((l) => l.regua === regua), [linhas, regua])
 
@@ -476,18 +603,16 @@ export default function Painel({
 
   const comEtapa = etapa ? base.filter((l) => l.etapa === etapa) : base
 
-  const intervalo = faixaDe(regua, faixa)
-  const comFaixa = intervalo ? comEtapa.filter(intervalo.dentro) : comEtapa
 
   // A cor fica de fora da contagem de propósito: se entrasse, clicar em
   // "Atrasado" zerava os outros três e a pessoa perdia a visão do quadro.
   const contagem = useMemo(() => {
     const c: Record<Cor, number> = { vermelho: 0, amarelo: 0, verde: 0, cinza: 0 }
-    for (const l of comFaixa) c[l.cor]++
+    for (const l of comEtapa) c[l.cor]++
     return c
-  }, [comFaixa])
+  }, [comEtapa])
 
-  const visiveis = comFaixa.filter((l) => !cor || l.cor === cor)
+  const visiveis = comEtapa.filter((l) => !cor || l.cor === cor)
 
   const paginas = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA))
   const atual = Math.min(pagina, paginas - 1)
@@ -522,10 +647,9 @@ export default function Painel({
     setProprietario('')
     setEtapa('')
     setSemDono(false)
-    setFaixa('')
   }
 
-  const filtrando = !!(cor || curador || proprietario || etapa || semDono || faixa)
+  const filtrando = !!(cor || curador || proprietario || etapa || semDono)
   const visiveisCores = CORES.filter(({ cor: c }) => c !== 'cinza' || contagem[c] > 0)
 
   return (
@@ -581,8 +705,9 @@ export default function Painel({
           style={{
             display: 'inline-flex',
             background: 'var(--cinza-bg)',
-            borderRadius: 9,
+            borderRadius: 8,
             padding: 2,
+            height: 34,
             marginRight: 4,
           }}
         >
@@ -600,9 +725,9 @@ export default function Painel({
             }}
             style={{
               border: 0,
-              borderRadius: 7,
-              padding: '6px 16px',
-              fontSize: 14,
+              borderRadius: 6,
+              padding: '0 14px',
+              fontSize: 13,
               fontWeight: regua === v ? 500 : 400,
               background: regua === v ? 'var(--card)' : 'transparent',
               color: regua === v ? 'var(--text)' : 'var(--text-2)',
@@ -626,47 +751,23 @@ export default function Painel({
             key={nome}
             onClick={() => setEtapa(etapa === nome ? '' : nome)}
             style={{
-              border: 0,
+              ...CONTROLE,
               background: etapa === nome ? 'var(--text)' : 'var(--cinza-bg)',
               color: etapa === nome ? 'var(--card)' : 'var(--text-2)',
-              borderRadius: 8,
-              padding: '6px 11px',
-              fontSize: 13,
             }}
           >
             {nome} {n}
           </button>
         ))}
 
-        {faixa && (
-          <button
-            onClick={() => {
-              setFaixa('')
-              setCor(null)
-            }}
-            style={{
-              border: 0,
-              background: 'var(--text)',
-              color: 'var(--card)',
-              borderRadius: 8,
-              padding: '6px 11px',
-              fontSize: 13,
-            }}
-          >
-            Evento {TITULO[regua].preposicao} {faixa} ✕
-          </button>
-        )}
 
         {orfaos > 0 && (
           <button
             onClick={() => setSemDono(!semDono)}
             style={{
-              border: 0,
+              ...CONTROLE,
               background: semDono ? 'var(--vermelho)' : 'var(--cinza-bg)',
               color: semDono ? 'var(--card)' : 'var(--text-2)',
-              borderRadius: 8,
-              padding: '6px 11px',
-              fontSize: 13,
             }}
           >
             Sem responsável {orfaos}
@@ -676,13 +777,7 @@ export default function Painel({
         {filtrando && (
           <button
             onClick={limpar}
-            style={{
-              border: 0,
-              background: 'transparent',
-              color: 'var(--text-3)',
-              fontSize: 13,
-              padding: '6px 2px',
-            }}
+            style={{ ...CONTROLE, background: 'transparent', color: 'var(--text-3)' }}
           >
             Limpar
           </button>
@@ -737,14 +832,16 @@ export default function Painel({
       <Horizonte
         linhas={comEtapa}
         regua={regua}
-        faixa={faixa}
-        cor={cor}
-        aoEscolher={(f, c) => {
-          const mesmo = faixa === f && cor === c
-          setFaixa(mesmo ? '' : f)
-          setCor(mesmo ? null : c)
-        }}
+        aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
       />
+
+      {detalhe && (
+        <Detalhe
+          titulo={detalhe.titulo}
+          itens={detalhe.itens}
+          aoFechar={() => setDetalhe(null)}
+        />
+      )}
 
       <Grade>
         {naTela.map((l) => (

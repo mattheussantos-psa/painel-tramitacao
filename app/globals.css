@@ -115,3 +115,17 @@ select option {
   color: var(--text);
   background: var(--card);
 }
+
+/* Backdrop do <dialog> não herda variável: precisa da regra própria. */
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+/* Linha da lista dentro do diálogo. */
+.linha {
+  transition: background 0.12s ease;
+}
+
+.linha:hover {
+  background: var(--cinza-bg);
+}
