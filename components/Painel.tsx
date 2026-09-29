@@ -86,9 +86,25 @@ const SOBRE_BARRA: Record<Cor, string> = {
   cinza: '#fff',
 }
 
+export const faixaDe = (rotulo: string) => FAIXAS.find((f) => f.rotulo === rotulo)
+
 // Horizonte por data prevista do evento. Só existe na aba de evento futuro:
 // depois do evento não há prazo a antecipar.
-function Horizonte({ linhas }: { linhas: Linha[] }) {
+//
+// Lê o conjunto antes do próprio filtro de faixa, igual ao ranking: se lesse
+// depois, escolher uma faixa apagaria as outras duas barras e o gráfico
+// deixaria de servir para comparar.
+function Horizonte({
+  linhas,
+  faixa,
+  cor,
+  aoEscolher,
+}: {
+  linhas: Linha[]
+  faixa: string
+  cor: Cor | null
+  aoEscolher: (faixa: string, cor: Cor | null) => void
+}) {
   const cores: Cor[] = ['vermelho', 'amarelo', 'verde', 'cinza']
 
   const faixas = FAIXAS.map((f) => {
@@ -155,68 +171,92 @@ function Horizonte({ linhas }: { linhas: Linha[] }) {
         ))}
       </div>
 
-      {faixas.map((f) => (
-        <div key={f.rotulo} style={{ marginBottom: 14 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              gap: 12,
-              marginBottom: 6,
-            }}
-          >
-            <span style={{ fontSize: 14 }}>
-              {f.rotulo}{' '}
-              <span style={{ color: 'var(--text-2)' }}>
-                {f.total} {f.total === 1 ? 'ticket' : 'tickets'}
+      {faixas.map((f) => {
+        const ativa = faixa === f.rotulo
+        return (
+          <div key={f.rotulo} style={{ marginBottom: 14, opacity: faixa && !ativa ? 0.45 : 1 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: 12,
+                marginBottom: 6,
+              }}
+            >
+              <button
+                onClick={() => aoEscolher(f.rotulo, null)}
+                disabled={!f.total}
+                style={{
+                  border: 0,
+                  background: 'transparent',
+                  padding: 0,
+                  fontSize: 14,
+                  color: 'var(--text)',
+                  cursor: f.total ? 'pointer' : 'default',
+                  textDecoration: ativa && !cor ? 'underline' : 'none',
+                  textUnderlineOffset: 3,
+                }}
+              >
+                {f.rotulo}{' '}
+                <span style={{ color: 'var(--text-2)' }}>
+                  {f.total} {f.total === 1 ? 'ticket' : 'tickets'}
+                </span>
+              </button>
+              <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                {f.por.vermelho > 0 ? (
+                  <>
+                    <b style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{f.por.vermelho}</b> em
+                    atraso
+                  </>
+                ) : (
+                  'nenhum em atraso'
+                )}
               </span>
-            </span>
-            <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
-              {f.por.vermelho > 0 ? (
-                <>
-                  <b style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{f.por.vermelho}</b> em
-                  atraso
-                </>
-              ) : (
-                'nenhum em atraso'
-              )}
-            </span>
-          </div>
+            </div>
 
-          <div
-            style={{
-              display: 'flex',
-              height: 26,
-              borderRadius: 6,
-              overflow: 'hidden',
-              background: 'var(--cinza-bg)',
-            }}
-          >
-            {cores
-              .filter((c) => f.por[c] > 0)
-              .map((c) => (
-                <div
-                  key={c}
-                  style={{
-                    flexGrow: f.por[c],
-                    flexBasis: 0,
-                    minWidth: 26,
-                    background: `var(--${c}-ponto)`,
-                    color: SOBRE_BARRA[c],
-                    fontSize: 12,
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {f.por[c]}
-                </div>
-              ))}
+            <div
+              style={{
+                display: 'flex',
+                height: 26,
+                borderRadius: 6,
+                overflow: 'hidden',
+                background: 'var(--cinza-bg)',
+              }}
+            >
+              {cores
+                .filter((c) => f.por[c] > 0)
+                .map((c) => {
+                  const marcado = ativa && cor === c
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => aoEscolher(f.rotulo, c)}
+                      aria-label={`${f.por[c]} em ${CORES.find((x) => x.cor === c)?.label.toLowerCase()}, evento em ${f.rotulo}`}
+                      style={{
+                        flexGrow: f.por[c],
+                        flexBasis: 0,
+                        minWidth: 26,
+                        border: 0,
+                        background: `var(--${c}-ponto)`,
+                        color: SOBRE_BARRA[c],
+                        fontSize: 12,
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: marcado ? 'inset 0 0 0 2px var(--text)' : 'none',
+                        filter: faixa && !marcado ? 'saturate(0.75)' : 'none',
+                      }}
+                    >
+                      {f.por[c]}
+                    </button>
+                  )
+                })}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </Grupo>
   )
 }
@@ -365,6 +405,7 @@ export default function Painel({
   const [proprietario, setProprietario] = useState('')
   const [etapa, setEtapa] = useState('')
   const [semDono, setSemDono] = useState(false)
+  const [faixa, setFaixa] = useState('')
   const [pagina, setPagina] = useState(0)
   const [rankingInteiro, setRankingInteiro] = useState(false)
 
@@ -372,7 +413,7 @@ export default function Painel({
   // tem 3 itens deixa a tela vazia sem explicação.
   useEffect(() => {
     setPagina(0)
-  }, [regua, cor, curador, proprietario, etapa, semDono])
+  }, [regua, cor, curador, proprietario, etapa, semDono, faixa])
 
   const daRegua = useMemo(() => linhas.filter((l) => l.regua === regua), [linhas, regua])
 
@@ -403,15 +444,20 @@ export default function Painel({
 
   const comEtapa = etapa ? base.filter((l) => l.etapa === etapa) : base
 
+  const intervalo = faixaDe(faixa)
+  const comFaixa = intervalo
+    ? comEtapa.filter((l) => l.diasEvento >= intervalo.de && l.diasEvento <= intervalo.ate)
+    : comEtapa
+
   // A cor fica de fora da contagem de propósito: se entrasse, clicar em
   // "Atrasado" zerava os outros três e a pessoa perdia a visão do quadro.
   const contagem = useMemo(() => {
     const c: Record<Cor, number> = { vermelho: 0, amarelo: 0, verde: 0, cinza: 0 }
-    for (const l of comEtapa) c[l.cor]++
+    for (const l of comFaixa) c[l.cor]++
     return c
-  }, [comEtapa])
+  }, [comFaixa])
 
-  const visiveis = comEtapa.filter((l) => !cor || l.cor === cor)
+  const visiveis = comFaixa.filter((l) => !cor || l.cor === cor)
 
   const paginas = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA))
   const atual = Math.min(pagina, paginas - 1)
@@ -446,9 +492,10 @@ export default function Painel({
     setProprietario('')
     setEtapa('')
     setSemDono(false)
+    setFaixa('')
   }
 
-  const filtrando = !!(cor || curador || proprietario || etapa || semDono)
+  const filtrando = !!(cor || curador || proprietario || etapa || semDono || faixa)
   const visiveisCores = CORES.filter(({ cor: c }) => c !== 'cinza' || contagem[c] > 0)
 
   return (
@@ -569,7 +616,18 @@ export default function Painel({
         </div>
       </Grupo>
 
-      {regua === 'pre' && <Horizonte linhas={comEtapa} />}
+      {regua === 'pre' && (
+        <Horizonte
+          linhas={comEtapa}
+          faixa={faixa}
+          cor={cor}
+          aoEscolher={(f, c) => {
+            const mesmo = faixa === f && cor === c
+            setFaixa(mesmo ? '' : f)
+            setCor(mesmo ? null : c)
+          }}
+        />
+      )}
 
       <div
         style={{
@@ -604,6 +662,25 @@ export default function Painel({
             {nome} {n}
           </button>
         ))}
+
+        {faixa && (
+          <button
+            onClick={() => {
+              setFaixa('')
+              setCor(null)
+            }}
+            style={{
+              border: 0,
+              background: 'var(--text)',
+              color: 'var(--card)',
+              borderRadius: 8,
+              padding: '6px 11px',
+              fontSize: 13,
+            }}
+          >
+            Evento em {faixa} ✕
+          </button>
+        )}
 
         {orfaos > 0 && (
           <button
