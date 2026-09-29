@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { SLA, type Cor, type Regua } from '@/lib/sinaleira'
+import { SLA, prazoEmTexto, type Cor, type Regua } from '@/lib/sinaleira'
 
 const POR_PAGINA = 40
 
@@ -43,9 +43,7 @@ const CONTROLE: React.CSSProperties = {
 // Deriva da mesma tabela de SLA da régua, ordenada pelo prazo — que é a ordem
 // do kanban. Duplicar a lista aqui faria o cabeçalho mentir assim que alguém
 // calibrasse os prazos em lib/sinaleira.
-const ETAPAS_KANBAN = Object.entries(SLA)
-  .map(([id, r]) => ({ id, ...r }))
-  .sort((a, b) => a.prazo - b.prazo)
+const ETAPAS_KANBAN = Object.entries(SLA).map(([id, r]) => ({ id, label: r.label, prazo: prazoEmTexto(r) }))
 
 const LINHA_RANKING: React.CSSProperties = {
   display: 'grid',
@@ -470,11 +468,10 @@ function Matriz({
   aoAbrir,
 }: {
   linhas: Linha[]
-  etapas: { id: string; label: string; prazo: number }[]
+  etapas: { id: string; label: string; prazo: string }[]
   aoAbrir: (l: Linha) => void
 }) {
   const grade = `minmax(180px, 1.4fr) 92px 96px repeat(${etapas.length}, minmax(86px, 1fr))`
-  const rotulo = (p: number) => (p === 0 ? 'no evento' : p < 0 ? `D-${-p}` : `D+${p}`)
 
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -496,7 +493,7 @@ function Matriz({
             <span key={e.id} style={{ textAlign: 'center', lineHeight: 1.3 }}>
               {e.label}
               <span style={{ display: 'block', color: 'var(--text-3)', opacity: 0.75 }}>
-                {rotulo(e.prazo)}
+                {e.prazo}
               </span>
             </span>
           ))}

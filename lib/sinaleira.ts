@@ -18,13 +18,30 @@ export type Ticket = {
 // Etapas abertas do pipeline CS (748675953) e até quando o ticket pode ficar em
 // cada uma, em dias relativos à data do evento. Negativo = tem que sair antes
 // do evento; positivo = depois.
-export const SLA: Record<string, { label: string; prazo: number }> = {
-  '1088360203': { label: 'Etapa de conferência', prazo: -45 },
-  '1088360204': { label: 'Iniciar Trâmites', prazo: -30 },
-  '1088360205': { label: 'Em andamento', prazo: 0 },
-  '1088361911': { label: 'Pagamento Pós-Palestra', prazo: 15 },
-  '1333136740': { label: 'Aguardando NF Palestrante', prazo: 30 },
+// O prazo é TEMPO NA ETAPA, contado de quando o ticket entrou nela — não
+// distância até o evento. Isso importa: na versão anterior, medida contra a
+// data do evento, um ticket criado 6 dias antes da palestra já nascia com 30
+// dias de atraso numa etapa que ele acabara de entrar. 21% dos tickets das
+// etapas iniciais caíam nisso.
+//
+// 'evento' é a exceção: a etapa segura até a realização do evento.
+// 'sem-prazo' não vira verde por omissão — fica cinza e aparece pedindo número.
+export type Regra =
+  | { label: string; tipo: 'dias'; dias: number }
+  | { label: string; tipo: 'evento' }
+  | { label: string; tipo: 'sem-prazo' }
+
+export const SLA: Record<string, Regra> = {
+  '1088360203': { label: 'Etapa de conferência', tipo: 'sem-prazo' },
+  '1088360204': { label: 'Aguardando Onboarding', tipo: 'dias', dias: 7 },
+  '1088360205': { label: 'Em andamento', tipo: 'dias', dias: 20 },
+  '1448673032': { label: 'Aguardando Evento', tipo: 'evento' },
+  '1088361911': { label: 'Pagamento Pós-Palestra', tipo: 'sem-prazo' },
+  '1333136740': { label: 'Aguardando NF Palestrante', tipo: 'sem-prazo' },
 }
+
+export const prazoEmTexto = (r: Regra) =>
+  r.tipo === 'dias' ? `${r.dias} dias na etapa` : r.tipo === 'evento' ? 'até o evento' : 'sem prazo'
 
 // As outras 4 etapas do CS têm closed_date preenchido — ticket encerrado, sai
 // da sinaleira. Aprovação Arquivo (422) e Stand by (27) entram aqui porque
@@ -82,25 +99,33 @@ const brasil = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 export function avaliar(t: Ticket, hoje: number = Date.now()): Avaliacao {
   const regra = SLA[t.stage]
 
-  // Etapa fora da tabela não pode virar verde por omissão: fica cinza e aparece.
-  if (!regra) {
+  // A divisão do painel é sobre o EVENTO, não sobre a etapa. Evento no futuro
+  // ainda dá pra prevenir; evento passado só dá pra fechar.
+  const regua: Regua = emDias(dia(t.evento), hoje) >= 0 ? 'pre' : 'pos'
+
+  // Etapa fora da tabela, ou sem prazo acordado, não pode virar verde por
+  // omissão. Fica cinza, e o número que sobe é o tempo parado, para o mais
+  // esquecido aparecer primeiro mesmo sem régua.
+  if (!regra || regra.tipo === 'sem-prazo') {
     return {
       cor: 'cinza',
-      regua: 'pre',
-      dias: 0,
-      etapa: ENCERRADAS[t.stage] ?? t.stage,
+      regua,
+      dias: emDias(hoje, dia(t.entrouEtapa)),
+      etapa: regra?.label ?? ENCERRADAS[t.stage] ?? t.stage,
       vence: '',
     }
   }
 
-  const vencimento = dia(t.evento) + regra.prazo * DIA
-  const atraso = emDias(hoje, vencimento)
+  // Prazo por tempo na etapa depende de hs_v2_date_entered_current_stage, que
+  // está em 94% dos tickets. Sem ela não dá para contar, e inventar uma data de
+  // entrada é pior que admitir que falta: fica cinza.
+  if (regra.tipo === 'dias' && !Number.isFinite(dia(t.entrouEtapa))) {
+    return { cor: 'cinza', regua, dias: 0, etapa: regra.label, vence: '' }
+  }
 
-  // A divisão do painel é sobre o EVENTO, não sobre a etapa. Enquanto ela saía
-  // do prazo da etapa, um ticket travado em "Em andamento" com a palestra
-  // realizada há 335 dias caía em "antes do evento" — o que não existe. Evento
-  // no futuro ainda dá pra prevenir; evento passado só dá pra fechar.
-  const regua: Regua = emDias(dia(t.evento), hoje) >= 0 ? 'pre' : 'pos'
+  const vencimento =
+    regra.tipo === 'evento' ? dia(t.evento) : dia(t.entrouEtapa) + regra.dias * DIA
+  const atraso = emDias(hoje, vencimento)
   const base = { regua, dias: atraso, etapa: regra.label, vence: brasil(vencimento) }
 
   if (atraso > TOLERANCIA) return { cor: 'vermelho', ...base }

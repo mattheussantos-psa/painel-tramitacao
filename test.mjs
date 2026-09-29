@@ -25,60 +25,43 @@ const t = (over) => ({
   ...over,
 })
 
-// Em andamento vence na data do evento: evento longe, fica verde
-assert.equal(avaliar(t({ evento: '2026-12-01' }), HOJE).cor, 'verde')
+// Prazo e tempo NA ETAPA: o relogio comeca quando o ticket entra nela.
+// Aguardando Onboarding tem 7 dias.
+const onb = avaliar(t({ stage: '1088360204', entrouEtapa: '2026-09-25' }), HOJE)
+assert.equal(onb.vence, '2026-10-02')
+assert.equal(onb.dias, -3)
+assert.equal(onb.cor, 'amarelo')
 
-// Em andamento com evento já passado há mais que a tolerância é vermelho
-const passou = avaliar(t({ evento: '2026-09-01' }), HOJE)
-assert.equal(passou.cor, 'vermelho')
-assert.equal(passou.dias, 28)
-assert.equal(passou.etapa, 'Em andamento')
+// O caso que a regua antiga errava: ticket criado dias antes do evento nao
+// pode nascer atrasado por um prazo anterior a propria entrada na etapa.
+const deloitte = avaliar(t({ stage: '1088360204', evento: '2026-09-30', entrouEtapa: '2026-09-25' }), HOJE)
+assert.equal(deloitte.cor, 'amarelo', 'nao pode ser vermelho: entrou ha 4 dias e tem 7')
 
-// Etapa de conferência tem que sair em D-45
-const conferencia = avaliar(t({ stage: '1088360203', evento: '2026-10-20' }), HOJE)
-assert.equal(conferencia.vence, '2026-09-05')
-assert.equal(conferencia.dias, 24)
-assert.equal(conferencia.cor, 'vermelho')
+// Em andamento tem 20 dias na etapa
+assert.equal(avaliar(t({ stage: '1088360205', entrouEtapa: '2026-09-20' }), HOJE).cor, 'verde')
+const parado = avaliar(t({ stage: '1088360205', entrouEtapa: '2026-08-20' }), HOJE)
+assert.equal(parado.dias, 20)
+assert.equal(parado.cor, 'vermelho')
 
-// Iniciar Trâmites sai em D-30: evento em 24/10 vence em 24/09, 5 dias de atraso
-// cai na tolerância e fica amarelo, não vermelho
-const tramites = avaliar(t({ stage: '1088360204', evento: '2026-10-24' }), HOJE)
-assert.equal(tramites.vence, '2026-09-24')
-assert.equal(tramites.dias, 5)
-assert.equal(tramites.cor, 'amarelo')
+// Aguardando Evento segura ate a realizacao do evento
+const ag = avaliar(t({ stage: '1448673032', evento: '2026-10-20', entrouEtapa: '2026-01-01' }), HOJE)
+assert.equal(ag.vence, '2026-10-20')
+assert.equal(ag.cor, 'verde', 'tempo parado nao importa nessa etapa, so o evento')
+assert.equal(avaliar(t({ stage: '1448673032', evento: '2026-09-01' }), HOJE).cor, 'vermelho')
 
-// Vencendo dentro da janela de aviso também é amarelo
-assert.equal(avaliar(t({ stage: '1088360204', evento: '2026-10-31' }), HOJE).cor, 'amarelo')
-assert.equal(avaliar(t({ stage: '1088360204', evento: '2026-11-05' }), HOJE).cor, 'verde')
+// Etapa sem prazo acordado fica cinza, e o numero e o tempo parado
+const sem = avaliar(t({ stage: '1333136740', entrouEtapa: '2026-03-01' }), HOJE)
+assert.equal(sem.cor, 'cinza')
+assert.equal(sem.dias, 212)
 
-// Pós-evento: Pagamento Pós-Palestra vence D+15, NF vence D+30
-const pagamento = avaliar(t({ stage: '1088361911', evento: '2026-01-29' }), HOJE)
-assert.equal(pagamento.cor, 'vermelho')
-assert.equal(pagamento.regua, 'pos')
-assert.equal(pagamento.dias, 228)
-
-// A divisao do painel segue o evento, nao a etapa. Ticket travado em uma etapa
-// de preparacao com a palestra ja realizada nao e "antes do evento".
+// A divisao pre/pos segue o evento, nao a etapa
 assert.equal(avaliar(t({ stage: '1088360205', evento: '2025-10-30' }), HOJE).regua, 'pos')
-assert.equal(avaliar(t({ stage: '1088360203', evento: '2026-08-01' }), HOJE).regua, 'pos')
-
-// E o inverso: etapa de fechamento com evento ainda por vir fica em "antes".
 assert.equal(avaliar(t({ stage: '1333136740', evento: '2026-12-01' }), HOJE).regua, 'pre')
-
-// O dia do evento ainda conta como "antes"
 assert.equal(avaliar(t({ stage: '1088360205', evento: '2026-09-29' }), HOJE).regua, 'pre')
 
-assert.equal(avaliar(t({ stage: '1333136740', evento: '2026-09-10' }), HOJE).cor, 'verde')
-assert.equal(avaliar(t({ stage: '1333136740', evento: '2026-08-25' }), HOJE).cor, 'amarelo')
-
-// Etapa fora da régua nunca vira verde por omissão
-const encerrada = avaliar(t({ stage: '1088361913', evento: '2027-02-11' }), HOJE)
-assert.equal(encerrada.cor, 'cinza')
-assert.equal(encerrada.etapa, 'Stand by')
-
-// As 4 etapas encerradas não estão na régua
-for (const id of Object.keys(ENCERRADAS)) assert.ok(!(id in SLA), `${id} não devia ter prazo`)
-assert.equal(Object.keys(SLA).length, 5)
+for (const id of Object.keys(ENCERRADAS))
+  assert.ok(!(id in SLA), `etapa encerrada ${id} nao devia ter prazo`)
+assert.equal(Object.keys(SLA).length, 6)
 
 // Todo ticket do snapshot recebe uma cor
 const snap = JSON.parse(readFileSync(new URL('./data/snapshot.json', import.meta.url), 'utf8'))

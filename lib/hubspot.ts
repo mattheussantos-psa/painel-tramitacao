@@ -108,7 +108,9 @@ async function buscarAoVivo(
         curador: p.curador_responsavel_new || null,
         proprietario: p.hubspot_owner_id || null,
         proximaTarefa: iso(p.hs_nextactivitydate),
-        entrouEtapa: iso(p.hs_v2_date_entered_current_stage) || evento,
+        // Sem cair na data do evento: com prazo por tempo na etapa, isso
+        // afirmaria uma entrada que nao houve. Vazio vira cinza na avaliacao.
+        entrouEtapa: iso(p.hs_v2_date_entered_current_stage),
       })
     }
     after = pagina.paging?.next?.after

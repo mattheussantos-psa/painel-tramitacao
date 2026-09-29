@@ -10,23 +10,29 @@ npm test       # self-check da lógica de cor
 
 ## Como a cor sai
 
-O relógio é a **etapa do ticket** (`hs_pipeline_stage`), e cada etapa tem um
-prazo em dias relativos à **data do evento** (`data_do_evento__ganho_`).
-Negativo = o ticket tem que sair da etapa antes do evento.
+O relógio é o **tempo na etapa**, contado de `hs_v2_date_entered_current_stage`.
+A exceção é Aguardando Evento, que segura até a data do evento.
 
-| Etapa | Id | Sai até | Tickets |
+| Etapa | Id | Prazo | Origem |
 |---|---|---|---|
-| Etapa de conferência | 1088360203 | D-45 | 14 |
-| Iniciar Trâmites | 1088360204 | D-30 | 39 |
-| Em andamento | 1088360205 | D-0 | 184 |
-| Pagamento Pós-Palestra | 1088361911 | D+15 | 110 |
-| Aguardando NF Palestrante | 1333136740 | D+30 | 88 |
+| Etapa de conferência | 1088360203 | — | não acordado |
+| Aguardando Onboarding | 1088360204 | 7 dias na etapa | CS |
+| Em andamento | 1088360205 | 20 dias na etapa | CS |
+| Aguardando Evento | 1448673032 | até o evento | CS |
+| Pagamento Pós-Palestra | 1088361911 | — | não acordado |
+| Aguardando NF Palestrante | 1333136740 | — | não acordado |
 
-`atraso = hoje − (evento + prazo)`. Acima de `TOLERANCIA` vira vermelho, dentro
-da faixa `AMARELO_ANTES`…`TOLERANCIA` vira amarelo, antes disso verde.
+Passado o prazo em mais de `TOLERANCIA` dias vira vermelho; dentro da faixa de
+`AMARELO_ANTES` a `TOLERANCIA`, amarelo; antes disso, verde.
 
-Etapa que não estiver na tabela fica **cinza**, nunca verde — para não sumir
-com um ticket por omissão de regra.
+Etapa sem prazo acordado fica **cinza**, nunca verde — e o número que sobe é o
+tempo parado, para o mais esquecido aparecer primeiro mesmo sem régua. Hoje são
+221 dos 439 tickets nessa situação, à espera de três números.
+
+Medir contra o tempo na etapa, e não contra a data do evento, foi o que
+corrigiu o defeito de origem: na versão anterior um ticket criado 6 dias antes
+da palestra já nascia com 30 dias de atraso numa etapa em que acabara de
+entrar. 21% dos tickets das etapas iniciais caíam nisso.
 
 ## Etapas de fora
 
