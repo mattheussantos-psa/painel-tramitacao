@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { avaliar, SLA, ENCERRADAS } from './lib/sinaleira.ts'
+import { avaliar, iso, SLA, ENCERRADAS } from './lib/sinaleira.ts'
+
+// A API v3 manda "2026-09-30", a camada de relatório manda epoch em ms.
+// Assumir um formato só derrubou o painel em produção com "Invalid time value".
+assert.equal(iso('2026-09-30'), '2026-09-30')
+assert.equal(iso('2026-09-30T14:51:32.427Z'), '2026-09-30')
+assert.equal(iso('1790726400000'), '2026-09-30')
+assert.equal(iso(1790726400000), '2026-09-30')
+assert.equal(iso(''), '')
+assert.equal(iso(null), '')
+assert.equal(iso(undefined), '')
+assert.equal(iso('nao e data'), '')
 
 const HOJE = Date.parse('2026-09-29T00:00:00Z')
 

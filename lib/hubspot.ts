@@ -1,4 +1,4 @@
-import { SLA, type Ticket } from './sinaleira'
+import { SLA, iso, type Ticket } from './sinaleira'
 import snapshot from '@/data/snapshot.json'
 import curadores from '@/data/curadores.json'
 
@@ -23,8 +23,6 @@ export type Fonte = {
   aviso?: string
 }
 
-const iso = (ms: string | null | undefined) =>
-  ms ? new Date(Number(ms)).toISOString().slice(0, 10) : ''
 
 async function json(res: Response, onde: string) {
   // O HubSpot devolve HTML em alguns erros (owner desativado, token sem scope).
@@ -35,8 +33,12 @@ async function json(res: Response, onde: string) {
   return res.json()
 }
 
-async function buscarAoVivo(token: string, pipeline: string): Promise<Ticket[]> {
+async function buscarAoVivo(
+  token: string,
+  pipeline: string,
+): Promise<{ tickets: Ticket[]; ignorados: number }> {
   const tickets: Ticket[] = []
+  let ignorados = 0
   let after: string | undefined
 
   do {
@@ -66,20 +68,26 @@ async function buscarAoVivo(token: string, pipeline: string): Promise<Ticket[]> 
     const pagina = await json(res, 'tickets/search')
     for (const r of pagina.results ?? []) {
       const p = r.properties ?? {}
-      if (!p.data_do_evento__ganho_) continue
+      // Sem data de evento não dá pra calcular prazo. Não some calado: o
+      // total de ignorados aparece na tela.
+      const evento = iso(p.data_do_evento__ganho_)
+      if (!evento) {
+        ignorados++
+        continue
+      }
       tickets.push({
         id: r.id,
         subject: p.subject ?? '(sem assunto)',
         stage: p.hs_pipeline_stage,
-        evento: iso(p.data_do_evento__ganho_),
+        evento,
         curador: p.curador_responsavel_new || p.hubspot_owner_id || null,
-        entrouEtapa: iso(p.hs_v2_date_entered_current_stage) || iso(p.data_do_evento__ganho_),
+        entrouEtapa: iso(p.hs_v2_date_entered_current_stage) || evento,
       })
     }
     after = pagina.paging?.next?.after
   } while (after)
 
-  return tickets
+  return { tickets, ignorados }
 }
 
 // Os owners arquivados não vêm na listagem padrão, e são justamente os que
@@ -134,23 +142,31 @@ export async function carregar(): Promise<Fonte> {
 
   // Sem ticket não tem painel: falha aqui é fatal e não cai no snapshot em
   // silêncio — número velho passando por atual é pior que erro.
-  const tickets = await buscarAoVivo(token, pipeline)
+  const { tickets, ignorados } = await buscarAoVivo(token, pipeline)
 
   // Nome de curador é acessório. Se faltar o scope crm.objects.owners.read o
   // painel continua servindo, mostrando o id em vez do nome — mas o motivo
   // aparece na tela, não vira silêncio.
+  const avisos: string[] = []
   let owners: Owners = {}
-  let aviso: string | undefined
   try {
     owners = await buscarOwners(token)
   } catch (e) {
-    aviso = e instanceof Error ? e.message : String(e)
+    avisos.push(
+      `Nomes dos curadores não carregaram, aparecem como id. ${e instanceof Error ? e.message : String(e)}`,
+    )
+  }
+
+  if (ignorados > 0) {
+    avisos.push(
+      `${ignorados} ${ignorados === 1 ? 'ticket ficou' : 'tickets ficaram'} de fora por não ter data de evento preenchida.`,
+    )
   }
 
   return {
     tickets,
     owners,
-    aviso,
+    aviso: avisos.length ? avisos.join(' ') : undefined,
     aoVivo: true,
     capturadoEm: new Date().toISOString().slice(0, 10),
   }

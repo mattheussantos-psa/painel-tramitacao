@@ -38,8 +38,21 @@ export const AMARELO_ANTES = 5
 export const TOLERANCIA = 7
 
 const DIA = 86400000
-const dia = (iso: string) => Date.parse(iso.slice(0, 10) + 'T00:00:00Z')
+const dia = (d: string) => Date.parse(d.slice(0, 10) + 'T00:00:00Z')
 const emDias = (a: number, b: number) => Math.round((a - b) / DIA)
+
+// A API v3 devolve propriedade de data como "2026-09-30", e datetime como
+// "2026-09-30T00:00:00Z". A camada de relatório devolve epoch em ms. Aceita as
+// três: assumir um formato só foi o que derrubou o painel em produção.
+export const iso = (v: string | number | null | undefined) => {
+  if (v === null || v === undefined || v === '') return ''
+  const s = String(v).trim()
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10)
+  const n = Number(s)
+  if (!Number.isFinite(n)) return ''
+  const d = new Date(n)
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10)
+}
 
 export type Avaliacao = {
   cor: Cor

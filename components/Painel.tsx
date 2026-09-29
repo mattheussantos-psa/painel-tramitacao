@@ -93,7 +93,7 @@ export default function Painel({
             margin: '0 0 20px',
           }}
         >
-          Tickets carregados, mas os nomes dos curadores não — aparecem como id. {aviso}
+          {aviso}
         </p>
       )}
 
