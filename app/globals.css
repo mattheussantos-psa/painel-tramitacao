@@ -90,12 +90,13 @@ button {
   cursor: pointer;
 }
 
-/* Linha de lista precisa responder ao ponteiro: sem isso nada indica que o
-   item abre o ticket no HubSpot. */
-.linha {
-  transition: background 0.12s ease;
+/* Card precisa responder ao ponteiro: sem isso nada indica que ele abre o
+   ticket no HubSpot. */
+.cartao {
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
-.linha:hover {
+.cartao:hover {
   background: var(--cinza-bg);
+  border-color: var(--text-3);
 }

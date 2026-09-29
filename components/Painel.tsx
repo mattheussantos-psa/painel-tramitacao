@@ -71,6 +71,30 @@ function Grupo({
   )
 }
 
+// Os cards se ajustam à largura: em tela larga viram 5 colunas em vez de
+// deixar meia tela vazia dos dois lados.
+function Grade({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+        gap: 12,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+// Curador e proprietário na mesma linha, sem rótulo e sem travessão quando
+// faltam. A versão com "Curador —" repetido em todo card era só ruído.
+function pessoas(l: Linha) {
+  const nomes = [l.curador, l.proprietario].filter(Boolean) as string[]
+  const unicos = [...new Set(nomes)]
+  return unicos.length ? unicos.join(' · ') : 'sem responsável'
+}
+
 function Filtro({
   vazio,
   valor,
@@ -245,7 +269,7 @@ export default function Painel({
   const visiveisCores = CORES.filter(({ cor: c }) => c !== 'cinza' || contagem[c] > 0)
 
   return (
-    <main style={{ maxWidth: 940, margin: '0 auto', padding: '48px 20px 72px' }}>
+    <main style={{ maxWidth: 1680, margin: '0 auto', padding: '44px 32px 72px' }}>
       <header style={{ marginBottom: 24 }}>
         <h1
           style={{
@@ -428,7 +452,144 @@ export default function Painel({
         )}
       </div>
 
-      <Grupo style={{ marginBottom: 18 }}>
+      <Grade>
+        {naTela.map((l) => (
+          <a
+            key={l.id}
+            href={l.link}
+            target="_blank"
+            rel="noreferrer"
+            className="cartao"
+            style={{
+              display: 'block',
+              textDecoration: 'none',
+              color: 'inherit',
+              background: 'var(--card)',
+              border: '1px solid var(--line)',
+              borderRadius: 12,
+              padding: '13px 15px 12px',
+            }}
+          >
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                marginBottom: 10,
+              }}
+            >
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: `var(--${l.cor})`,
+                }}
+              >
+                <Ponto cor={l.cor} />
+                {prazo(l)}
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                {l.diasEvento >= 0 ? `D-${l.diasEvento}` : `D+${-l.diasEvento}`}
+              </span>
+            </span>
+
+            <span
+              style={{
+                display: 'block',
+                fontSize: 16,
+                fontWeight: 600,
+                letterSpacing: '-0.015em',
+                lineHeight: 1.25,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {l.cliente}
+            </span>
+            <span
+              style={{
+                display: 'block',
+                fontSize: 13,
+                color: 'var(--text-2)',
+                marginTop: 1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {[l.palestrante, dataBr(l.evento)].filter(Boolean).join(' · ')}
+            </span>
+
+            <span
+              style={{
+                display: 'block',
+                marginTop: 11,
+                paddingTop: 10,
+                borderTop: '1px solid var(--line)',
+                fontSize: 12,
+                color: 'var(--text-2)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {l.etapa} · {l.diasNaEtapa}d parado
+            </span>
+            <span
+              style={{
+                display: 'block',
+                fontSize: 12,
+                marginTop: 2,
+                color:
+                  l.curadorInativo || l.proprietarioInativo ? 'var(--vermelho)' : 'var(--text-3)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {pessoas(l)}
+            </span>
+          </a>
+        ))}
+      </Grade>
+
+      {visiveis.length === 0 && (
+        <p style={{ color: 'var(--text-3)', fontSize: 14 }}>Nenhum ticket com esse filtro.</p>
+      )}
+
+      {paginas > 1 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            margin: '20px 0 28px',
+            fontSize: 13,
+          }}
+        >
+          <span style={{ color: 'var(--text-3)' }}>
+            {atual * POR_PAGINA + 1}–{Math.min((atual + 1) * POR_PAGINA, visiveis.length)} de{' '}
+            {visiveis.length}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <Passo rotulo="‹" ativo={atual > 0} aoClicar={() => setPagina(atual - 1)} />
+            <span style={{ color: 'var(--text-2)', padding: '0 8px' }}>
+              {atual + 1} de {paginas}
+            </span>
+            <Passo rotulo="›" ativo={atual < paginas - 1} aoClicar={() => setPagina(atual + 1)} />
+          </span>
+        </div>
+      )}
+
+      {/* Ranking no fim: é leitura de gestão, não a tarefa do dia. Em cima ele
+          empurrava os tickets para baixo da dobra. */}
+      <Grupo style={{ marginTop: 28, maxWidth: 560 }}>
         <div
           style={{
             display: 'grid',
@@ -500,107 +661,6 @@ export default function Painel({
           </button>
         )}
       </Grupo>
-
-      {/* Lista agrupada no lugar da grade de cards: 227 registros se leem em
-          coluna, não em mosaico. É o padrão de Mail, Ajustes e Saúde. */}
-      <Grupo>
-        {naTela.map((l, i) => (
-          <a
-            key={l.id}
-            href={l.link}
-            target="_blank"
-            rel="noreferrer"
-            className="linha"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'auto 1fr auto',
-              alignItems: 'center',
-              gap: 12,
-              textDecoration: 'none',
-              color: 'inherit',
-              padding: '12px 18px',
-              borderTop: i ? '1px solid var(--line)' : 0,
-            }}
-          >
-            <Ponto cor={l.cor} tamanho={9} />
-
-            <span style={{ minWidth: 0 }}>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: 15,
-                  fontWeight: 500,
-                  letterSpacing: '-0.01em',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {l.cliente}
-              </span>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: 13,
-                  color: 'var(--text-2)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {[l.palestrante, dataBr(l.evento), l.etapa].filter(Boolean).join(' · ')}
-              </span>
-            </span>
-
-            <span style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-              <span style={{ display: 'block', fontSize: 14, color: `var(--${l.cor})` }}>
-                {prazo(l)}
-              </span>
-              <span
-                style={{
-                  display: 'block',
-                  fontSize: 12,
-                  color:
-                    l.curadorInativo || l.proprietarioInativo ? 'var(--vermelho)' : 'var(--text-3)',
-                }}
-              >
-                {l.curador ?? l.proprietario ?? 'sem responsável'}
-              </span>
-            </span>
-          </a>
-        ))}
-
-        {visiveis.length === 0 && (
-          <p style={{ color: 'var(--text-3)', padding: 18, margin: 0, fontSize: 14 }}>
-            Nenhum ticket com esse filtro.
-          </p>
-        )}
-      </Grupo>
-
-      {paginas > 1 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            marginTop: 16,
-            fontSize: 13,
-          }}
-        >
-          <span style={{ color: 'var(--text-3)' }}>
-            {atual * POR_PAGINA + 1}–{Math.min((atual + 1) * POR_PAGINA, visiveis.length)} de{' '}
-            {visiveis.length}
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Passo rotulo="‹" ativo={atual > 0} aoClicar={() => setPagina(atual - 1)} />
-            <span style={{ color: 'var(--text-2)', padding: '0 8px' }}>
-              {atual + 1} de {paginas}
-            </span>
-            <Passo rotulo="›" ativo={atual < paginas - 1} aoClicar={() => setPagina(atual + 1)} />
-          </span>
-        </div>
-      )}
     </main>
   )
 }
