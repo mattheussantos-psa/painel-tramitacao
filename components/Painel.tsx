@@ -38,6 +38,14 @@ const CONTROLE: React.CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
+const LINHA_RANKING: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 56px 62px 56px 56px',
+  gap: 4,
+  padding: '11px 18px',
+  alignItems: 'center',
+}
+
 const CORES: { cor: Cor; label: string }[] = [
   { cor: 'vermelho', label: 'Atrasado' },
   { cor: 'amarelo', label: 'Atenção' },
@@ -566,7 +574,6 @@ export default function Painel({
   const [semDono, setSemDono] = useState(false)
   const [detalhe, setDetalhe] = useState<{ titulo: string; itens: Linha[] } | null>(null)
   const [pagina, setPagina] = useState(0)
-  const [rankingInteiro, setRankingInteiro] = useState(false)
 
   // Qualquer filtro muda o conjunto: ficar na página 5 de um recorte que agora
   // tem 3 itens deixa a tela vazia sem explicação.
@@ -968,38 +975,37 @@ export default function Painel({
       )}
 
       {/* Ranking no fim: é leitura de gestão, não a tarefa do dia. Em cima ele
-          empurrava os tickets para baixo da dobra. */}
-      <Grupo style={{ marginTop: 28, maxWidth: 560 }}>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 52px 52px 52px',
-            gap: 4,
-            padding: '11px 18px',
-            fontSize: 12,
-            color: 'var(--text-3)',
-          }}
-        >
-          <span>Por proprietário</span>
+          empurrava os tickets para baixo da dobra.
+
+          Sem corte de linhas: truncar em 6 escondia justamente quem tinha menos
+          atraso mas muito volume. Clicar numa linha abre os tickets da pessoa,
+          igual ao gráfico. */}
+      <Grupo style={{ marginTop: 28, maxWidth: 620 }}>
+        <div style={{ ...LINHA_RANKING, color: 'var(--text-3)', fontSize: 12 }}>
+          <span>Por proprietário · {ranking.length}</span>
           <span style={{ textAlign: 'right' }}>Atraso</span>
           <span style={{ textAlign: 'right' }}>Atenção</span>
           <span style={{ textAlign: 'right' }}>Em dia</span>
+          <span style={{ textAlign: 'right' }}>Total</span>
         </div>
 
-        {(rankingInteiro ? ranking : ranking.slice(0, 6)).map((r) => (
+        {ranking.map((r) => (
           <button
             key={r.nome}
-            onClick={() => setProprietario(proprietario === r.nome ? '' : r.nome)}
+            onClick={() =>
+              setDetalhe({
+                titulo: r.nome,
+                itens: daRegua.filter((l) => (l.proprietario ?? 'Sem proprietário') === r.nome),
+              })
+            }
+            className="linha"
             style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 52px 52px 52px',
-              gap: 4,
+              ...LINHA_RANKING,
               width: '100%',
               textAlign: 'left',
               border: 0,
               borderTop: '1px solid var(--line)',
-              background: proprietario === r.nome ? 'var(--cinza-bg)' : 'transparent',
-              padding: '11px 18px',
+              background: 'transparent',
               fontSize: 14,
               color: 'var(--text)',
             }}
@@ -1020,26 +1026,9 @@ export default function Painel({
             <span style={{ textAlign: 'right', color: r.verde ? 'var(--verde)' : 'var(--text-3)' }}>
               {r.verde}
             </span>
+            <span style={{ textAlign: 'right', color: 'var(--text-2)' }}>{r.total}</span>
           </button>
         ))}
-
-        {ranking.length > 6 && (
-          <button
-            onClick={() => setRankingInteiro(!rankingInteiro)}
-            style={{
-              width: '100%',
-              textAlign: 'left',
-              border: 0,
-              borderTop: '1px solid var(--line)',
-              background: 'transparent',
-              color: 'var(--link)',
-              fontSize: 13,
-              padding: '11px 18px',
-            }}
-          >
-            {rankingInteiro ? 'Mostrar menos' : `Mostrar todos os ${ranking.length}`}
-          </button>
-        )}
       </Grupo>
     </main>
   )
