@@ -535,15 +535,27 @@ export default function Painel({
         </p>
       )}
 
+      {/* Abas e filtros na mesma linha: sao todos recortes do mesmo conjunto,
+          e separados empurravam os tickets para baixo da dobra. */}
       <div
         style={{
-          display: 'inline-flex',
-          background: 'var(--cinza-bg)',
-          borderRadius: 9,
-          padding: 2,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          rowGap: 10,
+          flexWrap: 'wrap',
           marginBottom: 18,
         }}
       >
+        <div
+          style={{
+            display: 'inline-flex',
+            background: 'var(--cinza-bg)',
+            borderRadius: 9,
+            padding: 2,
+            marginRight: 4,
+          }}
+        >
         {(
           [
             ['pre', 'Antes do evento'],
@@ -569,75 +581,8 @@ export default function Painel({
             {label}
           </button>
         ))}
-      </div>
-
-      {/* Números sobre superfície neutra, cor só no ponto e no algarismo. A
-          versão anterior pintava três retângulos inteiros de cor semântica. */}
-      <Grupo style={{ marginBottom: 18 }}>
-        <div style={{ display: 'flex' }}>
-          {visiveisCores.map(({ cor: c, label }, i) => (
-            <button
-              key={c}
-              onClick={() => setCor(cor === c ? null : c)}
-              style={{
-                flex: 1,
-                border: 0,
-                borderLeft: i ? '1px solid var(--line)' : 0,
-                background: cor === c ? 'var(--cinza-bg)' : 'transparent',
-                padding: '14px 18px',
-                textAlign: 'left',
-              }}
-            >
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 13,
-                  color: 'var(--text-2)',
-                }}
-              >
-                <Ponto cor={c} />
-                {label}
-              </span>
-              <div
-                style={{
-                  fontSize: 30,
-                  fontWeight: 600,
-                  letterSpacing: '-0.02em',
-                  marginTop: 2,
-                  color: `var(--${c})`,
-                }}
-              >
-                {contagem[c]}
-              </div>
-            </button>
-          ))}
         </div>
-      </Grupo>
 
-      {regua === 'pre' && (
-        <Horizonte
-          linhas={comEtapa}
-          faixa={faixa}
-          cor={cor}
-          aoEscolher={(f, c) => {
-            const mesmo = faixa === f && cor === c
-            setFaixa(mesmo ? '' : f)
-            setCor(mesmo ? null : c)
-          }}
-        />
-      )}
-
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 18,
-          flexWrap: 'wrap',
-        }}
-      >
         <Filtro vazio="Curador" valor={curador} opcoes={curadores} aoMudar={setCurador} />
         <Filtro
           vazio="Proprietário"
@@ -713,6 +658,65 @@ export default function Painel({
           </button>
         )}
       </div>
+
+      {/* Números sobre superfície neutra, cor só no ponto e no algarismo. A
+          versão anterior pintava três retângulos inteiros de cor semântica. */}
+      <Grupo style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex' }}>
+          {visiveisCores.map(({ cor: c, label }, i) => (
+            <button
+              key={c}
+              onClick={() => setCor(cor === c ? null : c)}
+              style={{
+                flex: 1,
+                border: 0,
+                borderLeft: i ? '1px solid var(--line)' : 0,
+                background: cor === c ? 'var(--cinza-bg)' : 'transparent',
+                padding: '14px 18px',
+                textAlign: 'left',
+              }}
+            >
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  color: 'var(--text-2)',
+                }}
+              >
+                <Ponto cor={c} />
+                {label}
+              </span>
+              <div
+                style={{
+                  fontSize: 30,
+                  fontWeight: 600,
+                  letterSpacing: '-0.02em',
+                  marginTop: 2,
+                  color: `var(--${c})`,
+                }}
+              >
+                {contagem[c]}
+              </div>
+            </button>
+          ))}
+        </div>
+      </Grupo>
+
+      {regua === 'pre' && (
+        <Horizonte
+          linhas={comEtapa}
+          faixa={faixa}
+          cor={cor}
+          aoEscolher={(f, c) => {
+            const mesmo = faixa === f && cor === c
+            setFaixa(mesmo ? '' : f)
+            setCor(mesmo ? null : c)
+          }}
+        />
+      )}
+
 
       <Grade>
         {naTela.map((l) => (
