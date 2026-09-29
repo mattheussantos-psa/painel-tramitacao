@@ -69,7 +69,9 @@ HUBSPOT_TOKEN=pat-na1-...
 HUBSPOT_PIPELINE_CS=748675953
 ```
 
-Scopes: `crm.objects.tickets.read`, `crm.objects.owners.read`, `crm.objects.tasks.read`.
+Scopes: `crm.objects.tickets.read`, `crm.objects.owners.read`, e o escopo de
+leitura de tarefa/engajamento da conta — o nome varia por conta e aparece na
+própria mensagem de erro do HubSpot na tarja do painel quando falta.
 
 Os dois últimos são acessórios: sem eles o painel serve os tickets do mesmo
 jeito, mostrando id no lugar do nome do curador e caindo em

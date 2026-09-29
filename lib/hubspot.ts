@@ -48,7 +48,9 @@ async function json(res: Response, onde: string) {
   // O HubSpot devolve HTML em alguns erros (owner desativado, token sem scope).
   // Sem esta checagem o .json() estoura com um erro que não diz nada.
   if (!res.ok) {
-    throw new Error(`HubSpot ${onde} respondeu ${res.status}: ${(await res.text()).slice(0, 300)}`)
+    // 600 e nao 300: a resposta de escopo faltando traz a lista de escopos
+    // exigidos no fim do corpo, que é justamente o que precisamos ler.
+    throw new Error(`HubSpot ${onde} respondeu ${res.status}: ${(await res.text()).slice(0, 600)}`)
   }
   return res.json()
 }
