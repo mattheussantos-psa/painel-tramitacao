@@ -13,14 +13,31 @@ npm test       # self-check da lógica de cor
 O relógio é o **tempo na etapa**, contado de `hs_v2_date_entered_current_stage`.
 A exceção é Aguardando Evento, que segura até a data do evento.
 
-| Etapa | Id | Prazo | Origem |
-|---|---|---|---|
-| Etapa de conferência | 1088360203 | — | não acordado |
-| Aguardando Onboarding | 1088360204 | 7 dias na etapa | CS |
-| Em andamento | 1088360205 | 20 dias na etapa | CS |
-| Aguardando Evento | 1448673032 | até o evento | CS |
-| Pagamento Pós-Palestra | 1088361911 | — | não acordado |
-| Aguardando NF Palestrante | 1333136740 | — | não acordado |
+| Etapa | Id | Prazo |
+|---|---|---|
+| Aguardando Onboarding | 1088360204 | 7 dias na etapa |
+| Em andamento | 1088360205 | 20 dias na etapa |
+| Aguardando Evento | 1448673032 | até o evento |
+
+Etapa de conferência, Pagamento Pós-Palestra e Aguardando NF Palestrante ficam
+**fora do painel** por decisão do CS: não são etapas de atuação do farmer e não
+têm prazo acordado.
+
+## Alertas de processo
+
+Eixo separado da cor. A cor diz se o ticket está travado na etapa; o alerta diz
+que um marco específico passou do prazo. Um ticket pode estar verde e ter
+alerta.
+
+| Alerta | Regra | Sinal de conclusão |
+|---|---|---|
+| Contrato pendente de assinatura | 20 dias após `data_de_realizacao_do_onboarding` | `status_do_contrato` = Assinado, preenchido em 99% |
+| Call de Briefing pendente | a partir de D-15 do evento | `data_de_realizacao_do_onboarding` preenchida |
+
+Pendente de definição com o CS: **envio de contrato**, que precisa de um estado
+"Enviado" em `status_do_contrato` — hoje ele só tem Assinado e Pendente, e
+Pendente não distingue "não enviei" de "enviei e não assinaram"; e **checklist**,
+que o CS vai criar como propriedade nova.
 
 Passado o prazo em mais de `TOLERANCIA` dias vira vermelho; dentro da faixa de
 `AMARELO_ANTES` a `TOLERANCIA`, amarelo; antes disso, verde.

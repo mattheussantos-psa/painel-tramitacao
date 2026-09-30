@@ -9,6 +9,8 @@ export type Ticket = {
   curador: string | null
   proprietario: string | null
   proximaTarefa: string
+  onboarding: string
+  statusContrato: string
   entrouEtapa: string
 }
 
@@ -32,12 +34,18 @@ export type Regra =
   | { label: string; tipo: 'sem-prazo' }
 
 export const SLA: Record<string, Regra> = {
-  '1088360203': { label: 'Etapa de conferência', tipo: 'sem-prazo' },
   '1088360204': { label: 'Aguardando Onboarding', tipo: 'dias', dias: 7 },
   '1088360205': { label: 'Em andamento', tipo: 'dias', dias: 20 },
   '1448673032': { label: 'Aguardando Evento', tipo: 'evento' },
-  '1088361911': { label: 'Pagamento Pós-Palestra', tipo: 'sem-prazo' },
-  '1333136740': { label: 'Aguardando NF Palestrante', tipo: 'sem-prazo' },
+}
+
+// Ficam fora do painel por decisao do CS: nao ha prazo acordado para elas e
+// nao sao etapas de atuacao do farmer. Aparecem aqui so para rotular um ticket
+// que mude de etapa enquanto a pagina esta aberta.
+export const FORA_DO_ESCOPO: Record<string, string> = {
+  '1088360203': 'Etapa de conferencia',
+  '1088361911': 'Pagamento Pos-Palestra',
+  '1333136740': 'Aguardando NF Palestrante',
 }
 
 export const prazoEmTexto = (r: Regra) =>
@@ -59,6 +67,14 @@ export const TOLERANCIA = 7
 const DIA = 86400000
 const dia = (d: string) => Date.parse(d.slice(0, 10) + 'T00:00:00Z')
 const emDias = (a: number, b: number) => Math.round((a - b) / DIA)
+
+// Meia-noite de hoje no fuso de São Paulo. Comparar um timestamp de agora
+// contra uma data em meia-noite fazia o contador virar ao meio-dia: às 14h o
+// painel mostrava "30 dias de atraso" onde eram 29.
+export const hojeEmDias = (hoje: number) =>
+  Date.parse(
+    new Date(hoje).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) + 'T00:00:00Z',
+  )
 
 // A API v3 devolve propriedade de data como "2026-09-30", e datetime como
 // "2026-09-30T00:00:00Z". A camada de relatório devolve epoch em ms. Aceita as
@@ -98,10 +114,11 @@ const brasil = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 
 export function avaliar(t: Ticket, hoje: number = Date.now()): Avaliacao {
   const regra = SLA[t.stage]
+  const agora = hojeEmDias(hoje)
 
   // A divisão do painel é sobre o EVENTO, não sobre a etapa. Evento no futuro
   // ainda dá pra prevenir; evento passado só dá pra fechar.
-  const regua: Regua = emDias(dia(t.evento), hoje) >= 0 ? 'pre' : 'pos'
+  const regua: Regua = emDias(dia(t.evento), agora) >= 0 ? 'pre' : 'pos'
 
   // Etapa fora da tabela, ou sem prazo acordado, não pode virar verde por
   // omissão. Fica cinza, e o número que sobe é o tempo parado, para o mais
@@ -110,8 +127,8 @@ export function avaliar(t: Ticket, hoje: number = Date.now()): Avaliacao {
     return {
       cor: 'cinza',
       regua,
-      dias: emDias(hoje, dia(t.entrouEtapa)),
-      etapa: regra?.label ?? ENCERRADAS[t.stage] ?? t.stage,
+      dias: emDias(agora, dia(t.entrouEtapa)),
+      etapa: regra?.label ?? FORA_DO_ESCOPO[t.stage] ?? ENCERRADAS[t.stage] ?? t.stage,
       vence: '',
     }
   }
@@ -125,12 +142,44 @@ export function avaliar(t: Ticket, hoje: number = Date.now()): Avaliacao {
 
   const vencimento =
     regra.tipo === 'evento' ? dia(t.evento) : dia(t.entrouEtapa) + regra.dias * DIA
-  const atraso = emDias(hoje, vencimento)
+  const atraso = emDias(agora, vencimento)
   const base = { regua, dias: atraso, etapa: regra.label, vence: brasil(vencimento) }
 
   if (atraso > TOLERANCIA) return { cor: 'vermelho', ...base }
   if (atraso > -AMARELO_ANTES) return { cor: 'amarelo', ...base }
   return { cor: 'verde', ...base }
+}
+
+// Alertas de processo, acordados com o CS. São um eixo separado da cor: a cor
+// diz se o ticket está travado na etapa; o alerta diz que um marco específico
+// passou do prazo. Um ticket pode estar verde na etapa e ter alerta.
+export type Alerta = { chave: string; texto: string }
+
+// Prazo de assinatura: 20 dias após a realização do onboarding.
+export const DIAS_ASSINATURA = 20
+// Briefing: cobrado a partir de D-15 do evento.
+export const DIAS_BRIEFING = 15
+
+export function alertas(t: Ticket, hoje: number = Date.now()): Alerta[] {
+  const agora = hojeEmDias(hoje)
+  const out: Alerta[] = []
+
+  // status_do_contrato está em 99% dos tickets das etapas do farmer e distingue
+  // Assinado de Pendente — é o sinal mais confiável que existe hoje.
+  if (t.onboarding && t.statusContrato !== 'Assinado') {
+    if (emDias(agora, dia(t.onboarding) + DIAS_ASSINATURA * DIA) > 0)
+      out.push({ chave: 'contrato', texto: 'Contrato pendente de assinatura' })
+  }
+
+  // Valida pela data de realização do onboarding: sem onboarding feito, o
+  // briefing não teria como estar agendado. Só faz sentido antes do evento —
+  // depois dele não há mais o que antecipar.
+  if (!t.onboarding && t.evento && emDias(dia(t.evento), agora) >= 0) {
+    if (emDias(agora, dia(t.evento) - DIAS_BRIEFING * DIA) > 0)
+      out.push({ chave: 'briefing', texto: 'Call de Briefing pendente' })
+  }
+
+  return out
 }
 
 export function cliente(subject: string) {
@@ -142,15 +191,15 @@ export function palestrante(subject: string) {
 }
 
 export function diasParaEvento(t: Ticket, hoje: number = Date.now()) {
-  return emDias(dia(t.evento), hoje)
+  return emDias(dia(t.evento), hojeEmDias(hoje))
 }
 
 export function diasNaEtapa(t: Ticket, hoje: number = Date.now()) {
-  return emDias(hoje, dia(t.entrouEtapa))
+  return emDias(hojeEmDias(hoje), dia(t.entrouEtapa))
 }
 
 // Dias até a próxima atividade agendada. null quando não há nenhuma — que é o
 // caso de 94% dos tickets: o time praticamente não agenda tarefa aqui.
 export function diasParaTarefa(t: Ticket, hoje: number = Date.now()) {
-  return t.proximaTarefa ? emDias(dia(t.proximaTarefa), hoje) : null
+  return t.proximaTarefa ? emDias(dia(t.proximaTarefa), hojeEmDias(hoje)) : null
 }

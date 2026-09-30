@@ -12,6 +12,8 @@ const PROPS = [
   'hubspot_owner_id',
   'hs_v2_date_entered_current_stage',
   'hs_nextactivitydate',
+  'data_de_realizacao_do_onboarding',
+  'status_do_contrato',
 ]
 
 export type Owner = { nome: string; inativo: boolean }
@@ -108,6 +110,8 @@ async function buscarAoVivo(
         curador: p.curador_responsavel_new || null,
         proprietario: p.hubspot_owner_id || null,
         proximaTarefa: iso(p.hs_nextactivitydate),
+        onboarding: iso(p.data_de_realizacao_do_onboarding),
+        statusContrato: p.status_do_contrato ?? '',
         // Sem cair na data do evento: com prazo por tempo na etapa, isso
         // afirmaria uma entrada que nao houve. Vazio vira cinza na avaliacao.
         entrouEtapa: iso(p.hs_v2_date_entered_current_stage),

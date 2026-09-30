@@ -1,987 +1,390 @@
 {
   "capturadoEm": "2026-09-29",
-  "origem": "HubSpot pipeline 748675953 (CS), etapas abertas — recorte de 64 dos 436 tickets — sem proprietario: capturado antes de o campo existir",
+  "origem": "HubSpot pipeline 748675953 (CS), etapas de atuacao do farmer",
   "tickets": [
     {
       "id": "48094330297",
       "subject": "São Martinho SA - Paula Roosch - 30/09/2026 - Online - ID 61588801882",
       "stage": "1088360205",
       "evento": "2026-09-30",
-      "etapas": [
-        "Início dos Trâmites",
-        "Onboarding",
-        "Contrato Assinado",
-        "Contrato assinado (Palestrante)",
-        "Envio apresentação (Palestrante)",
-        "Agendar Call de Briefing",
-        "QRCode"
-      ],
       "curador": "87159365",
       "entrouEtapa": "2026-09-01",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "48720289122",
       "subject": "Deloitte - Ricardo Basaglia - 30/09/2026 - Presencial - ID 64389487653",
       "stage": "1088360204",
       "evento": "2026-09-30",
-      "etapas": [
-        "Logística Adquirida"
-      ],
       "curador": "85002012",
       "entrouEtapa": "2026-09-25",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "48571010666",
       "subject": "FIEMG - Thiago Athanazio - 30/09/2026 - Presencial - ID 64899729687",
       "stage": "1088360205",
       "evento": "2026-09-30",
-      "etapas": [
-        "Início dos Trâmites",
-        "Onboarding",
-        "Agendar Call de Briefing",
-        "Call de Briefing Realizada",
-        "Contrato assinado (Palestrante)",
-        "Checklist",
-        "Logística Adquirida"
-      ],
       "curador": "85002012",
       "entrouEtapa": "2026-09-16",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "45745052172",
       "subject": "Aurora Coop - Giovana Pedroso - 30/09/2026 - Online - ID: 61024905772",
       "stage": "1088360205",
       "evento": "2026-09-30",
-      "etapas": [
-        "Início dos Trâmites",
-        "Agendar Call de Briefing",
-        "Link de transmissão do especialista (evento online)",
-        "Contrato Assinado",
-        "Logística Adquirida",
-        "Pagamento de Logística realizado"
-      ],
       "curador": "80169394",
       "entrouEtapa": "2026-06-15",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47512920851",
       "subject": "Riskified - Everson Contelli - 30/09/2026 - Presencial - ID 62640054191",
       "stage": "1088360205",
       "evento": "2026-09-30",
-      "etapas": [
-        "Início dos Trâmites",
-        "Onboarding",
-        "Contrato Assinado",
-        "Agendar Call de Briefing",
-        "Pagamento realizado 1ª parcela (PSA)",
-        "Contrato assinado (Palestrante)",
-        "Envio apresentação (Palestrante)",
-        "Logística Adquirida",
-        "Despachado ao Financeiro (contratante)",
-        "Despachado ao Financeiro (especialista)",
-        "Pagamento de Logística realizado",
-        "Call de Briefing Realizada",
-        "Checklist",
-        "QRCode"
-      ],
       "curador": "86859895",
       "entrouEtapa": "2026-08-17",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47296919195",
       "subject": "Sindusfarma - Grasielle Mello - 30/09/2026 - Presencial - ID 61542140964",
       "stage": "1088360205",
       "evento": "2026-09-30",
-      "etapas": [
-        "Início dos Trâmites",
-        "Onboarding",
-        "Contrato Assinado",
-        "Contrato assinado (Palestrante)",
-        "Agendar Call de Briefing",
-        "Call de Briefing Realizada"
-      ],
       "curador": "86859895",
       "entrouEtapa": "2026-08-10",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "46740792616",
       "subject": "Sicoob ES - Walter Longo - 01/10/2026 - Presencial - ID 62118120235",
       "stage": "1088360205",
       "evento": "2026-10-01",
-      "etapas": [
-        "Início dos Trâmites",
-        "Onboarding",
-        "Contrato Assinado",
-        "Contrato assinado (Palestrante)",
-        "Logística Adquirida",
-        "Agendar Call de Briefing",
-        "Call de Briefing Realizada",
-        "Despachado ao Financeiro (contratante)",
-        "Despachado ao Financeiro (especialista)",
-        "Pagamento de Logística realizado",
-        "Link de transmissão do especialista (evento online)"
-      ],
       "curador": "80454588",
       "entrouEtapa": "2026-07-20",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47435038551",
       "subject": "Thermo Fisher - Luiz Felipe Pondé - 01/10/2026 - Online - ID 63495254685",
       "stage": "1088360205",
       "evento": "2026-10-01",
-      "etapas": [],
       "curador": "80454588",
       "entrouEtapa": "2026-08-06",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47092886176",
       "subject": "Thermo Fisher Scientific - Monica Magalhaes - 01/10/2026 - Online - ID 60525082410",
       "stage": "1088360205",
       "evento": "2026-10-01",
-      "etapas": [
-        "Início dos Trâmites",
-        "Onboarding"
-      ],
       "curador": "80454588",
       "entrouEtapa": "2026-07-27",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47834986125",
       "subject": "OutSystems - Ricardo Basaglia - 01/10/2026 - Presencial - ID 64243127622",
       "stage": "1088360205",
       "evento": "2026-10-01",
-      "etapas": [
-        "Início dos Trâmites",
-        "Contrato Assinado",
-        "Onboarding",
-        "Contrato assinado (Palestrante)",
-        "Call de Briefing Realizada",
-        "Agendar Call de Briefing",
-        "Envio apresentação (Palestrante)"
-      ],
       "curador": "80454584",
       "entrouEtapa": "2026-08-26",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "45051864201",
       "subject": "Congregação de Santa Cruz - Leandro Karnal - 01/10/2026 - Presencial - ID: 58249047810",
       "stage": "1088360205",
       "evento": "2026-10-01",
-      "etapas": [
-        "Início dos Trâmites",
-        "Contrato Assinado",
-        "Contrato assinado (Palestrante)",
-        "Pagamento realizado 1ª parcela (PSA)",
-        "Despachado ao Financeiro (contratante)",
-        "Despachado ao Financeiro (especialista)",
-        "Pagamento realizado 3ª parcela",
-        "Pagamento realizado 4ª parcela",
-        "Pagamento realizado 5ª parcela",
-        "Logística Adquirida",
-        "Onboarding",
-        "Link de transmissão do especialista (evento online)",
-        "Pagamento de Logística realizado"
-      ],
       "curador": "81033487",
       "entrouEtapa": "2026-05-04",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47352907610",
       "subject": "Thomson Reuters Brasil - João Adibe - 01/10/2026 - Presencial - ID 62756954462",
       "stage": "1088360205",
       "evento": "2026-10-01",
-      "etapas": [
-        "Início dos Trâmites",
-        "Pagamento realizado 2ª parcela (PSA)",
-        "Pagamento realizado 3ª parcela",
-        "Pagamento realizado 4ª parcela",
-        "Pagamento realizado 5ª parcela",
-        "Link de transmissão do especialista (evento online)",
-        "Logística Adquirida",
-        "Pagamento de Logística realizado",
-        "Contrato Assinado",
-        "Contrato assinado (Palestrante)"
-      ],
       "curador": "92333469",
       "entrouEtapa": "2026-08-05",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47968822937",
       "subject": "Agencia Nico - Marcos Troyjo - 01/10/2026 - Presencial - ID 63417918478",
       "stage": "1088360205",
       "evento": "2026-10-01",
-      "etapas": [
-        "Início dos Trâmites",
-        "Onboarding",
-        "Contrato Assinado",
-        "Despachado ao Financeiro (contratante)",
-        "Logística Adquirida",
-        "Pagamento de Logística realizado",
-        "Agendar Call de Briefing",
-        "Call de Briefing Realizada",
-        "Link de transmissão do especialista (evento online)"
-      ],
       "curador": "86859895",
       "entrouEtapa": "2026-09-14",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "48058394248",
       "subject": "Votorantim Cimentos - Nathan Osipe - 02/10/2026 - Presencial - ID 63774021983",
       "stage": "1088360205",
       "evento": "2026-10-02",
-      "etapas": [
-        "Início dos Trâmites",
-        "Contrato Assinado",
-        "Onboarding",
-        "Link de transmissão do especialista (evento online)",
-        "Pagamento realizado 5ª parcela",
-        "Pagamento realizado 4ª parcela",
-        "Pagamento realizado 3ª parcela",
-        "Agendar Call de Briefing"
-      ],
       "curador": "81035544",
       "entrouEtapa": "2026-09-15",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "48618410880",
       "subject": "Aurora Guarulhos - Alexandre Espindola - 02/10/2026 - Presencial - ID 65076708665",
       "stage": "1088360205",
       "evento": "2026-10-02",
-      "etapas": [
-        "Logística Adquirida"
-      ],
       "curador": "80651489",
       "entrouEtapa": "2026-09-25",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47097985568",
       "subject": "Benx Incorporadora e Construtora - Ricardo Basaglia - 02/10/2026 - Talkshow Presencial - ID 62660918443",
       "stage": "1088360205",
       "evento": "2026-10-02",
-      "etapas": [
-        "Onboarding",
-        "Contrato Assinado",
-        "Logística Adquirida",
-        "Contrato assinado (Palestrante)",
-        "Início dos Trâmites",
-        "Despachado ao Financeiro (especialista)",
-        "Agendar Call de Briefing",
-        "Call de Briefing Realizada",
-        "Envio apresentação (Palestrante)"
-      ],
       "curador": "86859895",
       "entrouEtapa": "2026-07-28",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "46107439666",
       "subject": "DOM RS - Jakson Follmann - 02/10/2026 - Presencial - ID: 60737258114",
       "stage": "1088360205",
       "evento": "2026-10-02",
-      "etapas": [
-        "Contrato assinado (Palestrante)",
-        "Contrato Assinado",
-        "Início dos Trâmites",
-        "Pagamento realizado 1ª parcela (PSA)",
-        "Pagamento realizado 3ª parcela",
-        "Pagamento realizado 4ª parcela",
-        "Pagamento realizado 5ª parcela",
-        "Logística Adquirida",
-        "Link de transmissão do especialista (evento online)",
-        "Agendar Call de Briefing",
-        "Call de Briefing Realizada",
-        "QRCode",
-        "Onboarding",
-        "Pagamento realizado 2ª parcela (PSA)",
-        "Checklist",
-        "Envio apresentação (Palestrante)",
-        "Pagamento de Logística realizado",
-        "Despachado ao Financeiro (contratante)",
-        "Despachado ao Financeiro (especialista)"
-      ],
       "curador": "86859895",
       "entrouEtapa": "2026-07-02",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47446626887",
       "subject": "Atlas Copco - Emanuel Curi - 05/10/2026 - Presencial - ID 63021056117",
       "stage": "1088360205",
       "evento": "2026-10-05",
-      "etapas": [
-        "Início dos Trâmites",
-        "Despachado ao Financeiro (especialista)",
-        "Onboarding",
-        "Link de transmissão do especialista (evento online)",
-        "Pagamento realizado 2ª parcela (PSA)",
-        "Pagamento realizado 1ª parcela (PSA)",
-        "Pagamento realizado 3ª parcela",
-        "Pagamento realizado 4ª parcela",
-        "Pagamento realizado 5ª parcela",
-        "Contrato Assinado"
-      ],
       "curador": "80454586",
       "entrouEtapa": "2026-08-11",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "40904068004",
       "subject": "Seja AP - Felipe Floriani - 05/10/2026 - Online - ID: 48987900562",
       "stage": "1088360205",
       "evento": "2026-10-05",
-      "etapas": [
-        "Início dos Trâmites",
-        "Despachado ao Financeiro (contratante)",
-        "Contrato assinado (Palestrante)",
-        "QRCode",
-        "Onboarding",
-        "Contrato Assinado",
-        "Agendar Call de Briefing",
-        "Pagamento de Logística realizado",
-        "Logística Adquirida"
-      ],
       "curador": "80169395",
       "entrouEtapa": "2026-02-06",
       "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "48716414563",
-      "subject": "Grupo GC do Brasil | Beto Dantas | 07/10/2026 | Palestra Presencial",
-      "stage": "1088360203",
-      "evento": "2026-10-06",
-      "etapas": [],
-      "curador": null,
-      "entrouEtapa": "2026-09-24",
-      "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "44395867214",
       "subject": "Cresol - Ricardo Basaglia - 06/10/2026 - Presencial - ID: 59157139274",
       "stage": "1088360205",
       "evento": "2026-10-06",
-      "etapas": [
-        "Início dos Trâmites",
-        "Contrato Assinado",
-        "Despachado ao Financeiro (contratante)",
-        "Contrato assinado (Palestrante)",
-        "Pagamento realizado 1ª parcela (PSA)",
-        "Logística Adquirida",
-        "Pagamento de Logística realizado",
-        "Onboarding",
-        "Agendar Call de Briefing",
-        "Call de Briefing Realizada",
-        "Link de transmissão do especialista (evento online)",
-        "QRCode"
-      ],
       "curador": "80169395",
       "entrouEtapa": "2026-04-27",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "48612282112",
       "subject": "Intelligo - Ternium - Alexandre Eberle - 06/10/2026 - Presencial - ID 61013937979",
       "stage": "1088360205",
       "evento": "2026-10-06",
-      "etapas": [
-        "Início dos Trâmites",
-        "Onboarding",
-        "Contrato Assinado",
-        "Pagamento realizado 2ª parcela (PSA)",
-        "Pagamento realizado 3ª parcela",
-        "Pagamento realizado 4ª parcela",
-        "Pagamento realizado 5ª parcela",
-        "Logística Adquirida",
-        "Link de transmissão do especialista (evento online)"
-      ],
       "curador": "80651489",
       "entrouEtapa": "2026-09-17",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "45744419080",
       "subject": "Sicoob Crediminas - Nelson Freitas - 06/10/2026 - Presencial - ID: 60841442835",
       "stage": "1088360205",
       "evento": "2026-10-06",
-      "etapas": [
-        "Início dos Trâmites",
-        "Contrato assinado (Palestrante)",
-        "Contrato Assinado",
-        "Onboarding",
-        "Logística Adquirida",
-        "Despachado ao Financeiro (contratante)",
-        "Pagamento realizado 1ª parcela (PSA)",
-        "Pagamento de Logística realizado",
-        "Agendar Call de Briefing",
-        "Call de Briefing Realizada",
-        "Link de transmissão do especialista (evento online)",
-        "QRCode"
-      ],
       "curador": "80169396",
       "entrouEtapa": "2026-06-17",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "44374336950",
       "subject": "Cresol - José Salibi - 06/10/2026 - Presencial - ID: 59158336085",
       "stage": "1088360205",
       "evento": "2026-10-06",
-      "etapas": [
-        "Início dos Trâmites",
-        "Contrato Assinado",
-        "Despachado ao Financeiro (contratante)",
-        "Contrato assinado (Palestrante)",
-        "Pagamento realizado 1ª parcela (PSA)",
-        "Logística Adquirida",
-        "Pagamento de Logística realizado",
-        "Link de transmissão do especialista (evento online)",
-        "Onboarding",
-        "QRCode",
-        "Agendar Call de Briefing",
-        "Call de Briefing Realizada"
-      ],
       "curador": "80169395",
       "entrouEtapa": "2026-04-27",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "46769981966",
       "subject": "Uniarp - Heni Ozi Cukier - 07/10/2026 - Presencial - ID 60552346476",
       "stage": "1088360205",
       "evento": "2026-10-07",
-      "etapas": [
-        "Início dos Trâmites",
-        "Link de transmissão do especialista (evento online)",
-        "Pagamento realizado 5ª parcela",
-        "Pagamento realizado 4ª parcela",
-        "Pagamento realizado 3ª parcela",
-        "Logística Adquirida",
-        "Contrato Assinado",
-        "Onboarding",
-        "Contrato assinado (Palestrante)",
-        "Agendar Call de Briefing",
-        "Call de Briefing Realizada"
-      ],
       "curador": "86859895",
       "entrouEtapa": "2026-07-28",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47445516611",
       "subject": "Savoy Construtora e Imobiliária - Dado Schneider - 07/10/2026 - Presencial - ID 62983971874",
       "stage": "1088360205",
       "evento": "2026-10-07",
-      "etapas": [
-        "Início dos Trâmites",
-        "Pagamento realizado 3ª parcela",
-        "Pagamento realizado 4ª parcela",
-        "Pagamento realizado 5ª parcela",
-        "Logística Adquirida",
-        "Pagamento de Logística realizado",
-        "Onboarding",
-        "Link de transmissão do especialista (evento online)",
-        "Despachado ao Financeiro (contratante)",
-        "Despachado ao Financeiro (especialista)",
-        "Contrato Assinado",
-        "Contrato assinado (Palestrante)",
-        "Pagamento realizado 1ª parcela (PSA)",
-        "Agendar Call de Briefing"
-      ],
       "curador": "80454588",
       "entrouEtapa": "2026-08-14",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47434530957",
       "subject": "Sebrae/CE - Martin Lackéus - 08/10/2026 - Presencial - ID 63306661798",
       "stage": "1088360205",
       "evento": "2026-10-08",
-      "etapas": [],
       "curador": "80454586",
       "entrouEtapa": "2026-09-25",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "48108424737",
       "subject": "ETE FMC - Martha Gabriel - 08/10/2026 - Presencial - ID 64430515535",
       "stage": "1088360205",
       "evento": "2026-10-08",
-      "etapas": [
-        "Início dos Trâmites",
-        "Onboarding",
-        "Contrato Assinado",
-        "Contrato assinado (Palestrante)",
-        "Agendar Call de Briefing",
-        "Call de Briefing Realizada"
-      ],
       "curador": "80651489",
       "entrouEtapa": "2026-09-15",
       "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "39430993832",
-      "subject": "Cofco - Gustavo Melles - 28/01/2026 - Online - ID: 48476854064",
-      "stage": "1088361911",
-      "evento": "2026-01-29",
-      "etapas": null,
-      "curador": "80169394",
-      "entrouEtapa": "2026-01-29",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "38511441673",
-      "subject": "ADS | Mauricio Schneider l 28/01/2026 - ID: 51244913716",
-      "stage": "1088361911",
-      "evento": "2026-01-28",
-      "etapas": null,
-      "curador": "80169394",
-      "entrouEtapa": "2026-02-03",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "34388822442",
-      "subject": "Grupo Mascarello - Mauricio Schneider - 29/01/2026 - Presencial - ID: 42556285608",
-      "stage": "1088361911",
-      "evento": "2026-01-29",
-      "etapas": null,
-      "curador": "82466383",
-      "entrouEtapa": "2026-02-03",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "37838581325",
-      "subject": "Grupo Fleury | Arthur Bugre - 27/01/2026 ID: 51779351090",
-      "stage": "1088361911",
-      "evento": "2026-01-27",
-      "etapas": null,
-      "curador": "80169394",
-      "entrouEtapa": "2026-02-03",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "34922690870",
-      "subject": "GFT Technology - Ricardo Basaglia - 30/01/2026 - Presencial - ID: 48943176868",
-      "stage": "1088361911",
-      "evento": "2026-01-30",
-      "etapas": null,
-      "curador": "79760744",
-      "entrouEtapa": "2026-02-06",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "37963776041",
-      "subject": "Comercial Cirúrgica Rioclarense Ltda - Fabricio Medeiros - 03/02/2026 - ID: 37983386756",
-      "stage": "1088361911",
-      "evento": "2026-02-03",
-      "etapas": null,
-      "curador": "80454577",
-      "entrouEtapa": "2026-02-06",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "37342778180",
-      "subject": "Faz Capital - Emanuel Curi - 07/02/2026 - Presencial - ID: 49321345946",
-      "stage": "1088361911",
-      "evento": "2026-02-07",
-      "etapas": null,
-      "curador": "80454586",
-      "entrouEtapa": "2026-02-09",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "35293197983",
-      "subject": "Sankhya - Walter Longo - 07/02/2026 - Presencial - ID: 49416200870",
-      "stage": "1088361911",
-      "evento": "2026-02-07",
-      "etapas": null,
-      "curador": "80169396",
-      "entrouEtapa": "2026-02-10",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "38195249814",
-      "subject": "Sicoob Cecresp | Ulisses Carneiro l 28/02/2026 - ID 38195249814",
-      "stage": "1088361911",
-      "evento": "2026-02-28",
-      "etapas": null,
-      "curador": "80169397",
-      "entrouEtapa": "2026-03-03",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "30963231253",
-      "subject": "Cotrisal - Dado Schneider - 27/02/2026 - Presencial - ID: 30963231253",
-      "stage": "1088361911",
-      "evento": "2026-02-27",
-      "etapas": null,
-      "curador": "80454583",
-      "entrouEtapa": "2026-03-05",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "36303782409",
-      "subject": "Multivac - Luciana Lancerotti - 02/03/2026 - Presencial - ID: 36303782409",
-      "stage": "1088361911",
-      "evento": "2026-03-02",
-      "etapas": null,
-      "curador": "80651489",
-      "entrouEtapa": "2026-03-09",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "42525054074",
-      "subject": "Sascar - Sergio Zimerman - 05/03/2026 - Presencial - ID: 55932340798",
-      "stage": "1088361911",
-      "evento": "2026-03-05",
-      "etapas": null,
-      "curador": "80454586",
-      "entrouEtapa": "2026-03-10",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "42316408991",
-      "subject": "Sicoob Central Rondon - Nelson Freitas - 06/03/2026 - Presencial - ID: 55671495277",
-      "stage": "1088361911",
-      "evento": "2026-03-06",
-      "etapas": null,
-      "curador": "80454583",
-      "entrouEtapa": "2026-03-10",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "37607221764",
-      "subject": "SEED - Leandro Karnal - 06/03/2026 - Presencial - ID: 49212441157",
-      "stage": "1088361911",
-      "evento": "2026-03-06",
-      "etapas": null,
-      "curador": "80169396",
-      "entrouEtapa": "2026-03-17",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "42479290168",
-      "subject": "Secont - Everton Lima - 16/03/2026 - Presencial - ID: 56219012000",
-      "stage": "1088361911",
-      "evento": "2026-03-16",
-      "etapas": null,
-      "curador": "80651489",
-      "entrouEtapa": "2026-03-19",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "43239220881",
-      "subject": "Simbiagro/Coopercitrus (Bayer) - Mauricio Schneider - 17/03/2026 - Presencial - ID: 57018961816",
-      "stage": "1088361911",
-      "evento": "2026-03-17",
-      "etapas": null,
-      "curador": "80454583",
-      "entrouEtapa": "2026-03-24",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "37745145754",
-      "subject": "Sest Senat/Piracicaba - Everton Lima - 26/03/2026 - Presencial - ID: 48943177739",
-      "stage": "1088361911",
-      "evento": "2026-03-26",
-      "etapas": null,
-      "curador": "80169394",
-      "entrouEtapa": "2026-03-27",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "39862108024",
-      "subject": "Jaderalmeida - Erika Linhares - 21/02/2026 - Presencial - ID: 51997001372",
-      "stage": "1088361911",
-      "evento": "2026-02-21",
-      "etapas": null,
-      "curador": "80169396",
-      "entrouEtapa": "2026-03-30",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "41681567622",
-      "subject": "Olá Doctor - Pedro Doria - 13/03/2026 - Mestre de Cerimônias Presencial - ID: 56122128290",
-      "stage": "1088361911",
-      "evento": "2026-03-13",
-      "etapas": null,
-      "curador": "80454586",
-      "entrouEtapa": "2026-03-30",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "41322225999",
-      "subject": "Banco da Amazônia - Leila Navarro - 12/03/2026 - Presencial - ID: 55414105134",
-      "stage": "1088361911",
-      "evento": "2026-03-12",
-      "etapas": null,
-      "curador": "80169396",
-      "entrouEtapa": "2026-03-30",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "34713934516",
-      "subject": "Sankhya - Fabiano Cambota - 07/02/2026 - Presencial - ID: 42840582563",
-      "stage": "1333136740",
-      "evento": "2026-02-07",
-      "etapas": null,
-      "curador": "80169396",
-      "entrouEtapa": "2026-04-02",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "39443163550",
-      "subject": "Gocase/Gogroup - Giovane Gávio - 30/01/2026 - Online - ID: 51926043738",
-      "stage": "1333136740",
-      "evento": "2026-01-30",
-      "etapas": null,
-      "curador": "82466383",
-      "entrouEtapa": "2026-04-02",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "48729302557",
-      "subject": "UNISINOS | Luis Justo | | Palestra Presencial",
-      "stage": "1088360203",
-      "evento": "2027-03-26",
-      "etapas": [],
-      "curador": "80651489",
-      "entrouEtapa": "2026-09-25",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "48723105159",
-      "subject": "UNISINOS | Albert Deweik | | Palestra Presencial",
-      "stage": "1088360203",
-      "evento": "2027-03-26",
-      "etapas": [],
-      "curador": "80651489",
-      "entrouEtapa": "2026-09-25",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "48709778768",
-      "subject": "UNISINOS | Daniela Klaiman | 26/03/2027 | Palestra Presencial",
-      "stage": "1088360203",
-      "evento": "2027-03-26",
-      "etapas": [],
-      "curador": "80651489",
-      "entrouEtapa": "2026-09-25",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "48737248371",
-      "subject": "UNISINOS | Dora Kaufman | | Palestra Presencial",
-      "stage": "1088360203",
-      "evento": "2027-03-26",
-      "etapas": [],
-      "curador": "80651489",
-      "entrouEtapa": "2026-09-25",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "48715432832",
-      "subject": "UNISINOS | Renato Bernhoeft | | Palestra Presencial",
-      "stage": "1088360203",
-      "evento": "2027-03-26",
-      "etapas": [],
-      "curador": "80651489",
-      "entrouEtapa": "2026-09-25",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "48742547200",
-      "subject": "UNISINOS | Bernard Appy | | Palestra Presencial",
-      "stage": "1088360203",
-      "evento": "2027-03-26",
-      "etapas": [],
-      "curador": "80651489",
-      "entrouEtapa": "2026-09-25",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "48704043911",
-      "subject": "PERFORMANCE ASSESSORIA DE EVENTOS LTDA | Rodrigo Goes | 20/03/2027 | Palestra Presencial",
-      "stage": "1088360203",
-      "evento": "2027-03-20",
-      "etapas": [],
-      "curador": null,
-      "entrouEtapa": "2026-09-24",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "48605112147",
-      "subject": "PERFORMANCE ASSESSORIA DE EVENTOS LTDA - Lucas Silveira - 19/03/2027 - Presencial - ID 63280656292",
-      "stage": "1088360203",
-      "evento": "2027-03-20",
-      "etapas": [],
-      "curador": null,
-      "entrouEtapa": "2026-09-16",
-      "proprietario": null,
-      "proximaTarefa": ""
-    },
-    {
-      "id": "48558346760",
-      "subject": "PERFORMANCE ASSESSORIA DE EVENTOS LTDA - Dafna Blaschkauer - 20/03/2027 - Presencial - ID 63280656292",
-      "stage": "1088360203",
-      "evento": "2027-03-20",
-      "etapas": [],
-      "curador": "92333469",
-      "entrouEtapa": "2026-09-16",
-      "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47951549978",
       "subject": "Redetelesul - Fernando Fernandes - 19/03/2027 -Presencial - ID 64058802576",
       "stage": "1088360205",
       "evento": "2027-03-19",
-      "etapas": [
-        "Início dos Trâmites",
-        "Onboarding",
-        "Link de transmissão do especialista (evento online)",
-        "Pagamento realizado 5ª parcela",
-        "Pagamento realizado 4ª parcela"
-      ],
       "curador": "80454576",
       "entrouEtapa": "2026-09-14",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47647652439",
       "subject": "Redetelesul - Martha Gabriel - 18/03/2027 - Presencial - ID 63125286405",
       "stage": "1088360205",
       "evento": "2027-03-18",
-      "etapas": [
-        "Início dos Trâmites",
-        "Pagamento realizado 5ª parcela",
-        "Pagamento realizado 4ª parcela",
-        "Onboarding"
-      ],
       "curador": "80454576",
       "entrouEtapa": "2026-09-23",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47930894741",
       "subject": "Redetelesul - Caco Barcellos - 18/03/2027 - Presencial - ID 64058802576",
       "stage": "1088360204",
       "evento": "2027-03-18",
-      "etapas": [
-        "Início dos Trâmites"
-      ],
       "curador": "80454576",
       "entrouEtapa": "2026-08-26",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "48116108713",
       "subject": "La Moda Experience - Ciro Bottini - 06/03/2027 - Presencial - ID 64338523747",
       "stage": "1088360205",
       "evento": "2027-03-06",
-      "etapas": [
-        "Início dos Trâmites",
-        "Onboarding",
-        "Contrato Assinado",
-        "Contrato assinado (Palestrante)"
-      ],
       "curador": "80454586",
       "entrouEtapa": "2026-09-09",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     },
     {
       "id": "47469534006",
       "subject": "Grupo La Moda - Alfredo Soares - 06/03/2027 -Presencial - ID 62615940256",
       "stage": "1088360205",
       "evento": "2027-03-06",
-      "etapas": [
-        "Início dos Trâmites",
-        "Contrato Assinado",
-        "Onboarding",
-        "Link de transmissão do especialista (evento online)",
-        "Pagamento realizado 5ª parcela",
-        "Pagamento realizado 4ª parcela",
-        "Pagamento realizado 3ª parcela",
-        "Contrato assinado (Palestrante)"
-      ],
       "curador": "80454586",
       "entrouEtapa": "2026-09-09",
       "proprietario": null,
-      "proximaTarefa": ""
+      "proximaTarefa": "",
+      "onboarding": "",
+      "statusContrato": ""
     }
   ]
 }

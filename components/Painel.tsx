@@ -14,6 +14,7 @@ export type Linha = {
   diasEvento: number
   diasNaEtapa: number
   diasTarefa: number | null
+  alertas: { chave: string; texto: string }[]
   stage: string
   curador: string | null
   curadorInativo: boolean
@@ -691,6 +692,7 @@ export default function Painel({
   const [etapa, setEtapa] = useState('')
   const [semDono, setSemDono] = useState(false)
   const [comTarefa, setComTarefa] = useState(false)
+  const [alerta, setAlerta] = useState('')
   const [detalhe, setDetalhe] = useState<{ titulo: string; itens: Linha[] } | null>(null)
   const [pagina, setPagina] = useState(0)
 
@@ -698,7 +700,7 @@ export default function Painel({
   // tem 3 itens deixa a tela vazia sem explicação.
   useEffect(() => {
     setPagina(0)
-  }, [regua, cor, curador, proprietario, etapa, semDono, comTarefa])
+  }, [regua, cor, curador, proprietario, etapa, semDono, comTarefa, alerta])
 
   const daRegua = useMemo(() => linhas.filter((l) => l.regua === regua), [linhas, regua])
 
@@ -719,10 +721,21 @@ export default function Painel({
 
   const orfaos = useMemo(() => porPessoa.filter(orfao).length, [porPessoa])
 
+  const porAlerta = useMemo(() => {
+    const m = new Map<string, { texto: string; n: number }>()
+    for (const l of porPessoa)
+      for (const a of l.alertas)
+        m.set(a.chave, { texto: a.texto, n: (m.get(a.chave)?.n ?? 0) + 1 })
+    return [...m.entries()].sort((x, y) => y[1].n - x[1].n)
+  }, [porPessoa])
+
   const comTarefas = useMemo(() => porPessoa.filter((l) => l.diasTarefa !== null).length, [porPessoa])
 
   const base = porPessoa.filter(
-    (l) => (!semDono || orfao(l)) && (!comTarefa || l.diasTarefa !== null),
+    (l) =>
+      (!semDono || orfao(l)) &&
+      (!comTarefa || l.diasTarefa !== null) &&
+      (!alerta || l.alertas.some((a) => a.chave === alerta)),
   )
 
   const porEtapa = useMemo(() => {
@@ -778,9 +791,10 @@ export default function Painel({
     setEtapa('')
     setSemDono(false)
     setComTarefa(false)
+    setAlerta('')
   }
 
-  const filtrando = !!(cor || curador || proprietario || etapa || semDono || comTarefa)
+  const filtrando = !!(cor || curador || proprietario || etapa || semDono || comTarefa || alerta)
   const visiveisCores = CORES.filter(({ cor: c }) => c !== 'cinza' || contagem[c] > 0)
 
   return (
@@ -891,6 +905,20 @@ export default function Painel({
           </button>
         ))}
 
+
+        {porAlerta.map(([chave, a]) => (
+          <button
+            key={chave}
+            onClick={() => setAlerta(alerta === chave ? '' : chave)}
+            style={{
+              ...CONTROLE,
+              background: alerta === chave ? 'var(--vermelho)' : 'var(--vermelho-bg)',
+              color: alerta === chave ? 'var(--card)' : 'var(--vermelho)',
+            }}
+          >
+            {a.texto} {a.n}
+          </button>
+        ))}
 
         {comTarefas > 0 && (
           <button
@@ -1070,6 +1098,26 @@ export default function Painel({
             <span style={{ display: 'block', fontSize: 12, marginTop: 3, lineHeight: 1.5 }}>
               <Pessoas l={l} />
             </span>
+
+            {l.alertas.length > 0 && (
+              <span style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+                {l.alertas.map((a) => (
+                  <span
+                    key={a.chave}
+                    style={{
+                      background: 'var(--vermelho-bg)',
+                      color: 'var(--vermelho)',
+                      borderRadius: 6,
+                      padding: '2px 8px',
+                      fontSize: 11,
+                      fontWeight: 500,
+                    }}
+                  >
+                    {a.texto}
+                  </span>
+                ))}
+              </span>
+            )}
           </a>
         ))}
       </Grade>

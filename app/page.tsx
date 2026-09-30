@@ -6,6 +6,7 @@ import {
   diasParaEvento,
   diasNaEtapa,
   diasParaTarefa,
+  alertas,
 } from '@/lib/sinaleira'
 import Painel from '@/components/Painel'
 
@@ -69,6 +70,7 @@ export default async function Page() {
         diasEvento: diasParaEvento(t, hoje),
         diasNaEtapa: diasNaEtapa(t, hoje),
         diasTarefa: diasParaTarefa(t, hoje),
+        alertas: alertas(t, hoje),
         stage: t.stage,
         curador: nomeCurador(owners, t.curador),
         curadorInativo: curadorInativo(owners, t.curador),
