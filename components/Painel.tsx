@@ -613,6 +613,36 @@ function Pessoas({ l }: { l: Linha }) {
   )
 }
 
+// Select de opções já rotuladas, para etapa e para os liga/desliga. Mesma
+// caixa do Filtro, para a barra inteira ter um tipo de controle só.
+function Escolha({
+  vazio,
+  valor,
+  opcoes,
+  aoMudar,
+}: {
+  vazio: string
+  valor: string
+  opcoes: { v: string; r: string }[]
+  aoMudar: (v: string) => void
+}) {
+  if (!opcoes.length) return null
+  return (
+    <select
+      value={valor}
+      onChange={(e) => aoMudar(e.target.value)}
+      style={{ ...CONTROLE, font: 'inherit', fontSize: 13, color: 'var(--text)', maxWidth: 230 }}
+    >
+      <option value="">{vazio}: todos</option>
+      {opcoes.map((o) => (
+        <option key={o.v} value={o.v}>
+          {o.r}
+        </option>
+      ))}
+    </select>
+  )
+}
+
 function Filtro({
   vazio,
   valor,
@@ -883,6 +913,15 @@ export default function Painel({
         ))}
         </div>
 
+        {/* Tudo que refina vira select, do mesmo tipo e do mesmo tamanho. Antes
+            eram dez botões de três naturezas diferentes com a mesma aparência:
+            etapa, alerta e atributo pareciam a mesma coisa. */}
+        <Escolha
+          vazio="Etapa"
+          valor={etapa}
+          opcoes={porEtapa.map(([nome, n]) => ({ v: nome, r: `${nome} (${n})` }))}
+          aoMudar={setEtapa}
+        />
         <Filtro vazio="Curador" valor={curador} opcoes={curadores} aoMudar={setCurador} />
         <Filtro
           vazio="Proprietário"
@@ -890,60 +929,19 @@ export default function Painel({
           opcoes={proprietarios}
           aoMudar={setProprietario}
         />
-
-        {porEtapa.map(([nome, n]) => (
-          <button
-            key={nome}
-            onClick={() => setEtapa(etapa === nome ? '' : nome)}
-            style={{
-              ...CONTROLE,
-              background: etapa === nome ? 'var(--text)' : 'var(--cinza-bg)',
-              color: etapa === nome ? 'var(--card)' : 'var(--text-2)',
-            }}
-          >
-            {nome} {n}
-          </button>
-        ))}
-
-
-        {porAlerta.map(([chave, a]) => (
-          <button
-            key={chave}
-            onClick={() => setAlerta(alerta === chave ? '' : chave)}
-            style={{
-              ...CONTROLE,
-              background: alerta === chave ? 'var(--vermelho)' : 'var(--vermelho-bg)',
-              color: alerta === chave ? 'var(--card)' : 'var(--vermelho)',
-            }}
-          >
-            {a.texto} {a.n}
-          </button>
-        ))}
-
-        {comTarefas > 0 && (
-          <button
-            onClick={() => setComTarefa(!comTarefa)}
-            style={{
-              ...CONTROLE,
-              background: comTarefa ? 'var(--text)' : 'var(--cinza-bg)',
-              color: comTarefa ? 'var(--card)' : 'var(--text-2)',
-            }}
-          >
-            Com tarefa {comTarefas}
-          </button>
-        )}
-
+        <Escolha
+          vazio="Tarefa"
+          valor={comTarefa ? 'sim' : semDono ? '' : ''}
+          opcoes={[{ v: 'sim', r: `com tarefa (${comTarefas})` }]}
+          aoMudar={(v) => setComTarefa(v === 'sim')}
+        />
         {orfaos > 0 && (
-          <button
-            onClick={() => setSemDono(!semDono)}
-            style={{
-              ...CONTROLE,
-              background: semDono ? 'var(--vermelho)' : 'var(--cinza-bg)',
-              color: semDono ? 'var(--card)' : 'var(--text-2)',
-            }}
-          >
-            Sem responsável {orfaos}
-          </button>
+          <Escolha
+            vazio="Responsável"
+            valor={semDono ? 'sem' : ''}
+            opcoes={[{ v: 'sem', r: `sem responsável ativo (${orfaos})` }]}
+            aoMudar={(v) => setSemDono(v === 'sem')}
+          />
         )}
 
         {filtrando && (
@@ -1000,6 +998,60 @@ export default function Painel({
           ))}
         </div>
       </Grupo>
+
+      {/* Alerta é contagem antes de ser filtro: "23 contratos pendentes" é a
+          informação. Ficava escondido numa fileira de chips igual aos outros. */}
+      {porAlerta.length > 0 && (
+        <Grupo style={{ marginBottom: 18 }}>
+          <div style={{ display: 'flex' }}>
+            {porAlerta.map(([chave, a], i) => (
+              <button
+                key={chave}
+                onClick={() => setAlerta(alerta === chave ? '' : chave)}
+                style={{
+                  flex: 1,
+                  border: 0,
+                  borderLeft: i ? '1px solid var(--line)' : 0,
+                  background: alerta === chave ? 'var(--vermelho-bg)' : 'transparent',
+                  padding: '13px 18px',
+                  textAlign: 'left',
+                }}
+              >
+                <span
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 13,
+                    color: 'var(--text-2)',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      background: 'var(--vermelho-ponto)',
+                    }}
+                  />
+                  {a.texto}
+                </span>
+                <div
+                  style={{
+                    fontSize: 24,
+                    fontWeight: 600,
+                    letterSpacing: '-0.02em',
+                    marginTop: 2,
+                    color: 'var(--vermelho)',
+                  }}
+                >
+                  {a.n}
+                </div>
+              </button>
+            ))}
+          </div>
+        </Grupo>
+      )}
 
       <Horizonte
         linhas={comEtapa}
