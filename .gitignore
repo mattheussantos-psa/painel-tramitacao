@@ -3,3 +3,5 @@ node_modules
 .env.local
 tsconfig.tsbuildinfo
 em-andamento.html
+pagamento-pos-palestra.html
+aguardando-nf-palestrante.html
