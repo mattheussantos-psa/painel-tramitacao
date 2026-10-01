@@ -567,10 +567,14 @@ function Cartao({ l }: { l: Linha }) {
           display: 'block',
           textDecoration: 'none',
           color: 'inherit',
-          background: 'var(--card)',
-          border: '1px solid var(--line)',
+          // O fundo tingido é o sinal. A barra vai como sombra interna e não
+          // como border-left: assim ela acompanha o raio do canto em vez de
+          // cortar reto nas pontas.
+          background: `var(--${l.cor}-bg)`,
+          boxShadow: `inset 3px 0 0 var(--${l.cor}-ponto)`,
+          border: '1px solid transparent',
           borderRadius: 12,
-          padding: '13px 15px 12px',
+          padding: '13px 15px 12px 17px',
         }}
       >
         <span
@@ -600,7 +604,6 @@ function Cartao({ l }: { l: Linha }) {
             overflow: 'hidden',
           }}
         >
-          <Ponto cor={l.cor} tamanho={9} />
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {l.cliente}
           </span>
@@ -624,7 +627,7 @@ function Cartao({ l }: { l: Linha }) {
             display: 'block',
             marginTop: 11,
             paddingTop: 10,
-            borderTop: '1px solid var(--line)',
+            borderTop: '1px solid var(--linha-sobre-cor)',
             fontSize: 12,
             color: 'var(--text-2)',
             overflow: 'hidden',
@@ -632,8 +635,8 @@ function Cartao({ l }: { l: Linha }) {
             whiteSpace: 'nowrap',
           }}
         >
-          {l.etapa} · {l.diasNaEtapa}d parado ·{' '}
-          <span style={{ color: `var(--${l.cor})` }}>{prazo(l)}</span>
+          {l.diasNaEtapa}d parado ·{' '}
+          <b style={{ color: `var(--${l.cor})`, fontWeight: 600 }}>{prazo(l)}</b>
         </span>
         <span style={{ display: 'block', fontSize: 12, marginTop: 3, lineHeight: 1.5 }}>
           <Pessoas l={l} />
@@ -645,7 +648,7 @@ function Cartao({ l }: { l: Linha }) {
               <span
                 key={a.chave}
                 style={{
-                  background: 'var(--vermelho-bg)',
+                  background: 'var(--card)',
                   color: 'var(--vermelho)',
                   borderRadius: 6,
                   padding: '2px 8px',

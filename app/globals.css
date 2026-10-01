@@ -129,3 +129,20 @@ dialog::backdrop {
 .linha:hover {
   background: var(--cinza-bg);
 }
+
+/* Hairline sobre o fundo tingido do card: a de fundo neutro some ali. */
+:root {
+  --linha-sobre-cor: rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --linha-sobre-cor: rgba(255, 255, 255, 0.14);
+  }
+}
+
+/* O hover nao pode trocar o fundo: o fundo e o sinal. Destaca com anel. */
+.cartao:hover {
+  background: inherit;
+  border-color: var(--text-3);
+}
