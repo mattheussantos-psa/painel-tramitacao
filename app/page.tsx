@@ -14,9 +14,6 @@ import Painel from '@/components/Painel'
 // o HubSpot e o cache com TTL dentro de carregar().
 export const dynamic = 'force-dynamic'
 
-// Quem precisa de ação primeiro. Dentro da mesma cor, o mais atrasado sobe.
-const PRIORIDADE = { vermelho: 0, amarelo: 1, cinza: 2, verde: 3 }
-
 // Erro no fetch não pode virar tela branca com digest: na Vercel a mensagem
 // some nos logs e o painel fica indistinguível de "não tem ticket".
 function Falha({ mensagem }: { mensagem: string }) {
@@ -79,7 +76,9 @@ export default async function Page() {
         ...a,
       }
     })
-    .sort((a, b) => PRIORIDADE[a.cor] - PRIORIDADE[b.cor] || b.dias - a.dias)
+    // Por data do evento, nao por cor nem por atraso: ordenar por atraso
+    // agrupa as cores, porque a cor vem dele. O quadro tem que sair misturado.
+    .sort((a, b) => a.evento.localeCompare(b.evento))
 
   return <Painel linhas={linhas} aoVivo={aoVivo} capturadoEm={capturadoEm} atualizadoEm={atualizadoEm} aviso={aviso} />
 }

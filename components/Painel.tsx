@@ -883,8 +883,9 @@ export default function Painel({
 
   const visiveis = comEtapa.filter((l) => !cor || l.cor === cor)
 
-  // Uma coluna por etapa, na ordem do kanban do HubSpot. Dentro da coluna, o
-  // mais atrasado primeiro.
+  // Uma coluna por etapa, na ordem do kanban do HubSpot. Dentro da coluna, por
+  // data do evento: ordenar por atraso empilharia os vermelhos no topo e os
+  // verdes no fim, e a leitura de sinaleira some quando a cor vira bloco.
   const colunas = useMemo(
     () =>
       Object.entries(SLA)
@@ -893,7 +894,9 @@ export default function Painel({
           id,
           label: r.label,
           prazo: prazoEmTexto(r),
-          itens: visiveis.filter((l) => l.stage === id).sort((a, b) => b.dias - a.dias),
+          itens: visiveis
+            .filter((l) => l.stage === id)
+            .sort((a, b) => a.evento.localeCompare(b.evento)),
         })),
     [visiveis],
   )
