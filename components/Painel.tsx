@@ -117,17 +117,24 @@ type Faixa = { rotulo: string; dentro: (l: Linha) => boolean }
 // Futuro: quanto falta para o evento. Passado: há quanto tempo ele aconteceu e
 // o ticket segue aberto. As faixas do passado são mais largas de propósito —
 // tem ticket com evento há mais de 300 dias, e 0–7 ali não separaria nada.
+// Dias desde o evento. Negativo quando o evento ainda nao aconteceu.
+const passou = (l: Linha) => -l.diasEvento
+
 const FAIXAS: Record<Regua, Faixa[]> = {
   pre: [
     { rotulo: '0–7 dias', dentro: (l) => l.diasEvento >= 0 && l.diasEvento <= 7 },
     { rotulo: '8–15 dias', dentro: (l) => l.diasEvento >= 8 && l.diasEvento <= 15 },
     { rotulo: '16–30 dias', dentro: (l) => l.diasEvento >= 16 && l.diasEvento <= 30 },
   ],
+  // O "passou > 0" nao e redundante: antes o recorte da aba ja garantia que so
+  // chegavam eventos passados. Agora os dois horizontes leem a base inteira, e
+  // sem isso um evento no futuro (diasEvento positivo) satisfazia "<= 15" e
+  // caia na primeira faixa — o card dizia "Evento ja realizado 360".
   pos: [
-    { rotulo: 'até 15 dias', dentro: (l) => -l.diasEvento <= 15 },
-    { rotulo: '16–30 dias', dentro: (l) => -l.diasEvento >= 16 && -l.diasEvento <= 30 },
-    { rotulo: '31–90 dias', dentro: (l) => -l.diasEvento >= 31 && -l.diasEvento <= 90 },
-    { rotulo: 'mais de 90 dias', dentro: (l) => -l.diasEvento > 90 },
+    { rotulo: 'até 15 dias', dentro: (l) => passou(l) > 0 && passou(l) <= 15 },
+    { rotulo: '16–30 dias', dentro: (l) => passou(l) >= 16 && passou(l) <= 30 },
+    { rotulo: '31–90 dias', dentro: (l) => passou(l) >= 31 && passou(l) <= 90 },
+    { rotulo: 'mais de 90 dias', dentro: (l) => passou(l) > 90 },
   ],
 }
 
@@ -856,16 +863,16 @@ export default function Painel({
   const [alerta, setAlerta] = useState('')
   const [detalhe, setDetalhe] = useState<{ titulo: string; itens: Linha[] } | null>(null)
 
-  const daRegua = useMemo(() => linhas.filter((l) => l.regua === regua), [linhas, regua])
-
+  // A aba e controle do kanban, nao da pagina: filtros, alertas, horizontes e
+  // ranking leem a base inteira e so o quadro recorta por regua.
   const porPessoa = useMemo(
     () =>
-      daRegua.filter(
+      linhas.filter(
         (l) =>
           (!curador || l.curador === curador) &&
           (!proprietario || l.proprietario === proprietario),
       ),
-    [daRegua, curador, proprietario],
+    [linhas, curador, proprietario],
   )
 
   // Ninguém ativo no ticket: nem curador, nem proprietário. Não adianta cobrar
@@ -892,18 +899,18 @@ export default function Painel({
       (!alerta || l.alertas.some((a) => a.chave === alerta)),
   )
 
-  const comEtapa = base
+  const doKanban = useMemo(() => base.filter((l) => l.regua === regua), [base, regua])
 
 
   // A cor fica de fora da contagem de propósito: se entrasse, clicar em
   // "Atrasado" zerava os outros três e a pessoa perdia a visão do quadro.
   const contagem = useMemo(() => {
     const c: Record<Cor, number> = { vermelho: 0, amarelo: 0, verde: 0, cinza: 0 }
-    for (const l of comEtapa) c[l.cor]++
+    for (const l of doKanban) c[l.cor]++
     return c
-  }, [comEtapa])
+  }, [doKanban])
 
-  const visiveis = comEtapa.filter((l) => !cor || l.cor === cor)
+  const visiveis = doKanban.filter((l) => !cor || l.cor === cor)
 
   // Uma coluna por etapa, na ordem do kanban do HubSpot. Dentro da coluna, por
   // data do evento: ordenar por atraso empilharia os vermelhos no topo e os
@@ -923,11 +930,11 @@ export default function Painel({
     [visiveis],
   )
 
-  // Ranking lê a aba inteira de propósito: se respeitasse o filtro de
-  // proprietário, viraria uma linha só e deixaria de servir para escolher.
+  // Lê a base inteira de propósito: se respeitasse o filtro de proprietário,
+  // viraria uma linha só e deixaria de servir para escolher.
   const ranking = useMemo(() => {
     const m = new Map<string, Record<Cor, number>>()
-    for (const l of daRegua) {
+    for (const l of linhas) {
       const nome = l.proprietario ?? 'Sem proprietário'
       const r = m.get(nome) ?? { vermelho: 0, amarelo: 0, verde: 0, cinza: 0 }
       r[l.cor]++
@@ -936,15 +943,15 @@ export default function Painel({
     return [...m.entries()]
       .map(([nome, r]) => ({ nome, ...r, total: r.vermelho + r.amarelo + r.verde + r.cinza }))
       .sort((a, b) => b.vermelho - a.vermelho || b.total - a.total)
-  }, [daRegua])
+  }, [linhas])
 
   const nomes = (campo: 'curador' | 'proprietario') =>
-    Array.from(new Set(daRegua.map((l) => l[campo]).filter(Boolean) as string[])).sort((a, b) =>
+    Array.from(new Set(linhas.map((l) => l[campo]).filter(Boolean) as string[])).sort((a, b) =>
       a.localeCompare(b, 'pt-BR'),
     )
 
-  const curadores = useMemo(() => nomes('curador'), [daRegua])
-  const proprietarios = useMemo(() => nomes('proprietario'), [daRegua])
+  const curadores = useMemo(() => nomes('curador'), [linhas])
+  const proprietarios = useMemo(() => nomes('proprietario'), [linhas])
 
   const limpar = () => {
     setCor(null)
@@ -1007,43 +1014,6 @@ export default function Painel({
           marginBottom: 18,
         }}
       >
-        <div
-          style={{
-            display: 'inline-flex',
-            background: 'var(--cinza-bg)',
-            borderRadius: 8,
-            padding: 2,
-            height: 34,
-            marginRight: 4,
-          }}
-        >
-        {(
-          [
-            ['pre', 'Antes do evento'],
-            ['pos', 'Depois do evento'],
-          ] as const
-        ).map(([v, label]) => (
-          <button
-            key={v}
-            onClick={() => {
-              setRegua(v)
-              limpar()
-            }}
-            style={{
-              border: 0,
-              borderRadius: 6,
-              padding: '0 14px',
-              fontSize: 13,
-              fontWeight: regua === v ? 500 : 400,
-              background: regua === v ? 'var(--card)' : 'transparent',
-              color: regua === v ? 'var(--text)' : 'var(--text-2)',
-            }}
-          >
-            {label}
-          </button>
-        ))}
-        </div>
-
         {/* Etapa nao entra aqui: no kanban a coluna ja e o filtro de etapa. */}
         <Filtro vazio="Curador" valor={curador} opcoes={curadores} aoMudar={setCurador} />
         <Filtro
@@ -1076,51 +1046,6 @@ export default function Painel({
           </button>
         )}
       </div>
-
-      {/* Números sobre superfície neutra, cor só no ponto e no algarismo. A
-          versão anterior pintava três retângulos inteiros de cor semântica. */}
-      <Grupo style={{ marginBottom: 18 }}>
-        <div style={{ display: 'flex' }}>
-          {visiveisCores.map(({ cor: c, label }, i) => (
-            <button
-              key={c}
-              onClick={() => setCor(cor === c ? null : c)}
-              style={{
-                flex: 1,
-                border: 0,
-                borderLeft: i ? '1px solid var(--line)' : 0,
-                background: cor === c ? 'var(--cinza-bg)' : 'transparent',
-                padding: '14px 18px',
-                textAlign: 'left',
-              }}
-            >
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 13,
-                  color: 'var(--text-2)',
-                }}
-              >
-                <Ponto cor={c} />
-                {label}
-              </span>
-              <div
-                style={{
-                  fontSize: 30,
-                  fontWeight: 600,
-                  letterSpacing: '-0.02em',
-                  marginTop: 2,
-                  color: `var(--${c})`,
-                }}
-              >
-                {contagem[c]}
-              </div>
-            </button>
-          ))}
-        </div>
-      </Grupo>
 
       {/* Alerta é contagem antes de ser filtro: "23 contratos pendentes" é a
           informação. Ficava escondido numa fileira de chips igual aos outros. */}
@@ -1185,10 +1110,100 @@ export default function Painel({
       )}
 
       <Horizonte
-        linhas={comEtapa}
-        regua={regua}
+        linhas={base}
+        regua='pre'
         aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
       />
+
+      <Horizonte
+        linhas={base}
+        regua='pos'
+        aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
+      />
+
+      {/* A partir daqui tudo e do quadro: a aba recorta so o kanban, e os
+          contadores de cor sao do recorte que esta na tela. */}
+      <div
+        style={{
+          display: 'inline-flex',
+          background: 'var(--cinza-bg)',
+          borderRadius: 8,
+          padding: 2,
+          height: 34,
+          marginRight: 4,
+        }}
+      >
+      {(
+        [
+          ['pre', 'Antes do evento'],
+          ['pos', 'Depois do evento'],
+        ] as const
+      ).map(([v, label]) => (
+        <button
+          key={v}
+          onClick={() => {
+            setRegua(v)
+            limpar()
+          }}
+          style={{
+            border: 0,
+            borderRadius: 6,
+            padding: '0 14px',
+            fontSize: 13,
+            fontWeight: regua === v ? 500 : 400,
+            background: regua === v ? 'var(--card)' : 'transparent',
+            color: regua === v ? 'var(--text)' : 'var(--text-2)',
+          }}
+        >
+          {label}
+        </button>
+      ))}
+      </div>
+
+      {/* Números sobre superfície neutra, cor só no ponto e no algarismo. A
+          versão anterior pintava três retângulos inteiros de cor semântica. */}
+      <Grupo style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex' }}>
+          {visiveisCores.map(({ cor: c, label }, i) => (
+            <button
+              key={c}
+              onClick={() => setCor(cor === c ? null : c)}
+              style={{
+                flex: 1,
+                border: 0,
+                borderLeft: i ? '1px solid var(--line)' : 0,
+                background: cor === c ? 'var(--cinza-bg)' : 'transparent',
+                padding: '14px 18px',
+                textAlign: 'left',
+              }}
+            >
+              <span
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  color: 'var(--text-2)',
+                }}
+              >
+                <Ponto cor={c} />
+                {label}
+              </span>
+              <div
+                style={{
+                  fontSize: 30,
+                  fontWeight: 600,
+                  letterSpacing: '-0.02em',
+                  marginTop: 2,
+                  color: `var(--${c})`,
+                }}
+              >
+                {contagem[c]}
+              </div>
+            </button>
+          ))}
+        </div>
+      </Grupo>
 
       <Kanban colunas={colunas} />
 
@@ -1237,7 +1252,7 @@ export default function Painel({
             onClick={() =>
               setDetalhe({
                 titulo: r.nome,
-                itens: daRegua.filter((l) => (l.proprietario ?? 'Sem proprietário') === r.nome),
+                itens: linhas.filter((l) => (l.proprietario ?? 'Sem proprietário') === r.nome),
               })
             }
             className="linha"
