@@ -28,15 +28,16 @@ export type Ticket = {
 //
 // 'evento' é a exceção: a etapa segura até a realização do evento.
 // 'sem-prazo' não vira verde por omissão — fica cinza e aparece pedindo número.
-export type Regra =
-  | { label: string; tipo: 'dias'; dias: number }
-  | { label: string; tipo: 'evento' }
-  | { label: string; tipo: 'sem-prazo' }
+export type Regra = { label: string; ordem: number } & (
+  | { tipo: 'dias'; dias: number }
+  | { tipo: 'evento' }
+  | { tipo: 'sem-prazo' }
+)
 
 export const SLA: Record<string, Regra> = {
-  '1088360204': { label: 'Aguardando Onboarding', tipo: 'dias', dias: 7 },
-  '1088360205': { label: 'Em andamento', tipo: 'dias', dias: 20 },
-  '1448673032': { label: 'Aguardando Evento', tipo: 'evento' },
+  '1088360204': { label: 'Aguardando Onboarding', ordem: 1, tipo: 'dias', dias: 7 },
+  '1088360205': { label: 'Em andamento', ordem: 2, tipo: 'dias', dias: 20 },
+  '1448673032': { label: 'Aguardando Evento', ordem: 3, tipo: 'evento' },
 }
 
 // Ficam fora do painel por decisao do CS: nao ha prazo acordado para elas e

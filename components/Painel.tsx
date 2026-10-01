@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { SLA, prazoEmTexto, type Cor, type Regua } from '@/lib/sinaleira'
 
-const POR_PAGINA = 40
-
 export type Linha = {
   id: string
   link: string
@@ -313,7 +311,7 @@ function Horizonte({
   if (!total) return null
 
   return (
-    <Grupo style={{ marginBottom: 18, padding: '18px 20px 20px' }}>
+    <Grupo style={{ marginTop: 28, marginBottom: 18, padding: "18px 20px 20px" }}>
       <div
         style={{
           fontSize: 11,
@@ -558,6 +556,147 @@ function Matriz({
   )
 }
 
+function Cartao({ l }: { l: Linha }) {
+  return (
+      <a
+        href={l.link}
+        target="_blank"
+        rel="noreferrer"
+        className="cartao"
+        style={{
+          display: 'block',
+          textDecoration: 'none',
+          color: 'inherit',
+          background: 'var(--card)',
+          border: '1px solid var(--line)',
+          borderRadius: 12,
+          padding: '13px 15px 12px',
+        }}
+      >
+        <span
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            marginBottom: 10,
+          }}
+        >
+          <span style={{ fontSize: 12, color: tarefa(l).cor, fontWeight: 500 }}>
+            {tarefa(l).texto}
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{dataBr(l.evento)}</span>
+        </span>
+
+        <span
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 7,
+            fontSize: 16,
+            fontWeight: 600,
+            letterSpacing: '-0.015em',
+            lineHeight: 1.25,
+            overflow: 'hidden',
+          }}
+        >
+          <Ponto cor={l.cor} tamanho={9} />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {l.cliente}
+          </span>
+        </span>
+        <span
+          style={{
+            display: 'block',
+            fontSize: 13,
+            color: 'var(--text-2)',
+            marginTop: 1,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {l.palestrante || '—'}
+        </span>
+
+        <span
+          style={{
+            display: 'block',
+            marginTop: 11,
+            paddingTop: 10,
+            borderTop: '1px solid var(--line)',
+            fontSize: 12,
+            color: 'var(--text-2)',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {l.etapa} · {l.diasNaEtapa}d parado ·{' '}
+          <span style={{ color: `var(--${l.cor})` }}>{prazo(l)}</span>
+        </span>
+        <span style={{ display: 'block', fontSize: 12, marginTop: 3, lineHeight: 1.5 }}>
+          <Pessoas l={l} />
+        </span>
+
+        {l.alertas.length > 0 && (
+          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+            {l.alertas.map((a) => (
+              <span
+                key={a.chave}
+                style={{
+                  background: 'var(--vermelho-bg)',
+                  color: 'var(--vermelho)',
+                  borderRadius: 6,
+                  padding: '2px 8px',
+                  fontSize: 11,
+                  fontWeight: 500,
+                }}
+              >
+                {a.texto}
+              </span>
+            ))}
+          </span>
+        )}
+      </a>
+  )
+}
+
+// Kanban: a etapa vira coluna e cada coluna rola sozinha. É o mesmo desenho do
+// HubSpot, e dispensa o filtro de etapa — a coluna já é o filtro.
+function Kanban({ colunas }: { colunas: { id: string; label: string; prazo: string; itens: Linha[] }[] }) {
+  return (
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${colunas.length}, minmax(300px, 1fr))`,
+        gap: 12,
+        alignItems: 'start',
+      }}
+    >
+      {colunas.map((col) => (
+        <div key={col.id} style={{ background: 'var(--cinza-bg)', borderRadius: 14, padding: 10, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '4px 6px 10px' }}>
+            <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {col.label}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{col.itens.length}</span>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-3)', padding: '0 6px 10px' }}>{col.prazo}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 'calc(100vh - 220px)', overflowY: 'auto', overflowX: 'hidden' }}>
+            {col.itens.map((l) => (
+              <Cartao key={l.id} l={l} />
+            ))}
+            {col.itens.length === 0 && (
+              <p style={{ color: 'var(--text-3)', fontSize: 13, padding: '10px 6px', margin: 0 }}>Nada aqui.</p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Grade({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -670,38 +809,6 @@ function Filtro({
   )
 }
 
-function Passo({
-  rotulo,
-  ativo,
-  aoClicar,
-}: {
-  rotulo: string
-  ativo: boolean
-  aoClicar: () => void
-}) {
-  return (
-    <button
-      onClick={aoClicar}
-      disabled={!ativo}
-      aria-label={rotulo === '‹' ? 'Página anterior' : 'Próxima página'}
-      style={{
-        border: 0,
-        background: 'var(--cinza-bg)',
-        color: 'var(--text-2)',
-        borderRadius: 8,
-        width: 30,
-        height: 30,
-        fontSize: 16,
-        lineHeight: 1,
-        cursor: ativo ? 'pointer' : 'default',
-        opacity: ativo ? 1 : 0.35,
-      }}
-    >
-      {rotulo}
-    </button>
-  )
-}
-
 export default function Painel({
   linhas,
   aoVivo,
@@ -719,18 +826,10 @@ export default function Painel({
   const [cor, setCor] = useState<Cor | null>(null)
   const [curador, setCurador] = useState('')
   const [proprietario, setProprietario] = useState('')
-  const [etapa, setEtapa] = useState('')
   const [semDono, setSemDono] = useState(false)
   const [comTarefa, setComTarefa] = useState(false)
   const [alerta, setAlerta] = useState('')
   const [detalhe, setDetalhe] = useState<{ titulo: string; itens: Linha[] } | null>(null)
-  const [pagina, setPagina] = useState(0)
-
-  // Qualquer filtro muda o conjunto: ficar na página 5 de um recorte que agora
-  // tem 3 itens deixa a tela vazia sem explicação.
-  useEffect(() => {
-    setPagina(0)
-  }, [regua, cor, curador, proprietario, etapa, semDono, comTarefa, alerta])
 
   const daRegua = useMemo(() => linhas.filter((l) => l.regua === regua), [linhas, regua])
 
@@ -768,13 +867,7 @@ export default function Painel({
       (!alerta || l.alertas.some((a) => a.chave === alerta)),
   )
 
-  const porEtapa = useMemo(() => {
-    const c = new Map<string, number>()
-    for (const l of base) c.set(l.etapa, (c.get(l.etapa) ?? 0) + 1)
-    return [...c.entries()].sort((a, b) => b[1] - a[1])
-  }, [base])
-
-  const comEtapa = etapa ? base.filter((l) => l.etapa === etapa) : base
+  const comEtapa = base
 
 
   // A cor fica de fora da contagem de propósito: se entrasse, clicar em
@@ -787,9 +880,20 @@ export default function Painel({
 
   const visiveis = comEtapa.filter((l) => !cor || l.cor === cor)
 
-  const paginas = Math.max(1, Math.ceil(visiveis.length / POR_PAGINA))
-  const atual = Math.min(pagina, paginas - 1)
-  const naTela = visiveis.slice(atual * POR_PAGINA, (atual + 1) * POR_PAGINA)
+  // Uma coluna por etapa, na ordem do kanban do HubSpot. Dentro da coluna, o
+  // mais atrasado primeiro.
+  const colunas = useMemo(
+    () =>
+      Object.entries(SLA)
+        .sort(([, a], [, b]) => a.ordem - b.ordem)
+        .map(([id, r]) => ({
+          id,
+          label: r.label,
+          prazo: prazoEmTexto(r),
+          itens: visiveis.filter((l) => l.stage === id).sort((a, b) => b.dias - a.dias),
+        })),
+    [visiveis],
+  )
 
   // Ranking lê a aba inteira de propósito: se respeitasse o filtro de
   // proprietário, viraria uma linha só e deixaria de servir para escolher.
@@ -818,13 +922,12 @@ export default function Painel({
     setCor(null)
     setCurador('')
     setProprietario('')
-    setEtapa('')
     setSemDono(false)
     setComTarefa(false)
     setAlerta('')
   }
 
-  const filtrando = !!(cor || curador || proprietario || etapa || semDono || comTarefa || alerta)
+  const filtrando = !!(cor || curador || proprietario || semDono || comTarefa || alerta)
   const visiveisCores = CORES.filter(({ cor: c }) => c !== 'cinza' || contagem[c] > 0)
 
   return (
@@ -913,15 +1016,7 @@ export default function Painel({
         ))}
         </div>
 
-        {/* Tudo que refina vira select, do mesmo tipo e do mesmo tamanho. Antes
-            eram dez botões de três naturezas diferentes com a mesma aparência:
-            etapa, alerta e atributo pareciam a mesma coisa. */}
-        <Escolha
-          vazio="Etapa"
-          valor={etapa}
-          opcoes={porEtapa.map(([nome, n]) => ({ v: nome, r: `${nome} (${n})` }))}
-          aoMudar={setEtapa}
-        />
+        {/* Etapa nao entra aqui: no kanban a coluna ja e o filtro de etapa. */}
         <Filtro vazio="Curador" valor={curador} opcoes={curadores} aoMudar={setCurador} />
         <Filtro
           vazio="Proprietário"
@@ -1053,12 +1148,6 @@ export default function Painel({
         </Grupo>
       )}
 
-      <Horizonte
-        linhas={comEtapa}
-        regua={regua}
-        aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
-      />
-
       {detalhe && (
         <Detalhe
           titulo={detalhe.titulo}
@@ -1067,141 +1156,15 @@ export default function Painel({
         />
       )}
 
-      <Grade>
-        {naTela.map((l) => (
-          <a
-            key={l.id}
-            href={l.link}
-            target="_blank"
-            rel="noreferrer"
-            className="cartao"
-            style={{
-              display: 'block',
-              textDecoration: 'none',
-              color: 'inherit',
-              background: 'var(--card)',
-              border: '1px solid var(--line)',
-              borderRadius: 12,
-              padding: '13px 15px 12px',
-            }}
-          >
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 8,
-                marginBottom: 10,
-              }}
-            >
-              <span style={{ fontSize: 12, color: tarefa(l).cor, fontWeight: 500 }}>
-                {tarefa(l).texto}
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{dataBr(l.evento)}</span>
-            </span>
+      <Kanban colunas={colunas} />
 
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 7,
-                fontSize: 16,
-                fontWeight: 600,
-                letterSpacing: '-0.015em',
-                lineHeight: 1.25,
-                overflow: 'hidden',
-              }}
-            >
-              <Ponto cor={l.cor} tamanho={9} />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {l.cliente}
-              </span>
-            </span>
-            <span
-              style={{
-                display: 'block',
-                fontSize: 13,
-                color: 'var(--text-2)',
-                marginTop: 1,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {l.palestrante || '—'}
-            </span>
+      <Horizonte
+        linhas={comEtapa}
+        regua={regua}
+        aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
+      />
 
-            <span
-              style={{
-                display: 'block',
-                marginTop: 11,
-                paddingTop: 10,
-                borderTop: '1px solid var(--line)',
-                fontSize: 12,
-                color: 'var(--text-2)',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {l.etapa} · {l.diasNaEtapa}d parado ·{' '}
-              <span style={{ color: `var(--${l.cor})` }}>{prazo(l)}</span>
-            </span>
-            <span style={{ display: 'block', fontSize: 12, marginTop: 3, lineHeight: 1.5 }}>
-              <Pessoas l={l} />
-            </span>
 
-            {l.alertas.length > 0 && (
-              <span style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-                {l.alertas.map((a) => (
-                  <span
-                    key={a.chave}
-                    style={{
-                      background: 'var(--vermelho-bg)',
-                      color: 'var(--vermelho)',
-                      borderRadius: 6,
-                      padding: '2px 8px',
-                      fontSize: 11,
-                      fontWeight: 500,
-                    }}
-                  >
-                    {a.texto}
-                  </span>
-                ))}
-              </span>
-            )}
-          </a>
-        ))}
-      </Grade>
-
-      {visiveis.length === 0 && (
-        <p style={{ color: 'var(--text-3)', fontSize: 14 }}>Nenhum ticket com esse filtro.</p>
-      )}
-
-      {paginas > 1 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            margin: '20px 0 28px',
-            fontSize: 13,
-          }}
-        >
-          <span style={{ color: 'var(--text-3)' }}>
-            {atual * POR_PAGINA + 1}–{Math.min((atual + 1) * POR_PAGINA, visiveis.length)} de{' '}
-            {visiveis.length}
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Passo rotulo="‹" ativo={atual > 0} aoClicar={() => setPagina(atual - 1)} />
-            <span style={{ color: 'var(--text-2)', padding: '0 8px' }}>
-              {atual + 1} de {paginas}
-            </span>
-            <Passo rotulo="›" ativo={atual < paginas - 1} aoClicar={() => setPagina(atual + 1)} />
-          </span>
-        </div>
-      )}
 
       {/* Ranking no fim: é leitura de gestão, não a tarefa do dia. Em cima ele
           empurrava os tickets para baixo da dobra.
