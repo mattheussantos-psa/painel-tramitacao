@@ -10,7 +10,7 @@ export type Linha = {
   palestrante: string
   evento: string
   diasEvento: number
-  diasNaEtapa: number
+  diasNaEtapa: number | null
   diasTarefa: number | null
   alertas: { chave: string; texto: string }[]
   stage: string
@@ -385,8 +385,9 @@ function Horizonte({
                   fontSize: 14,
                   color: 'var(--text)',
                   cursor: f.total ? 'pointer' : 'default',
-                  textDecoration: f.total ? 'underline' : 'none',
-                  textDecorationColor: 'var(--text-3)',
+                  // Numa propriedade só: o React avisa quando o atalho e a
+                  // versão detalhada do mesmo valor mudam juntos no rerender.
+                  textDecoration: f.total ? 'underline var(--text-3)' : 'none',
                   textUnderlineOffset: 3,
                 }}
               >
@@ -557,111 +558,130 @@ function Matriz({
 }
 
 function Cartao({ l }: { l: Linha }) {
+  const t = tarefa(l)
   return (
-      <a
-        href={l.link}
-        target="_blank"
-        rel="noreferrer"
-        className="cartao"
+    <a
+      href={l.link}
+      target="_blank"
+      rel="noreferrer"
+      className="cartao"
+      style={{
+        display: 'block',
+        textDecoration: 'none',
+        color: 'inherit',
+        // O fundo tingido é o sinal. A barra vai como sombra interna e não
+        // como border-left: assim ela acompanha o raio do canto em vez de
+        // cortar reto nas pontas.
+        background: `var(--${l.cor}-bg)`,
+        boxShadow: `inset 3px 0 0 var(--${l.cor}-ponto)`,
+        border: '1px solid transparent',
+        borderRadius: 12,
+        padding: '11px 13px 11px 15px',
+      }}
+    >
+      {/* O prazo é a informação que justifica o card existir, então abre. */}
+      <span
         style={{
-          display: 'block',
-          textDecoration: 'none',
-          color: 'inherit',
-          // O fundo tingido é o sinal. A barra vai como sombra interna e não
-          // como border-left: assim ela acompanha o raio do canto em vez de
-          // cortar reto nas pontas.
-          background: `var(--${l.cor}-bg)`,
-          boxShadow: `inset 3px 0 0 var(--${l.cor}-ponto)`,
-          border: '1px solid transparent',
-          borderRadius: 12,
-          padding: '13px 15px 12px 17px',
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 8,
+          marginBottom: 7,
         }}
       >
         <span
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            marginBottom: 10,
-          }}
-        >
-          <span style={{ fontSize: 12, color: tarefa(l).cor, fontWeight: 500 }}>
-            {tarefa(l).texto}
-          </span>
-          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{dataBr(l.evento)}</span>
-        </span>
-
-        <span
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-            fontSize: 16,
-            fontWeight: 600,
-            letterSpacing: '-0.015em',
-            lineHeight: 1.25,
-            overflow: 'hidden',
-          }}
-        >
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {l.cliente}
-          </span>
-        </span>
-        <span
-          style={{
-            display: 'block',
             fontSize: 13,
-            color: 'var(--text-2)',
-            marginTop: 1,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
+            fontWeight: 600,
+            color: `var(--${l.cor})`,
             whiteSpace: 'nowrap',
           }}
         >
-          {l.palestrante || '—'}
+          {prazo(l)}
         </span>
+        <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
+          evento {dataBr(l.evento)}
+        </span>
+      </span>
 
-        <span
-          style={{
-            display: 'block',
-            marginTop: 11,
-            paddingTop: 10,
-            borderTop: '1px solid var(--linha-sobre-cor)',
-            fontSize: 12,
-            color: 'var(--text-2)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {l.diasNaEtapa}d parado ·{' '}
-          <b style={{ color: `var(--${l.cor})`, fontWeight: 600 }}>{prazo(l)}</b>
-        </span>
-        <span style={{ display: 'block', fontSize: 12, marginTop: 3, lineHeight: 1.5 }}>
-          <Pessoas l={l} />
-        </span>
+      {/* Deixa quebrar em duas linhas: cortar o nome do cliente no meio é o
+          que mais atrapalha a leitura numa coluna estreita. */}
+      <span
+        style={{
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          fontSize: 14,
+          fontWeight: 600,
+          letterSpacing: '-0.01em',
+          lineHeight: 1.3,
+        }}
+      >
+        {l.cliente}
+      </span>
+      <span
+        style={{
+          display: 'block',
+          fontSize: 12,
+          color: 'var(--text-2)',
+          marginTop: 1,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {l.palestrante || '—'}
+      </span>
 
-        {l.alertas.length > 0 && (
-          <span style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-            {l.alertas.map((a) => (
-              <span
-                key={a.chave}
-                style={{
-                  background: 'var(--card)',
-                  color: 'var(--vermelho)',
-                  borderRadius: 6,
-                  padding: '2px 8px',
-                  fontSize: 11,
-                  fontWeight: 500,
-                }}
-              >
-                {a.texto}
-              </span>
-            ))}
-          </span>
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          flexWrap: 'wrap',
+          marginTop: 9,
+          paddingTop: 8,
+          borderTop: '1px solid var(--linha-sobre-cor)',
+          fontSize: 11,
+          color: 'var(--text-3)',
+        }}
+      >
+        <span>{l.diasNaEtapa === null ? 'sem data de entrada' : `${l.diasNaEtapa}d parado`}</span>
+        {/* Tarefa só aparece quando existe: 94% dos tickets não têm nenhuma, e
+            repetir "sem tarefa" em todo card gastava a melhor linha do topo. */}
+        {l.diasTarefa !== null && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span style={{ color: t.cor }}>{t.texto}</span>
+          </>
         )}
-      </a>
+      </span>
+
+      <span style={{ display: 'block', fontSize: 11, marginTop: 2, lineHeight: 1.45 }}>
+        <Pessoas l={l} />
+      </span>
+
+      {l.alertas.length > 0 && (
+        <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 7 }}>
+          {l.alertas.map((a) => (
+            <span
+              key={a.chave}
+              style={{
+                background: 'var(--card)',
+                color: 'var(--vermelho)',
+                borderRadius: 5,
+                padding: '2px 7px',
+                fontSize: 10,
+                fontWeight: 600,
+              }}
+            >
+              {a.texto}
+            </span>
+          ))}
+        </span>
+      )}
+    </a>
   )
 }
 

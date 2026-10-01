@@ -38,6 +38,8 @@ export const SLA: Record<string, Regra> = {
   '1088360204': { label: 'Aguardando Onboarding', ordem: 1, tipo: 'dias', dias: 7 },
   '1088360205': { label: 'Em andamento', ordem: 2, tipo: 'dias', dias: 20 },
   '1448673032': { label: 'Aguardando Evento', ordem: 3, tipo: 'evento' },
+  '1088361911': { label: 'Pagamento Pós-Palestra', ordem: 4, tipo: 'dias', dias: 20 },
+  '1333136740': { label: 'Aguardando NF Palestrante', ordem: 5, tipo: 'dias', dias: 20 },
 }
 
 // Ficam fora do painel por decisao do CS: nao ha prazo acordado para elas e
@@ -45,8 +47,6 @@ export const SLA: Record<string, Regra> = {
 // que mude de etapa enquanto a pagina esta aberta.
 export const FORA_DO_ESCOPO: Record<string, string> = {
   '1088360203': 'Etapa de conferencia',
-  '1088361911': 'Pagamento Pos-Palestra',
-  '1333136740': 'Aguardando NF Palestrante',
 }
 
 export const prazoEmTexto = (r: Regra) =>
@@ -195,8 +195,11 @@ export function diasParaEvento(t: Ticket, hoje: number = Date.now()) {
   return emDias(dia(t.evento), hojeEmDias(hoje))
 }
 
+// null quando falta hs_v2_date_entered_current_stage, que e 6% dos tickets.
+// Sem isso o card imprimia "NaNd parado".
 export function diasNaEtapa(t: Ticket, hoje: number = Date.now()) {
-  return emDias(hojeEmDias(hoje), dia(t.entrouEtapa))
+  const d = dia(t.entrouEtapa)
+  return Number.isFinite(d) ? emDias(hojeEmDias(hoje), d) : null
 }
 
 // Dias até a próxima atividade agendada. null quando não há nenhuma — que é o

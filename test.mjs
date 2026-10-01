@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { avaliar, alertas, iso, tarefaMaisUrgente, SLA, ENCERRADAS } from './lib/sinaleira.ts'
+import {
+  avaliar,
+  alertas,
+  diasNaEtapa,
+  iso,
+  tarefaMaisUrgente,
+  SLA,
+  ENCERRADAS,
+} from './lib/sinaleira.ts'
 
 // A API v3 manda "2026-09-30", a camada de relatório manda epoch em ms.
 // Assumir um formato só derrubou o painel em produção com "Invalid time value".
@@ -60,7 +68,16 @@ assert.equal(avaliar(t({ stage: '1088360205', evento: '2026-09-29' }), HOJE).reg
 
 for (const id of Object.keys(ENCERRADAS))
   assert.ok(!(id in SLA), `etapa encerrada ${id} nao devia ter prazo`)
-assert.equal(Object.keys(SLA).length, 3)
+assert.equal(Object.keys(SLA).length, 5)
+
+// As duas etapas de financeiro voltaram com prazo de 20 dias na etapa.
+for (const id of ['1088361911', '1333136740']) {
+  assert.equal(avaliar(t({ stage: id, entrouEtapa: '2026-09-20' }), HOJE).cor, 'verde')
+  const velho = avaliar(t({ stage: id, entrouEtapa: '2026-03-01' }), HOJE)
+  assert.equal(velho.cor, 'vermelho')
+  assert.equal(velho.dias, 192)
+  assert.equal(velho.vence, '2026-03-21')
+}
 
 // Todo ticket do snapshot recebe uma cor
 const snap = JSON.parse(readFileSync(new URL('./data/snapshot.json', import.meta.url), 'utf8'))
@@ -106,3 +123,9 @@ assert.deepEqual(A({ onboarding: '2026-09-28', evento: '2026-10-05' }), [], 'onb
 assert.deepEqual(A({ onboarding: '', evento: '2026-09-01' }), [], 'evento passado nao cobra briefing')
 
 console.log('ok — alertas de processo')
+
+// Ticket sem data de entrada na etapa: o card imprimia "NaNd parado".
+assert.equal(diasNaEtapa(t({ entrouEtapa: '' }), HOJE), null)
+assert.equal(diasNaEtapa(t({ entrouEtapa: '2026-09-20' }), HOJE), 9)
+
+console.log('ok — dias na etapa sem data')
