@@ -318,61 +318,72 @@ function Horizonte({
   if (!total) return null
 
   return (
-    <Grupo style={{ marginTop: 28, marginBottom: 18, padding: "18px 20px 20px" }}>
+    <Grupo style={{ marginTop: 18, marginBottom: 18, padding: '14px 18px 16px' }}>
+      {/* Titulo, total e legenda numa linha so. Em pilha, os dois horizontes
+          somavam mais de 500px antes da primeira barra. */}
       <div
         style={{
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: '0.07em',
-          textTransform: 'uppercase',
-          color: 'var(--text-2)',
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 16,
+          flexWrap: 'wrap',
+          marginBottom: 12,
         }}
       >
-        {chapeu}
-      </div>
-      <div
-        style={{
-          fontFamily: 'var(--display)',
-          fontSize: 40,
-          fontWeight: 800,
-          lineHeight: 1.1,
-          marginTop: 2,
-        }}
-      >
-        {total}
-      </div>
-      <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 14 }}>
-        {descricao}
-      </div>
-
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
-        {CORES.filter((c) => faixas.some((f) => f.por[c.cor] > 0)).map(({ cor, label }) => (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
           <span
-            key={cor}
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 12,
-              color: 'var(--text-2)',
+              fontFamily: 'var(--display)',
+              fontSize: 28,
+              fontWeight: 800,
+              lineHeight: 1,
             }}
           >
+            {total}
+          </span>
+          <span style={{ minWidth: 0 }}>
             <span
               style={{
-                width: 10,
-                height: 10,
-                borderRadius: 3,
-                background: `var(--${cor}-ponto)`,
+                display: 'block',
+                fontSize: 11,
+                fontWeight: 600,
+                letterSpacing: '0.07em',
+                textTransform: 'uppercase',
               }}
-            />
-            {label}
+            >
+              {chapeu}
+            </span>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>
+              {descricao}
+            </span>
           </span>
-        ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 13, flexWrap: 'wrap' }}>
+          {CORES.filter((c) => faixas.some((f) => f.por[c.cor] > 0)).map(({ cor, label }) => (
+            <span
+              key={cor}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                fontSize: 11,
+                color: 'var(--text-2)',
+              }}
+            >
+              <span
+                style={{ width: 9, height: 9, borderRadius: 3, background: `var(--${cor}-ponto)` }}
+              />
+              {label}
+            </span>
+          ))}
+        </div>
       </div>
 
       {faixas.map((f) => {
         return (
-          <div key={f.rotulo} style={{ marginBottom: 14 }}>
+          <div key={f.rotulo} style={{ marginBottom: 9 }}>
             <div
               style={{
                 display: 'flex',
@@ -418,8 +429,8 @@ function Horizonte({
             <div
               style={{
                 display: 'flex',
-                height: 26,
-                borderRadius: 6,
+                height: 22,
+                borderRadius: 5,
                 overflow: 'hidden',
                 background: 'var(--cinza-bg)',
               }}
@@ -706,13 +717,39 @@ function Kanban({ colunas }: { colunas: { id: string; label: string; prazo: stri
     >
       {colunas.map((col) => (
         <div key={col.id} style={{ background: 'var(--cinza-bg)', borderRadius: 14, padding: 10, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, padding: '4px 6px 10px' }}>
-            <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {col.label}
-            </span>
-            <span style={{ fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>{col.itens.length}</span>
+          {/* Nome e contagem andam juntos: a contagem jogada na outra ponta
+              da coluna obrigava a varrer a linha para ligar uma coisa a outra. */}
+          <div style={{ padding: '5px 6px 11px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  letterSpacing: '-0.01em',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {col.label}
+              </span>
+              <span
+                style={{
+                  flexShrink: 0,
+                  background: 'var(--card)',
+                  color: 'var(--text-2)',
+                  borderRadius: 20,
+                  padding: '1px 8px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {col.itens.length}
+              </span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>{col.prazo}</div>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-3)', padding: '0 6px 10px' }}>{col.prazo}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 'calc(100vh - 220px)', overflowY: 'auto', overflowX: 'hidden' }}>
             {col.itens.map((l) => (
               <Cartao key={l.id} l={l} />
@@ -1121,89 +1158,93 @@ export default function Painel({
         aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
       />
 
-      {/* A partir daqui tudo e do quadro: a aba recorta so o kanban, e os
-          contadores de cor sao do recorte que esta na tela. */}
+      {/* Barra do quadro: a aba a esquerda, os contadores a direita, na mesma
+          altura. Os contadores ocupavam 160px com os numeros maiores da tela —
+          sao resumo, nao conteudo, e empurravam o board para fora da dobra. */}
       <div
         style={{
-          display: 'inline-flex',
-          background: 'var(--cinza-bg)',
-          borderRadius: 8,
-          padding: 2,
-          height: 34,
-          marginRight: 4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          rowGap: 10,
+          flexWrap: 'wrap',
+          marginBottom: 12,
         }}
       >
-      {(
-        [
-          ['pre', 'Antes do evento'],
-          ['pos', 'Depois do evento'],
-        ] as const
-      ).map(([v, label]) => (
-        <button
-          key={v}
-          onClick={() => {
-            setRegua(v)
-            limpar()
-          }}
+        <div
           style={{
-            border: 0,
-            borderRadius: 6,
-            padding: '0 14px',
-            fontSize: 13,
-            fontWeight: regua === v ? 500 : 400,
-            background: regua === v ? 'var(--card)' : 'transparent',
-            color: regua === v ? 'var(--text)' : 'var(--text-2)',
+            display: 'inline-flex',
+            background: 'var(--cinza-bg)',
+            borderRadius: 8,
+            padding: 2,
+            height: 34,
           }}
         >
-          {label}
-        </button>
-      ))}
-      </div>
-
-      {/* Números sobre superfície neutra, cor só no ponto e no algarismo. A
-          versão anterior pintava três retângulos inteiros de cor semântica. */}
-      <Grupo style={{ marginBottom: 18 }}>
-        <div style={{ display: 'flex' }}>
-          {visiveisCores.map(({ cor: c, label }, i) => (
+          {(
+            [
+              ['pre', 'Antes do evento'],
+              ['pos', 'Depois do evento'],
+            ] as const
+          ).map(([v, label]) => (
             <button
-              key={c}
-              onClick={() => setCor(cor === c ? null : c)}
+              key={v}
+              onClick={() => {
+                setRegua(v)
+                setCor(null)
+              }}
               style={{
-                flex: 1,
                 border: 0,
-                borderLeft: i ? '1px solid var(--line)' : 0,
-                background: cor === c ? 'var(--cinza-bg)' : 'transparent',
-                padding: '14px 18px',
-                textAlign: 'left',
+                borderRadius: 6,
+                padding: '0 14px',
+                fontSize: 13,
+                fontWeight: regua === v ? 500 : 400,
+                background: regua === v ? 'var(--card)' : 'transparent',
+                color: regua === v ? 'var(--text)' : 'var(--text-2)',
               }}
             >
-              <span
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 13,
-                  color: 'var(--text-2)',
-                }}
-              >
-                <Ponto cor={c} />
-                {label}
-              </span>
-              <div
-                style={{
-                  fontSize: 30,
-                  fontWeight: 600,
-                  letterSpacing: '-0.02em',
-                  marginTop: 2,
-                  color: `var(--${c})`,
-                }}
-              >
-                {contagem[c]}
-              </div>
+              {label}
             </button>
           ))}
         </div>
-      </Grupo>
+
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {visiveisCores.map(({ cor: c, label }) => {
+            const marcado = cor === c
+            return (
+              <button
+                key={c}
+                onClick={() => setCor(marcado ? null : c)}
+                aria-pressed={marcado}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  height: 34,
+                  padding: '0 13px',
+                  border: 0,
+                  borderRadius: 8,
+                  fontSize: 13,
+                  background: marcado ? `var(--${c}-bg)` : 'var(--cinza-bg)',
+                  boxShadow: marcado ? `inset 0 0 0 1.5px var(--${c}-ponto)` : 'none',
+                }}
+              >
+                <Ponto cor={c} />
+                <b
+                  style={{
+                    fontWeight: 600,
+                    color: `var(--${c})`,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  {contagem[c]}
+                </b>
+                <span style={{ color: 'var(--text-2)' }}>{label.toLowerCase()}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       <Kanban colunas={colunas} />
 
