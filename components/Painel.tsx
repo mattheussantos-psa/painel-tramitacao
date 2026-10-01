@@ -64,7 +64,7 @@ const dataBr = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '—
 // Só 6% dos tickets têm atividade futura agendada. "Sem tarefa" não é campo
 // vazio a esconder: é ticket que ninguém marcou para tocar.
 function tarefa(l: Linha) {
-  if (l.diasTarefa === null) return { texto: 'sem tarefa', cor: 'var(--text-3)' }
+  if (l.diasTarefa === null) return { texto: 'sem tarefa', cor: 'var(--text-2)' }
   if (l.diasTarefa < 0)
     return { texto: `tarefa venceu há ${-l.diasTarefa}d`, cor: 'var(--vermelho)' }
   if (l.diasTarefa === 0) return { texto: 'tarefa hoje', cor: 'var(--amarelo)' }
@@ -599,7 +599,7 @@ function Cartao({ l }: { l: Linha }) {
         >
           {prazo(l)}
         </span>
-        <span style={{ fontSize: 11, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 11, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
           evento {dataBr(l.evento)}
         </span>
       </span>
@@ -624,7 +624,7 @@ function Cartao({ l }: { l: Linha }) {
         style={{
           display: 'block',
           fontSize: 12,
-          color: 'var(--text-2)',
+          color: 'var(--text)',
           marginTop: 1,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -644,7 +644,7 @@ function Cartao({ l }: { l: Linha }) {
           paddingTop: 8,
           borderTop: '1px solid var(--linha-sobre-cor)',
           fontSize: 11,
-          color: 'var(--text-3)',
+          color: 'var(--text-2)',
         }}
       >
         <span>{l.diasNaEtapa === null ? 'sem data de entrada' : `${l.diasNaEtapa}d parado`}</span>
@@ -764,8 +764,10 @@ function Pessoas({ l }: { l: Linha }) {
             whiteSpace: 'nowrap',
           }}
         >
-          <span style={{ color: 'var(--text-3)' }}>{papel} </span>
-          <span style={{ color: inativo ? 'var(--vermelho)' : 'var(--text-2)' }}>
+          {/* Sem cinza no card: o fundo tingido come o --text-3 e o rodape
+              vira decoracao em vez de informacao. */}
+          <span style={{ color: 'var(--text-2)' }}>{papel} </span>
+          <span style={{ color: inativo ? 'var(--vermelho)' : 'var(--text)' }}>
             {nome}
             {inativo ? ' · inativo' : ''}
           </span>
@@ -1182,13 +1184,13 @@ export default function Painel({
         />
       )}
 
-      <Kanban colunas={colunas} />
-
       <Horizonte
         linhas={comEtapa}
         regua={regua}
         aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
       />
+
+      <Kanban colunas={colunas} />
 
 
 
