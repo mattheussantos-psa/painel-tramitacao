@@ -1,6 +1,6 @@
 import { carregar, nomeCurador, curadorInativo, linkTicket } from '@/lib/hubspot'
+import { avaliarEtapa } from '@/lib/relogios'
 import {
-  avaliar,
   cliente,
   palestrante,
   diasParaEvento,
@@ -56,7 +56,7 @@ export default async function Quadro({ quadro }: { quadro: Quadro }) {
 
   const linhas = tickets
     .map((t) => {
-      const a = avaliar(t, hoje, quadro.sla)
+      const a = avaliarEtapa(t, hoje, quadro.sla)
       return {
         id: t.id,
         link: linkTicket(t.id),

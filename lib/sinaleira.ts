@@ -12,7 +12,27 @@ export type Ticket = {
   onboarding: string
   statusContrato: string
   entrouEtapa: string
+  // Campos que só os relógios da Tramitação leem. Vazio é o normal fora das
+  // etapas que usam relógio — e vazio vira cinza, nunca verde.
+  logistica: string
+  tipoEmpresa: string
+  formatoContrato: string
+  prazoAssinatura: string
+  dataAssinatura: string
+  prazoBriefing: string
+  callBriefing: string
+  reunioes: { titulo: string; inicio: string; desfecho: string }[]
 }
+
+// Preenche o que falta num ticket vindo do snapshot, que é anterior aos
+// campos de relógio. Sem isso o fallback sem token nem compila.
+export const completar = (t: Partial<Ticket>): Ticket => ({
+  id: '', subject: '', stage: '', evento: '', curador: null, proprietario: null,
+  proximaTarefa: '', onboarding: '', statusContrato: '', entrouEtapa: '',
+  logistica: '', tipoEmpresa: '', formatoContrato: '', prazoAssinatura: '',
+  dataAssinatura: '', prazoBriefing: '', callBriefing: '', reunioes: [],
+  ...t,
+})
 
 // ponytail: esta é a régua de calibração. Os prazos são proposta minha, não
 // regra medida no HubSpot — ajuste aqui, o cálculo não precisa mudar.
@@ -32,6 +52,9 @@ export type Regra = { label: string; ordem: number } & (
   | { tipo: 'dias'; dias: number }
   | { tipo: 'evento' }
   | { tipo: 'sem-prazo' }
+  // Etapa medida pelos relógios da Tramitação: o prazo não é tempo parado, é
+  // distância até um marco, e a etapa pode ter mais de um correndo.
+  | { tipo: 'relogio' }
 )
 
 // Ordem e rótulos espelham o board do HubSpot, lidos da API em 02/10/2026.
@@ -41,9 +64,9 @@ export type Regra = { label: string; ordem: number } & (
 // Os prazos das três novas ainda não foram acordados: ficam 'sem-prazo', que
 // é cinza pedindo número, em vez de verde por omissão.
 export const SLA: Record<string, Regra> = {
-  '1450325173': { label: 'Logística', ordem: 1, tipo: 'sem-prazo' },
-  '1450325174': { label: 'Contrato', ordem: 2, tipo: 'sem-prazo' },
-  '1450325175': { label: 'Briefing', ordem: 3, tipo: 'sem-prazo' },
+  '1450325173': { label: 'Logística', ordem: 1, tipo: 'relogio' },
+  '1450325174': { label: 'Contrato', ordem: 2, tipo: 'relogio' },
+  '1450325175': { label: 'Briefing', ordem: 3, tipo: 'relogio' },
   '1088360204': { label: 'Aguardando Onboarding', ordem: 4, tipo: 'dias', dias: 7 },
   '1088360205': { label: 'Em andamento', ordem: 5, tipo: 'dias', dias: 20 },
   '1448673032': { label: 'Aguardando Evento', ordem: 6, tipo: 'evento' },
@@ -59,7 +82,21 @@ export const FORA_DO_ESCOPO: Record<string, string> = {
 }
 
 export const prazoEmTexto = (r: Regra) =>
-  r.tipo === 'dias' ? `${r.dias} dias na etapa` : r.tipo === 'evento' ? 'até o evento' : 'sem prazo'
+  r.tipo === 'dias'
+    ? `${r.dias} dias na etapa`
+    : r.tipo === 'evento'
+      ? 'até o evento'
+      : r.tipo === 'relogio'
+        ? REGRA_EM_TEXTO[r.label] ?? 'por marco'
+        : 'sem prazo'
+
+// Resumo da regra para o cabeçalho da coluna. Fica aqui e não em relogios.ts
+// para o painel não precisar importar a lógica só para escrever um subtítulo.
+const REGRA_EM_TEXTO: Record<string, string> = {
+  'Logística': 'aprovação em 24h após o onboarding',
+  'Contrato': 'envio 1 dia útil após o onboarding · assinatura na data do prazo',
+  'Briefing': 'agendar entre D-30 e D-25 · realizar entre D-15 e D-10',
+}
 
 // As outras 4 etapas do CS têm closed_date preenchido — ticket encerrado, sai
 // da sinaleira. Aprovação Arquivo (422) e Stand by (27) entram aqui porque
@@ -118,6 +155,9 @@ export type Avaliacao = {
   dias: number
   etapa: string
   vence: string
+  // Frase pronta quando a cor vem de relógio: "assinatura · 6d depois do
+  // prazo". Sem ela o card teria que adivinhar o que o número significa.
+  texto?: string
 }
 
 const brasil = (ms: number) => new Date(ms).toISOString().slice(0, 10)
@@ -137,11 +177,13 @@ export function avaliar(
   // Etapa fora da tabela, ou sem prazo acordado, não pode virar verde por
   // omissão. Fica cinza, e o número que sobe é o tempo parado, para o mais
   // esquecido aparecer primeiro mesmo sem régua.
-  if (!regra || regra.tipo === 'sem-prazo') {
+  if (!regra || regra.tipo === 'sem-prazo' || regra.tipo === 'relogio') {
     return {
       cor: 'cinza',
       regua,
-      dias: emDias(agora, dia(t.entrouEtapa)),
+      // Sem data de entrada o tempo parado nao existe: 0 em vez de NaN, que
+      // vazava para a ordenacao da matriz.
+      dias: Number.isFinite(dia(t.entrouEtapa)) ? emDias(agora, dia(t.entrouEtapa)) : 0,
       etapa: regra?.label ?? FORA_DO_ESCOPO[t.stage] ?? ENCERRADAS[t.stage] ?? t.stage,
       vence: '',
     }

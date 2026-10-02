@@ -34,6 +34,7 @@ export type Linha = {
   dias: number
   etapa: string
   vence: string
+  texto?: string
 }
 
 // Todo controle da barra usa esta medida. Antes o segmented, os selects e os
@@ -89,6 +90,9 @@ function tarefa(l: Linha) {
 }
 
 function prazo(l: Linha) {
+  // Etapa medida por relogio traz a frase pronta: o numero sozinho nao diz se
+  // conta desde o onboarding, desde a assinatura ou ate o evento.
+  if (l.texto) return l.texto
   if (l.cor === 'cinza') return 'sem prazo'
   if (l.dias > 0) return `${l.dias}d de atraso`
   if (l.dias === 0) return 'vence hoje'

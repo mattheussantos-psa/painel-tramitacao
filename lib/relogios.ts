@@ -8,7 +8,7 @@
 //
 // Nada aqui é aplicado em produção: serve à simulação sobre dados reais do CS.
 
-import { hojeEmDias } from './sinaleira.ts'
+import { avaliar, hojeEmDias, type Avaliacao, type Regra, type Ticket } from './sinaleira.ts'
 
 export type Cor = 'verde' | 'amarelo' | 'vermelho'
 
@@ -19,26 +19,11 @@ export type Cor = 'verde' | 'amarelo' | 'vermelho'
 // 'bloqueado'   — o relógio não existe: falta campo no HubSpot para medi-lo
 export type Estado = Cor | 'nao-aplica' | 'nao-iniciado' | 'sem-dado' | 'concluido' | 'bloqueado'
 
-export type TicketSim = {
-  id: string
-  subject: string
-  stage: string
-  proprietario: string | null
-  evento: string
-  logistica: string
-  tipoEmpresa: string
-  formatoContrato: string
-  onboarding: string
-  prazoAssinatura: string
-  dataAssinatura: string
-  statusContrato: string
-  dataFaturamento: string
-  dataEmissao: string
-  prazoBriefing: string
-  callBriefing: string
-  // O briefing passa a ser marcado como reunião a partir do ticket, igual ao
-  // que já se faz em negócio. Então o marco é a reunião, não o campo de data.
-  reunioes: { titulo: string; inicio: string; desfecho: string }[]
+// O mesmo ticket do painel. Os dois campos de faturamento são opcionais
+// porque o CS não tem etapa de Faturamento — só a simulação os usa.
+export type TicketSim = Ticket & {
+  dataFaturamento?: string
+  dataEmissao?: string
 }
 
 // Como separar a reunião de briefing das outras associadas ao ticket. Hoje
@@ -61,13 +46,13 @@ export type Veredito = {
 }
 
 const DIA = 86400000
-const dia = (d: string) => Date.parse(d.slice(0, 10) + 'T00:00:00Z')
-const tem = (d: string) => !!d && Number.isFinite(dia(d))
+const dia = (d: string | undefined) => Date.parse(String(d ?? '').slice(0, 10) + 'T00:00:00Z')
+const tem = (d: string | undefined) => !!d && Number.isFinite(dia(d))
 const emDias = (a: number, b: number) => Math.round((a - b) / DIA)
 
 // Dias úteis entre duas datas, só seg-sex. Feriado nacional não entra: exigiria
 // calendário mantido à mão, e a pergunta está aberta com o CS.
-export function diasUteis(de: string, ate: number) {
+export function diasUteis(de: string | undefined, ate: number) {
   let n = 0
   for (let t = dia(de) + DIA; t <= ate; t += DIA) {
     const d = new Date(t).getUTCDay()
@@ -270,3 +255,51 @@ export const ORGAO_PUBLICO = 'Órgão Público'
 // interveniente (Cliente x PSA x Palestrante) a minuta individual cai.
 export const EXIGE_MINUTA_PALESTRANTE = (formato: string) =>
   /100% PSA/.test(formato) && !/x Palestrante/.test(formato)
+
+const PESO: Record<string, number> = { vermelho: 3, amarelo: 2, verde: 1 }
+
+// Uma etapa pode ter dois relógios correndo, e o card tem uma cor só: manda o
+// pior. O texto diz qual deles, senão o número não significa nada.
+// Relógio bloqueado não vira verde por omissão — devolve null, que o painel
+// pinta de cinza.
+export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
+  let cor: Cor | null = null
+  let texto = ''
+  let fechado = false
+  for (const rel of RELOGIOS) {
+    if (rel.etapa !== etapa) continue
+    const v = rel.ver(t, hoje)
+    if (!PESO[v.estado]) continue
+    // Empate de cor: ganha o relógio que tem marco de conclusão. Com os dois
+    // vermelhos o card dizia "envio do contrato", que é o relógio incapaz de
+    // saber se foi enviado — enquanto "assinatura · 9d depois do prazo" é fato.
+    const melhor =
+      !cor ||
+      PESO[v.estado] > PESO[cor] ||
+      (PESO[v.estado] === PESO[cor] && rel.confianca === 'fechado' && !fechado)
+    if (melhor) {
+      cor = v.estado as Cor
+      fechado = rel.confianca === 'fechado'
+      texto = `${rel.nome.toLowerCase()} · ${v.texto}`
+    }
+  }
+  return cor ? { cor, texto } : null
+}
+
+// Porta única de avaliação do painel: etapa com prazo em dias segue pela régua
+// do CS, etapa com relógio passa pelos marcos da Tramitação. A régua pré/pós e
+// o tempo parado vêm de avaliar() nos dois casos, para não haver duas contas
+// do mesmo número.
+export function avaliarEtapa(
+  t: TicketSim,
+  hoje: number,
+  sla: Record<string, Regra>,
+): Avaliacao {
+  const base = avaliar(t, hoje, sla)
+  const regra = sla[t.stage]
+  if (regra?.tipo !== 'relogio') return base
+
+  const s = corDaEtapa(t, regra.label, hoje)
+  if (s) return { ...base, cor: s.cor, texto: s.texto }
+  return { ...base, texto: 'sem prazo nesta etapa' }
+}

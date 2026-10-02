@@ -1,4 +1,4 @@
-import { QUADROS, iso, tarefaMaisUrgente, type Quadro, type Tarefa, type Ticket } from './sinaleira'
+import { QUADROS, completar, iso, tarefaMaisUrgente, type Quadro, type Tarefa, type Ticket } from './sinaleira'
 import snapshot from '@/data/snapshot.json'
 import curadores from '@/data/curadores.json'
 
@@ -12,6 +12,14 @@ const PROPS = [
   'hs_nextactivitydate',
   'data_de_realizacao_do_onboarding',
   'status_do_contrato',
+  // Lidos pelos relogios das etapas Logistica, Contrato e Briefing.
+  'logistica_sera_organizada_pela_psa_',
+  'tipo_de_empresa_contratante',
+  'formato_de_contrato__ganho_',
+  'assinar_contrato',
+  'data_de_assinatura_do_contrato',
+  'data_para_realizacao_de_briefing',
+  'data_e_hora_da_call_de_briefing',
 ]
 
 export type Owner = { nome: string; inativo: boolean }
@@ -101,7 +109,7 @@ async function buscarAoVivo(
         ignorados++
         continue
       }
-      tickets.push({
+      tickets.push(completar({
         id: r.id,
         subject: p.subject ?? '(sem assunto)',
         stage: p.hs_pipeline_stage,
@@ -114,7 +122,14 @@ async function buscarAoVivo(
         // Sem cair na data do evento: com prazo por tempo na etapa, isso
         // afirmaria uma entrada que nao houve. Vazio vira cinza na avaliacao.
         entrouEtapa: iso(p.hs_v2_date_entered_current_stage),
-      })
+        logistica: p.logistica_sera_organizada_pela_psa_ ?? '',
+        tipoEmpresa: p.tipo_de_empresa_contratante ?? '',
+        formatoContrato: p.formato_de_contrato__ganho_ ?? '',
+        prazoAssinatura: iso(p.assinar_contrato),
+        dataAssinatura: iso(p.data_de_assinatura_do_contrato),
+        prazoBriefing: iso(p.data_para_realizacao_de_briefing),
+        callBriefing: iso(p.data_e_hora_da_call_de_briefing),
+      }))
     }
     after = pagina.paging?.next?.after
   } while (after)
@@ -224,7 +239,7 @@ async function buscarTudo(q: Quadro): Promise<Fonte> {
   // melhor vazio e dizendo o motivo do que mostrar ticket de outro pipeline.
   if (!token) {
     return {
-      tickets: q.slug === 'cs' ? (snapshot.tickets as Ticket[]) : [],
+      tickets: q.slug === 'cs' ? snapshot.tickets.map((t) => completar(t as Partial<Ticket>)) : [],
       aviso: q.slug === 'cs' ? undefined : 'Sem HUBSPOT_TOKEN: este quadro só existe ao vivo.',
       owners: ownersDoSnapshot(),
       aoVivo: false,

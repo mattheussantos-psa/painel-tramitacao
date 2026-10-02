@@ -10,7 +10,7 @@ import {
   ENCERRADAS,
   QUADROS,
 } from './lib/sinaleira.ts'
-import { RELOGIOS, diasUteis, EXIGE_MINUTA_PALESTRANTE } from './lib/relogios.ts'
+import { RELOGIOS, avaliarEtapa, diasUteis, EXIGE_MINUTA_PALESTRANTE } from './lib/relogios.ts'
 
 // A API v3 manda "2026-09-30", a camada de relatório manda epoch em ms.
 // Assumir um formato só derrubou o painel em produção com "Invalid time value".
@@ -76,9 +76,7 @@ assert.equal(Object.keys(SLA).length, 8)
 // tickets de "Em andamento". Sem elas na tabela o painel perdia 152 tickets.
 for (const id of ['1450325173', '1450325174', '1450325175']) {
   assert.ok(id in SLA, 'etapa nova precisa estar no quadro do CS')
-  const v = avaliar(t({ stage: id, entrouEtapa: '2026-03-01' }), HOJE)
-  assert.equal(v.cor, 'cinza', 'sem prazo acordado nao vira verde por omissao')
-  assert.equal(v.dias, 212, 'cinza mostra o tempo parado')
+  assert.equal(SLA[id].tipo, 'relogio', 'essas tres medem marco, nao tempo parado')
 }
 
 // As duas etapas de financeiro voltaram com prazo de 20 dias na etapa.
@@ -226,3 +224,57 @@ assert.equal(EXIGE_MINUTA_PALESTRANTE('MC (Cliente x PSA) = 100% PSA'), true)
 assert.equal(EXIGE_MINUTA_PALESTRANTE('MC (Cliente x PSA x Palestrante)'), false)
 
 console.log('ok — relogios da Tramitacao')
+
+// ---- as tres etapas do CS medidas por relogio ----
+// Logistica, Contrato e Briefing nao medem tempo parado: medem distancia ate
+// um marco. A cor da coluna e a do pior relogio que corre naquela etapa.
+const E = (over) => avaliarEtapa(T({ entrouEtapa: '2026-09-01', ...over }), HOJE, QUADROS.cs.sla)
+const LOG = '1450325173', CTR = '1450325174', BRF = '1450325175'
+
+// Logistica: 24h apos o onboarding, e so para quem tem reembolso do cliente.
+const log = (onboarding, logistica = REEMBOLSO) => E({ stage: LOG, logistica, onboarding, evento: '2026-10-20' })
+assert.equal(log('2026-09-28').cor, 'verde', '1 dia')
+assert.equal(log('2026-09-27').cor, 'amarelo', '2 dias')
+assert.equal(log('2026-09-25').cor, 'vermelho', '4 dias')
+assert.equal(log('2026-09-28', 'Sim, com custo para PSA').cor, 'cinza', 'custo PSA nao tem prazo')
+assert.equal(log('2026-09-28', 'Evento Online').cor, 'cinza', 'sem logistica, sem prazo')
+assert.match(log('2026-09-25').texto, /aceite da log/, 'o card diz de qual relogio veio a cor')
+
+// Contrato: envio em 1 dia util e assinatura contra a data do prazo, pior manda.
+const ctr = (over) => E({ stage: CTR, evento: '2026-11-20', ...over })
+assert.equal(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-10-10' }).cor, 'verde')
+assert.equal(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-09-20' }).cor, 'vermelho', 'assinatura vencida puxa a etapa')
+assert.match(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-09-20' }).texto, /assinatura/)
+// 25/09 e sexta: ate 29/09 sao 2 dias uteis, nao 4.
+assert.equal(ctr({ onboarding: '2026-09-25', prazoAssinatura: '2026-10-10' }).cor, 'amarelo', 'fim de semana nao conta')
+assert.equal(
+  ctr({ onboarding: '2026-01-05', prazoAssinatura: '2026-01-10', dataAssinatura: '2026-01-08' }).cor,
+  'cinza',
+  'assinado fecha os dois relogios da etapa',
+)
+
+// Briefing: so a data do evento manda.
+assert.equal(E({ stage: BRF, evento: '2026-10-27' }).cor, 'verde', 'D-28')
+assert.equal(E({ stage: BRF, evento: '2026-10-19' }).cor, 'amarelo', 'D-20')
+assert.equal(E({ stage: BRF, evento: '2026-10-09' }).cor, 'vermelho', 'D-10 ja perdeu o agendamento')
+assert.equal(
+  E({ stage: BRF, evento: '2026-10-09', reunioes: [{ titulo: 'Briefing', inicio: '2026-10-05', desfecho: '' }] }).cor,
+  'amarelo',
+  'agendado fecha um relogio, sobra o da realizacao',
+)
+
+// As cinco etapas antigas seguem por tempo na etapa, sem relogio.
+assert.equal(E({ stage: '1088360204', entrouEtapa: '2026-09-27', evento: '2026-11-01' }).cor, 'verde')
+assert.equal(E({ stage: '1088360204', entrouEtapa: '2026-09-01', evento: '2026-11-01' }).cor, 'vermelho')
+
+console.log('ok — etapas por relogio no CS')
+
+// Empate de cor entre envio e assinatura: o card tem que falar da assinatura,
+// que e o relogio com marco, e nao do envio, que nao sabe se foi enviado.
+assert.match(
+  E({ stage: CTR, evento: '2026-11-20', onboarding: '2026-08-01', prazoAssinatura: '2026-08-20' }).texto,
+  /assinatura/,
+  'na duvida o card mostra o relogio que tem prova',
+)
+
+console.log('ok — empate escolhe o relogio com marco')
