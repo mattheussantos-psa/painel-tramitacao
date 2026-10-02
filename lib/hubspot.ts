@@ -20,6 +20,8 @@ const PROPS = [
   'data_de_assinatura_do_contrato',
   'data_para_realizacao_de_briefing',
   'data_e_hora_da_call_de_briefing',
+  'data_de_faturamento',
+  'data_de_emissao',
 ]
 
 export type Owner = { nome: string; inativo: boolean }
@@ -129,6 +131,8 @@ async function buscarAoVivo(
         dataAssinatura: iso(p.data_de_assinatura_do_contrato),
         prazoBriefing: iso(p.data_para_realizacao_de_briefing),
         callBriefing: iso(p.data_e_hora_da_call_de_briefing),
+        dataFaturamento: iso(p.data_de_faturamento),
+        dataEmissao: iso(p.data_de_emissao),
       }))
     }
     after = pagina.paging?.next?.after

@@ -70,11 +70,11 @@ assert.equal(avaliar(t({ stage: '1088360205', evento: '2026-09-29' }), HOJE).reg
 
 for (const id of Object.keys(ENCERRADAS))
   assert.ok(!(id in SLA), `etapa encerrada ${id} nao devia ter prazo`)
-assert.equal(Object.keys(SLA).length, 8)
+assert.equal(Object.keys(SLA).length, 9)
 
 // Logistica, Contrato e Briefing entraram no CS em 02/10/2026 e levaram os
 // tickets de "Em andamento". Sem elas na tabela o painel perdia 152 tickets.
-for (const id of ['1450325173', '1450325174', '1450325175']) {
+for (const id of ['1450325173', '1450325174', '1450325175', '1450683393']) {
   assert.ok(id in SLA, 'etapa nova precisa estar no quadro do CS')
   assert.equal(SLA[id].tipo, 'relogio', 'essas tres medem marco, nao tempo parado')
 }
@@ -278,3 +278,21 @@ assert.match(
 )
 
 console.log('ok — empate escolhe o relogio com marco')
+
+// Faturamento entrou no CS em 02/10/2026 com a regra de 3 dias apos a
+// assinatura. Sem assinatura nao ha de onde contar: cinza, nao verde.
+const FAT = '1450683393'
+const fat = (over) => E({ stage: FAT, evento: '2026-11-20', ...over })
+assert.equal(fat({}).cor, 'cinza', 'contrato nao assinado nao inicia o relogio')
+assert.equal(fat({ dataAssinatura: '2026-09-28' }).cor, 'verde', '1 dia')
+assert.equal(fat({ dataAssinatura: '2026-09-26' }).cor, 'verde', '3 dias')
+assert.equal(fat({ dataAssinatura: '2026-09-24' }).cor, 'amarelo', '5 dias')
+assert.equal(fat({ dataAssinatura: '2026-09-20' }).cor, 'vermelho', '9 dias')
+assert.equal(
+  fat({ dataAssinatura: '2026-09-20', dataFaturamento: '2026-09-22' }).cor,
+  'cinza',
+  'despachado ao financeiro fecha o relogio',
+)
+assert.match(fat({ dataAssinatura: '2026-09-20' }).texto, /^emissão · /)
+
+console.log('ok — faturamento no CS')

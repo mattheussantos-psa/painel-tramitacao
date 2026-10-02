@@ -21,6 +21,8 @@ export type Ticket = {
   dataAssinatura: string
   prazoBriefing: string
   callBriefing: string
+  dataFaturamento: string
+  dataEmissao: string
   reunioes: { titulo: string; inicio: string; desfecho: string }[]
 }
 
@@ -30,7 +32,8 @@ export const completar = (t: Partial<Ticket>): Ticket => ({
   id: '', subject: '', stage: '', evento: '', curador: null, proprietario: null,
   proximaTarefa: '', onboarding: '', statusContrato: '', entrouEtapa: '',
   logistica: '', tipoEmpresa: '', formatoContrato: '', prazoAssinatura: '',
-  dataAssinatura: '', prazoBriefing: '', callBriefing: '', reunioes: [],
+  dataAssinatura: '', prazoBriefing: '', callBriefing: '', dataFaturamento: '',
+  dataEmissao: '', reunioes: [],
   ...t,
 })
 
@@ -57,28 +60,31 @@ export type Regra = { label: string; ordem: number } & (
   | { tipo: 'relogio' }
 )
 
-// Ordem e rótulos espelham o board do HubSpot, lidos da API em 02/10/2026.
-// Logística, Contrato e Briefing entraram no CS nessa data e levaram os
-// tickets que estavam em "Em andamento", que ficou com zero. Sem elas aqui o
-// painel simplesmente não enxergava 152 tickets abertos.
-// Os prazos das três novas ainda não foram acordados: ficam 'sem-prazo', que
-// é cinza pedindo número, em vez de verde por omissão.
+// Ordem e rótulos espelham o board do HubSpot, relidos da API em 02/10/2026.
+// O CS virou o funil da Tramitação: Onboarding, Logística, Contrato,
+// Faturamento e Briefing, com "Em andamento" aposentada no fim do board.
+// Etapa que existe no HubSpot e falta aqui some do painel sem avisar — foi o
+// que aconteceu com Logística e Contrato, e sumiram 152 tickets.
 export const SLA: Record<string, Regra> = {
-  '1450325173': { label: 'Logística', ordem: 1, tipo: 'relogio' },
-  '1450325174': { label: 'Contrato', ordem: 2, tipo: 'relogio' },
-  '1450325175': { label: 'Briefing', ordem: 3, tipo: 'relogio' },
-  '1088360204': { label: 'Aguardando Onboarding', ordem: 4, tipo: 'dias', dias: 7 },
-  '1088360205': { label: 'Em andamento', ordem: 5, tipo: 'dias', dias: 20 },
+  '1088360204': { label: 'Aguardando Onboarding', ordem: 1, tipo: 'dias', dias: 7 },
+  '1450325173': { label: 'Logística', ordem: 2, tipo: 'relogio' },
+  '1450325174': { label: 'Contrato', ordem: 3, tipo: 'relogio' },
+  '1450683393': { label: 'Faturamento', ordem: 4, tipo: 'relogio' },
+  '1450325175': { label: 'Briefing', ordem: 5, tipo: 'relogio' },
   '1448673032': { label: 'Aguardando Evento', ordem: 6, tipo: 'evento' },
   '1088361911': { label: 'Pagamento Pós-Palestra', ordem: 7, tipo: 'dias', dias: 20 },
   '1333136740': { label: 'Aguardando NF Palestrante', ordem: 8, tipo: 'dias', dias: 20 },
+  // O HubSpot jogou "Em andamento" para o fim do board e ela está com zero
+  // ticket. Fica aqui porque continua aberta lá, e some do quadro sozinha
+  // enquanto ninguém a usar.
+  '1088360205': { label: 'Em andamento', ordem: 13, tipo: 'dias', dias: 20 },
 }
 
 // Ficam fora do painel por decisao do CS: nao ha prazo acordado para elas e
 // nao sao etapas de atuacao do farmer. Aparecem aqui so para rotular um ticket
 // que mude de etapa enquanto a pagina esta aberta.
 export const FORA_DO_ESCOPO: Record<string, string> = {
-  '1088360203': 'Etapa de conferencia',
+  '1088360203': 'Etapa de conferência',
 }
 
 export const prazoEmTexto = (r: Regra) =>
@@ -96,6 +102,7 @@ const REGRA_EM_TEXTO: Record<string, string> = {
   'Logística': 'aprovação em 24h após o onboarding',
   'Contrato': 'envio 1 dia útil após o onboarding · assinatura na data do prazo',
   'Briefing': 'agendar entre D-30 e D-25 · realizar entre D-15 e D-10',
+  'Faturamento': 'emissão em até 3 dias após a assinatura',
 }
 
 // As outras 4 etapas do CS têm closed_date preenchido — ticket encerrado, sai
