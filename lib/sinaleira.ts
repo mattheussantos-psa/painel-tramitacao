@@ -34,12 +34,21 @@ export type Regra = { label: string; ordem: number } & (
   | { tipo: 'sem-prazo' }
 )
 
+// Ordem e rótulos espelham o board do HubSpot, lidos da API em 02/10/2026.
+// Logística, Contrato e Briefing entraram no CS nessa data e levaram os
+// tickets que estavam em "Em andamento", que ficou com zero. Sem elas aqui o
+// painel simplesmente não enxergava 152 tickets abertos.
+// Os prazos das três novas ainda não foram acordados: ficam 'sem-prazo', que
+// é cinza pedindo número, em vez de verde por omissão.
 export const SLA: Record<string, Regra> = {
-  '1088360204': { label: 'Aguardando Onboarding', ordem: 1, tipo: 'dias', dias: 7 },
-  '1088360205': { label: 'Em andamento', ordem: 2, tipo: 'dias', dias: 20 },
-  '1448673032': { label: 'Aguardando Evento', ordem: 3, tipo: 'evento' },
-  '1088361911': { label: 'Pagamento Pós-Palestra', ordem: 4, tipo: 'dias', dias: 20 },
-  '1333136740': { label: 'Aguardando NF Palestrante', ordem: 5, tipo: 'dias', dias: 20 },
+  '1450325173': { label: 'Logística', ordem: 1, tipo: 'sem-prazo' },
+  '1450325174': { label: 'Contrato', ordem: 2, tipo: 'sem-prazo' },
+  '1450325175': { label: 'Briefing', ordem: 3, tipo: 'sem-prazo' },
+  '1088360204': { label: 'Aguardando Onboarding', ordem: 4, tipo: 'dias', dias: 7 },
+  '1088360205': { label: 'Em andamento', ordem: 5, tipo: 'dias', dias: 20 },
+  '1448673032': { label: 'Aguardando Evento', ordem: 6, tipo: 'evento' },
+  '1088361911': { label: 'Pagamento Pós-Palestra', ordem: 7, tipo: 'dias', dias: 20 },
+  '1333136740': { label: 'Aguardando NF Palestrante', ordem: 8, tipo: 'dias', dias: 20 },
 }
 
 // Ficam fora do painel por decisao do CS: nao ha prazo acordado para elas e

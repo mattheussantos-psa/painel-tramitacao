@@ -70,7 +70,16 @@ assert.equal(avaliar(t({ stage: '1088360205', evento: '2026-09-29' }), HOJE).reg
 
 for (const id of Object.keys(ENCERRADAS))
   assert.ok(!(id in SLA), `etapa encerrada ${id} nao devia ter prazo`)
-assert.equal(Object.keys(SLA).length, 5)
+assert.equal(Object.keys(SLA).length, 8)
+
+// Logistica, Contrato e Briefing entraram no CS em 02/10/2026 e levaram os
+// tickets de "Em andamento". Sem elas na tabela o painel perdia 152 tickets.
+for (const id of ['1450325173', '1450325174', '1450325175']) {
+  assert.ok(id in SLA, 'etapa nova precisa estar no quadro do CS')
+  const v = avaliar(t({ stage: id, entrouEtapa: '2026-03-01' }), HOJE)
+  assert.equal(v.cor, 'cinza', 'sem prazo acordado nao vira verde por omissao')
+  assert.equal(v.dias, 212, 'cinza mostra o tempo parado')
+}
 
 // As duas etapas de financeiro voltaram com prazo de 20 dias na etapa.
 for (const id of ['1088361911', '1333136740']) {
