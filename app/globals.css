@@ -146,3 +146,11 @@ dialog::backdrop {
   background: inherit;
   border-color: var(--text-3);
 }
+
+/* Barra de rolagem da coluna e do quadro. A nativa do Windows e larga e
+   encosta no card — junto com o paddingRight do container, isso descola a
+   barra do conteudo e deixa de parecer que o card esta cortado. */
+.rolagem {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-3) transparent;
+}

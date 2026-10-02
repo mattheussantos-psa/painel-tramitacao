@@ -64,13 +64,13 @@ const dataBr = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '—
 // Só 6% dos tickets têm atividade futura agendada. "Sem tarefa" não é campo
 // vazio a esconder: é ticket que ninguém marcou para tocar.
 function tarefa(l: Linha) {
-  if (l.diasTarefa === null) return { texto: 'sem tarefa', cor: 'var(--text-2)' }
+  if (l.diasTarefa === null) return { texto: 'sem tarefa', cor: 'var(--text)' }
   if (l.diasTarefa < 0)
     return { texto: `tarefa venceu há ${-l.diasTarefa}d`, cor: 'var(--vermelho)' }
   if (l.diasTarefa === 0) return { texto: 'tarefa hoje', cor: 'var(--amarelo)' }
   return {
     texto: `tarefa em ${l.diasTarefa}d`,
-    cor: l.diasTarefa <= 2 ? 'var(--amarelo)' : 'var(--text-2)',
+    cor: l.diasTarefa <= 2 ? 'var(--amarelo)' : 'var(--text)',
   }
 }
 
@@ -611,15 +611,15 @@ function Cartao({ l }: { l: Linha }) {
           style={{
             fontSize: 13,
             fontWeight: 600,
-            color: `var(--${l.cor})`,
+            // Card cinza nao tem cor de sinal para emprestar ao texto, e
+            // --cinza como letra era o ultimo cinza que sobrava no card.
+            color: l.cor === 'cinza' ? 'var(--text)' : `var(--${l.cor})`,
             whiteSpace: 'nowrap',
           }}
         >
           {prazo(l)}
         </span>
-        <span style={{ fontSize: 11, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
-          evento {dataBr(l.evento)}
-        </span>
+        <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>evento {dataBr(l.evento)}</span>
       </span>
 
       {/* Deixa quebrar em duas linhas: cortar o nome do cliente no meio é o
@@ -662,7 +662,6 @@ function Cartao({ l }: { l: Linha }) {
           paddingTop: 8,
           borderTop: '1px solid var(--linha-sobre-cor)',
           fontSize: 11,
-          color: 'var(--text-2)',
         }}
       >
         <span>{l.diasNaEtapa === null ? 'sem data de entrada' : `${l.diasNaEtapa}d parado`}</span>
@@ -708,6 +707,7 @@ function Cartao({ l }: { l: Linha }) {
 function Kanban({ colunas }: { colunas: { id: string; label: string; prazo: string; itens: Linha[] }[] }) {
   return (
     <div
+      className="rolagem"
       style={{
         display: 'flex',
         gap: 12,
@@ -753,7 +753,6 @@ function Kanban({ colunas }: { colunas: { id: string; label: string; prazo: stri
                 style={{
                   flexShrink: 0,
                   background: 'var(--card)',
-                  color: 'var(--text-2)',
                   borderRadius: 20,
                   padding: '1px 8px',
                   fontSize: 11,
@@ -764,9 +763,22 @@ function Kanban({ colunas }: { colunas: { id: string; label: string; prazo: stri
                 {col.itens.length}
               </span>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>{col.prazo}</div>
+            <div style={{ fontSize: 11, marginTop: 2 }}>{col.prazo}</div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 'calc(100vh - 220px)', overflowY: 'auto', overflowX: 'hidden' }}>
+          {/* paddingRight afasta o card da barra de rolagem: colada nele o
+              conteudo parecia cortado. */}
+          <div
+            className="rolagem"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              maxHeight: 'calc(100vh - 220px)',
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              paddingRight: 8,
+            }}
+          >
             {col.itens.map((l) => (
               <Cartao key={l.id} l={l} />
             ))}
@@ -824,10 +836,11 @@ function Pessoas({ l }: { l: Linha }) {
             whiteSpace: 'nowrap',
           }}
         >
-          {/* Sem cinza no card: o fundo tingido come o --text-3 e o rodape
-              vira decoracao em vez de informacao. */}
-          <span style={{ color: 'var(--text-2)' }}>{papel} </span>
-          <span style={{ color: inativo ? 'var(--vermelho)' : 'var(--text)' }}>
+          {/* Nada de cinza aqui: o fundo tingido come o --text-2 e o rodape
+              vira decoracao em vez de informacao. A hierarquia fica por conta
+              do peso — rotulo normal, nome em negrito. */}
+          <span>{papel} </span>
+          <span style={{ fontWeight: 600, color: inativo ? 'var(--vermelho)' : 'var(--text)' }}>
             {nome}
             {inativo ? ' · inativo' : ''}
           </span>
