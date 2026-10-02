@@ -10,6 +10,7 @@ import {
   ENCERRADAS,
   QUADROS,
 } from './lib/sinaleira.ts'
+import { RELOGIOS, diasUteis, EXIGE_MINUTA_PALESTRANTE } from './lib/relogios.ts'
 
 // A API v3 manda "2026-09-30", a camada de relatório manda epoch em ms.
 // Assumir um formato só derrubou o painel em produção com "Invalid time value".
@@ -149,3 +150,70 @@ assert.equal(avaliar(emConferencia, HOJE, QUADROS.tramitacao.sla).dias, 28, 'dia
 assert.equal(avaliar(emConferencia, HOJE).etapa, '1449991474')
 
 console.log('ok — quadros separados')
+
+// ---- relogios da Tramitacao ----
+const T = (over) => ({
+  id: '1', subject: 'ACME - Fulano', stage: '1', proprietario: null,
+  evento: '', logistica: '', tipoEmpresa: '', formatoContrato: '',
+  onboarding: '', prazoAssinatura: '', dataAssinatura: '', statusContrato: '',
+  dataFaturamento: '', dataEmissao: '', prazoBriefing: '', callBriefing: '',
+  reunioes: [], ...over,
+})
+const R = Object.fromEntries(RELOGIOS.map((r) => [r.chave, (t) => r.ver(T(t), HOJE)]))
+const REEMBOLSO = 'Sim, com reembolso do cliente'
+
+// Dias uteis: de sexta 25/09 ate terca 29/09 sao 2 uteis, nao 4.
+assert.equal(diasUteis('2026-09-25', Date.parse('2026-09-29T00:00:00Z')), 2)
+assert.equal(diasUteis('2026-09-28', Date.parse('2026-09-29T00:00:00Z')), 1)
+
+// A logistica so cobra prazo quando o cliente reembolsa.
+assert.equal(R['log-aceite']({ logistica: 'Sim, com custo para PSA' }).estado, 'nao-aplica')
+assert.equal(R['log-aceite']({ logistica: 'Evento Online' }).estado, 'nao-aplica')
+assert.equal(R['log-aceite']({ logistica: 'Não' }).estado, 'nao-aplica')
+assert.equal(R['log-aceite']({ logistica: REEMBOLSO }).estado, 'sem-dado', 'sem onboarding nao ha de onde contar')
+assert.equal(R['log-aceite']({ logistica: REEMBOLSO, onboarding: '2026-09-28' }).estado, 'verde')
+assert.equal(R['log-aceite']({ logistica: REEMBOLSO, onboarding: '2026-09-27' }).estado, 'amarelo')
+assert.equal(R['log-aceite']({ logistica: REEMBOLSO, onboarding: '2026-09-25' }).estado, 'vermelho')
+// Sem data de aceite no HubSpot, a emissao nao tem de onde contar.
+assert.equal(R['log-emissao']({ logistica: REEMBOLSO }).estado, 'bloqueado')
+assert.equal(R['log-emissao']({ logistica: 'Evento Online' }).estado, 'nao-aplica')
+
+// Assinatura e o unico relogio com as duas pontas: da pra dizer se cumpriu.
+const noPrazo = R['contrato-assinatura']({ prazoAssinatura: '2026-09-20', dataAssinatura: '2026-09-18' })
+assert.equal(noPrazo.cumpriu, true)
+const atrasado = R['contrato-assinatura']({ prazoAssinatura: '2026-09-20', dataAssinatura: '2026-09-24' })
+assert.equal(atrasado.cumpriu, false)
+assert.equal(atrasado.dias, 4)
+assert.equal(R['contrato-assinatura']({ prazoAssinatura: '2026-10-05' }).estado, 'verde')
+assert.equal(R['contrato-assinatura']({ prazoAssinatura: '2026-09-27' }).estado, 'amarelo')
+assert.equal(R['contrato-assinatura']({ prazoAssinatura: '2026-09-20' }).estado, 'vermelho')
+
+// Contrato assinado prova que foi enviado, mesmo sem o valor "Enviado".
+assert.equal(R['contrato-envio']({ onboarding: '2026-01-01', statusContrato: 'Assinado' }).estado, 'concluido')
+assert.equal(R['contrato-envio']({ onboarding: '2026-01-01', dataAssinatura: '2026-02-01' }).estado, 'concluido')
+
+// Briefing anda pela data do evento, e a reuniao associada e o marco.
+assert.equal(R['briefing-agendamento']({ evento: '2026-11-30' }).estado, 'nao-iniciado', 'D-62')
+assert.equal(R['briefing-agendamento']({ evento: '2026-10-27' }).estado, 'verde', 'D-28')
+assert.equal(R['briefing-agendamento']({ evento: '2026-10-19' }).estado, 'amarelo', 'D-20')
+assert.equal(R['briefing-agendamento']({ evento: '2026-10-09' }).estado, 'vermelho', 'D-10')
+assert.equal(
+  R['briefing-agendamento']({ evento: '2026-10-09', reunioes: [{ titulo: 'Briefing PSA', inicio: '2026-10-05', desfecho: '' }] }).estado,
+  'concluido',
+  'reuniao marcada fecha o agendamento',
+)
+// Reuniao futura conta como agendada, nao como realizada.
+const futura = [{ titulo: 'Alinhamento de conteúdo', inicio: '2026-10-02', desfecho: 'SCHEDULED' }]
+assert.equal(R['briefing-realizacao']({ evento: '2026-10-03', reunioes: futura }).estado, 'vermelho', 'D-4 com reuniao ainda por acontecer')
+const passada = [{ titulo: 'Alinhamento de conteúdo', inicio: '2026-09-20', desfecho: 'COMPLETED' }]
+assert.equal(R['briefing-realizacao']({ evento: '2026-10-09', reunioes: passada }).estado, 'concluido')
+// Bordas que a regra deixou em duas cores caem sempre na pior.
+assert.equal(R['briefing-realizacao']({ evento: '2026-10-10' }).estado, 'verde', 'D-11')
+assert.equal(R['briefing-realizacao']({ evento: '2026-10-09' }).estado, 'amarelo', 'D-10')
+assert.equal(R['briefing-realizacao']({ evento: '2026-10-06' }).estado, 'vermelho', 'D-7')
+
+// Minuta individual cai quando o palestrante e interveniente no contrato.
+assert.equal(EXIGE_MINUTA_PALESTRANTE('MC (Cliente x PSA) = 100% PSA'), true)
+assert.equal(EXIGE_MINUTA_PALESTRANTE('MC (Cliente x PSA x Palestrante)'), false)
+
+console.log('ok — relogios da Tramitacao')
