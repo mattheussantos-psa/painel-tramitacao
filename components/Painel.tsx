@@ -1,7 +1,18 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { SLA, prazoEmTexto, type Cor, type Regua } from '@/lib/sinaleira'
+import { ABAS, prazoEmTexto, type Cor, type Regra, type Regua } from '@/lib/sinaleira'
+
+// O quadro vem do servidor porque a tabela de prazos e por pipeline. Com ela
+// fixa no cliente, os dois quadros dividiriam a mesma regua — que e justamente
+// o que nao pode acontecer.
+export type QuadroCliente = {
+  slug: string
+  nome: string
+  evento: boolean
+  sla: Record<string, Regra>
+}
 
 export type Linha = {
   id: string
@@ -39,10 +50,13 @@ const CONTROLE: React.CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-// Deriva da mesma tabela de SLA da régua, ordenada pelo prazo — que é a ordem
-// do kanban. Duplicar a lista aqui faria o cabeçalho mentir assim que alguém
-// calibrasse os prazos em lib/sinaleira.
-const ETAPAS_KANBAN = Object.entries(SLA).map(([id, r]) => ({ id, label: r.label, prazo: prazoEmTexto(r) }))
+// Deriva da mesma tabela de SLA da régua, ordenada pela posição no funil —
+// que é a ordem do kanban. Duplicar a lista faria o cabeçalho mentir assim que
+// alguém calibrasse os prazos em lib/sinaleira.
+const etapasDo = (sla: Record<string, Regra>) =>
+  Object.entries(sla)
+    .sort(([, a], [, b]) => a.ordem - b.ordem)
+    .map(([id, r]) => ({ id, label: r.label, prazo: prazoEmTexto(r) }))
 
 const LINHA_RANKING: React.CSSProperties = {
   display: 'grid',
@@ -619,7 +633,9 @@ function Cartao({ l }: { l: Linha }) {
         >
           {prazo(l)}
         </span>
-        <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>evento {dataBr(l.evento)}</span>
+        {l.evento && (
+          <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>evento {dataBr(l.evento)}</span>
+        )}
       </span>
 
       {/* Deixa quebrar em duas linhas: cortar o nome do cliente no meio é o
@@ -909,12 +925,14 @@ function Filtro({
 
 export default function Painel({
   linhas,
+  quadro,
   aoVivo,
   capturadoEm,
   atualizadoEm,
   aviso,
 }: {
   linhas: Linha[]
+  quadro: QuadroCliente
   aoVivo: boolean
   capturadoEm: string
   atualizadoEm: string
@@ -965,7 +983,12 @@ export default function Painel({
       (!alerta || l.alertas.some((a) => a.chave === alerta)),
   )
 
-  const doKanban = useMemo(() => base.filter((l) => l.regua === regua), [base, regua])
+  // Quadro sem data de evento não tem antes/depois: todo ticket cairia em
+  // "depois" por falta de data, o que seria uma divisão inventada.
+  const doKanban = useMemo(
+    () => (quadro.evento ? base.filter((l) => l.regua === regua) : base),
+    [base, regua, quadro.evento],
+  )
 
 
   // A cor fica de fora da contagem de propósito: se entrasse, clicar em
@@ -983,17 +1006,17 @@ export default function Painel({
   // verdes no fim, e a leitura de sinaleira some quando a cor vira bloco.
   const colunas = useMemo(
     () =>
-      Object.entries(SLA)
-        .sort(([, a], [, b]) => a.ordem - b.ordem)
-        .map(([id, r]) => ({
-          id,
-          label: r.label,
-          prazo: prazoEmTexto(r),
-          itens: visiveis
-            .filter((l) => l.stage === id)
-            .sort((a, b) => a.evento.localeCompare(b.evento)),
-        })),
-    [visiveis],
+      etapasDo(quadro.sla).map((e) => ({
+        ...e,
+        itens: visiveis
+          .filter((l) => l.stage === e.id)
+          .sort((a, b) =>
+            quadro.evento
+              ? a.evento.localeCompare(b.evento)
+              : a.cliente.localeCompare(b.cliente, 'pt-BR'),
+          ),
+      })),
+    [visiveis, quadro],
   )
 
   // Lê a base inteira de propósito: se respeitasse o filtro de proprietário,
@@ -1033,24 +1056,72 @@ export default function Painel({
 
   return (
     <main style={{ maxWidth: 1680, margin: '0 auto', padding: '44px 32px 72px' }}>
-      <header style={{ marginBottom: 24 }}>
-        <h1
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          flexWrap: 'wrap',
+          marginBottom: 24,
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              fontFamily: 'var(--display)',
+              fontSize: 44,
+              fontWeight: 800,
+              letterSpacing: '0.01em',
+              lineHeight: 1,
+              margin: 0,
+              textTransform: 'uppercase',
+            }}
+          >
+            Sinaleira
+          </h1>
+          <p style={{ color: 'var(--text-2)', margin: '8px 0 0', fontSize: 14 }}>
+            {quadro.nome} · {linhas.length} tickets abertos ·{' '}
+            {aoVivo ? `ao vivo, ${atualizadoEm}` : `snapshot de ${dataBr(capturadoEm)}`}
+          </p>
+        </div>
+
+        {/* Guia de quadro. É link e não estado: cada pipeline tem a própria
+            URL, o próprio fetch e o próprio cache — trocar de aba não pode
+            arrastar ticket de um quadro para o outro. */}
+        <nav
           style={{
-            fontFamily: 'var(--display)',
-            fontSize: 44,
-            fontWeight: 800,
-            letterSpacing: '0.01em',
-            lineHeight: 1,
-            margin: 0,
-            textTransform: 'uppercase',
+            display: 'inline-flex',
+            background: 'var(--cinza-bg)',
+            borderRadius: 9,
+            padding: 2,
+            height: 36,
           }}
         >
-          Sinaleira
-        </h1>
-        <p style={{ color: 'var(--text-2)', margin: '8px 0 0', fontSize: 14 }}>
-          Tramitação CS · {linhas.length} tickets abertos ·{' '}
-          {aoVivo ? `ao vivo, ${atualizadoEm}` : `snapshot de ${dataBr(capturadoEm)}`}
-        </p>
+          {ABAS.map((a) => {
+            const ativa = a.slug === quadro.slug
+            return (
+              <Link
+                key={a.slug}
+                href={a.href}
+                prefetch={false}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  borderRadius: 7,
+                  padding: '0 15px',
+                  fontSize: 13,
+                  fontWeight: ativa ? 600 : 400,
+                  textDecoration: 'none',
+                  background: ativa ? 'var(--card)' : 'transparent',
+                  color: 'var(--text)',
+                }}
+              >
+                {a.nome}
+              </Link>
+            )
+          })}
+        </nav>
       </header>
 
       {aviso && (
@@ -1081,7 +1152,9 @@ export default function Painel({
         }}
       >
         {/* Etapa nao entra aqui: no kanban a coluna ja e o filtro de etapa. */}
-        <Filtro vazio="Curador" valor={curador} opcoes={curadores} aoMudar={setCurador} />
+        {curadores.length > 0 && (
+          <Filtro vazio="Curador" valor={curador} opcoes={curadores} aoMudar={setCurador} />
+        )}
         <Filtro
           vazio="Proprietário"
           valor={proprietario}
@@ -1175,17 +1248,21 @@ export default function Painel({
         />
       )}
 
-      <Horizonte
-        linhas={base}
-        regua='pre'
-        aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
-      />
+      {quadro.evento && (
+        <>
+          <Horizonte
+            linhas={base}
+            regua="pre"
+            aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
+          />
 
-      <Horizonte
-        linhas={base}
-        regua='pos'
-        aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
-      />
+          <Horizonte
+            linhas={base}
+            regua="pos"
+            aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
+          />
+        </>
+      )}
 
       {/* Barra do quadro: a aba a esquerda, os contadores a direita, na mesma
           altura. Os contadores ocupavam 160px com os numeros maiores da tela —
@@ -1201,9 +1278,11 @@ export default function Painel({
           marginBottom: 12,
         }}
       >
+        {/* Sem data de evento não há antes nem depois: a aba sai, e o quadro
+            inteiro fica numa régua só. */}
         <div
           style={{
-            display: 'inline-flex',
+            display: quadro.evento ? 'inline-flex' : 'none',
             background: 'var(--cinza-bg)',
             borderRadius: 8,
             padding: 2,
@@ -1302,7 +1381,7 @@ export default function Painel({
           </div>
           <Matriz
             linhas={[...porPessoa].sort((a, b) => b.dias - a.dias)}
-            etapas={ETAPAS_KANBAN}
+            etapas={etapasDo(quadro.sla)}
             aoAbrir={(l) => setDetalhe({ titulo: l.cliente, itens: [l] })}
           />
         </Grupo>

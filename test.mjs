@@ -8,6 +8,7 @@ import {
   tarefaMaisUrgente,
   SLA,
   ENCERRADAS,
+  QUADROS,
 } from './lib/sinaleira.ts'
 
 // A API v3 manda "2026-09-30", a camada de relatório manda epoch em ms.
@@ -129,3 +130,22 @@ assert.equal(diasNaEtapa(t({ entrouEtapa: '' }), HOJE), null)
 assert.equal(diasNaEtapa(t({ entrouEtapa: '2026-09-20' }), HOJE), 9)
 
 console.log('ok — dias na etapa sem data')
+
+// ---- quadros separados ----
+// O risco real de dois pipelines no mesmo painel e um encostar no outro: id de
+// etapa repetido faria ticket de um quadro cair na coluna do outro.
+const idsCS = Object.keys(QUADROS.cs.sla)
+const idsTram = Object.keys(QUADROS.tramitacao.sla)
+assert.equal(idsCS.filter((i) => idsTram.includes(i)).length, 0, 'etapa compartilhada entre quadros')
+assert.notEqual(QUADROS.cs.pipeline, QUADROS.tramitacao.pipeline)
+assert.equal(idsTram.length, 7)
+
+// A regua tem que sair da tabela do quadro que foi passado, nao da global.
+const emConferencia = t({ stage: '1449991474', evento: '', entrouEtapa: '2026-09-01' })
+assert.equal(avaliar(emConferencia, HOJE, QUADROS.tramitacao.sla).etapa, 'Em Conferência')
+assert.equal(avaliar(emConferencia, HOJE, QUADROS.tramitacao.sla).cor, 'cinza', 'sem prazo acordado')
+assert.equal(avaliar(emConferencia, HOJE, QUADROS.tramitacao.sla).dias, 28, 'dias parado')
+// Mesmo ticket lido com a tabela do CS nao acha a etapa: prova que nao mistura.
+assert.equal(avaliar(emConferencia, HOJE).etapa, '1449991474')
+
+console.log('ok — quadros separados')

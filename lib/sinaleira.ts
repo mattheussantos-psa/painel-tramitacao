@@ -113,8 +113,12 @@ export type Avaliacao = {
 
 const brasil = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 
-export function avaliar(t: Ticket, hoje: number = Date.now()): Avaliacao {
-  const regra = SLA[t.stage]
+export function avaliar(
+  t: Ticket,
+  hoje: number = Date.now(),
+  sla: Record<string, Regra> = SLA,
+): Avaliacao {
+  const regra = sla[t.stage]
   const agora = hojeEmDias(hoje)
 
   // A divisão do painel é sobre o EVENTO, não sobre a etapa. Evento no futuro
@@ -207,3 +211,51 @@ export function diasNaEtapa(t: Ticket, hoje: number = Date.now()) {
 export function diasParaTarefa(t: Ticket, hoje: number = Date.now()) {
   return t.proximaTarefa ? emDias(dia(t.proximaTarefa), hojeEmDias(hoje)) : null
 }
+
+// Cada pipeline é um quadro separado — nada se mistura, nem os tickets nem a
+// régua. Medido na API em 02/10/2026: o pipeline 941149608 ("TESTE |
+// Tramitação") tem 7 etapas e 6 tickets, todos sem data_do_evento__ganho_
+// preenchida. Por isso 'evento: false': sem data de evento não há como dividir
+// antes/depois nem montar o horizonte, e inventar essa divisão seria mentir.
+export type Quadro = {
+  slug: string
+  nome: string
+  href: string
+  pipeline: string
+  evento: boolean
+  sla: Record<string, Regra>
+}
+
+// Prazos ainda não acordados com o CS. 'sem-prazo' deixa o card cinza pedindo
+// número em vez de virar verde por omissão — inventar dias aqui já custou caro
+// uma vez.
+export const SLA_TRAMITACAO: Record<string, Regra> = {
+  '1449991474': { label: 'Em Conferência', ordem: 1, tipo: 'sem-prazo' },
+  '1449991476': { label: 'Logística', ordem: 2, tipo: 'sem-prazo' },
+  '1449991477': { label: 'Contrato', ordem: 3, tipo: 'sem-prazo' },
+  '1449985704': { label: 'Faturamento', ordem: 4, tipo: 'sem-prazo' },
+  '1449985705': { label: 'Briefing', ordem: 5, tipo: 'sem-prazo' },
+  '1450153031': { label: 'Pagamento Pós Palestra', ordem: 6, tipo: 'sem-prazo' },
+  '1450153032': { label: 'Aguardando NF Palestrante', ordem: 7, tipo: 'sem-prazo' },
+}
+
+export const QUADROS: Record<string, Quadro> = {
+  cs: {
+    slug: 'cs',
+    nome: 'Tramitação CS',
+    href: '/',
+    pipeline: '748675953',
+    evento: true,
+    sla: SLA,
+  },
+  tramitacao: {
+    slug: 'tramitacao',
+    nome: 'Tramitação',
+    href: '/tramitacao',
+    pipeline: '941149608',
+    evento: false,
+    sla: SLA_TRAMITACAO,
+  },
+}
+
+export const ABAS = Object.values(QUADROS).map((q) => ({ slug: q.slug, nome: q.nome, href: q.href }))

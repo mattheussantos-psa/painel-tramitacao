@@ -1,8 +1,6 @@
-import { SLA, iso, tarefaMaisUrgente, type Tarefa, type Ticket } from './sinaleira'
+import { QUADROS, iso, tarefaMaisUrgente, type Quadro, type Tarefa, type Ticket } from './sinaleira'
 import snapshot from '@/data/snapshot.json'
 import curadores from '@/data/curadores.json'
-
-export const ETAPAS_ABERTAS = Object.keys(SLA)
 
 const PROPS = [
   'subject',
@@ -59,7 +57,7 @@ async function json(res: Response, onde: string) {
 
 async function buscarAoVivo(
   token: string,
-  pipeline: string,
+  q: Quadro,
 ): Promise<{ tickets: Ticket[]; ignorados: number }> {
   const tickets: Ticket[] = []
   let ignorados = 0
@@ -76,8 +74,8 @@ async function buscarAoVivo(
           filterGroups: [
             {
               filters: [
-                { propertyName: 'hs_pipeline', operator: 'EQ', value: pipeline },
-                { propertyName: 'hs_pipeline_stage', operator: 'IN', values: ETAPAS_ABERTAS },
+                { propertyName: 'hs_pipeline', operator: 'EQ', value: q.pipeline },
+                { propertyName: 'hs_pipeline_stage', operator: 'IN', values: Object.keys(q.sla) },
               ],
             },
           ],
@@ -95,10 +93,11 @@ async function buscarAoVivo(
 
     for (const r of pagina.results ?? []) {
       const p = r.properties ?? {}
-      // Sem data de evento não dá pra calcular prazo. Não some calado: o
-      // total de ignorados aparece na tela.
+      // Num quadro que corre contra a data do evento, ticket sem ela não tem
+      // prazo calculável. Não some calado: o total aparece na tela. Em quadro
+      // sem evento (Tramitação) a propriedade nem é usada, então não derruba.
       const evento = iso(p.data_do_evento__ganho_)
-      if (!evento) {
+      if (!evento && q.evento) {
         ignorados++
         continue
       }
@@ -218,13 +217,15 @@ function ownersDoSnapshot(): Owners {
   return out
 }
 
-async function buscarTudo(): Promise<Fonte> {
+async function buscarTudo(q: Quadro): Promise<Fonte> {
   const token = process.env.HUBSPOT_TOKEN
-  const pipeline = process.env.HUBSPOT_PIPELINE_CS ?? '748675953'
 
+  // O snapshot é do CS. Outro quadro sem token não tem de onde tirar número —
+  // melhor vazio e dizendo o motivo do que mostrar ticket de outro pipeline.
   if (!token) {
     return {
-      tickets: snapshot.tickets as Ticket[],
+      tickets: q.slug === 'cs' ? (snapshot.tickets as Ticket[]) : [],
+      aviso: q.slug === 'cs' ? undefined : 'Sem HUBSPOT_TOKEN: este quadro só existe ao vivo.',
       owners: ownersDoSnapshot(),
       aoVivo: false,
       capturadoEm: snapshot.capturadoEm,
@@ -234,7 +235,7 @@ async function buscarTudo(): Promise<Fonte> {
 
   // Sem ticket não tem painel: falha aqui é fatal e não cai no snapshot em
   // silêncio — número velho passando por atual é pior que erro.
-  const { tickets, ignorados } = await buscarAoVivo(token, pipeline)
+  const { tickets, ignorados } = await buscarAoVivo(token, q)
 
   // Nome de curador é acessório. Se faltar o scope crm.objects.owners.read o
   // painel continua servindo, mostrando o id em vez do nome — mas o motivo
@@ -307,11 +308,18 @@ export function curadorInativo(owners: Owners, id: string | null) {
 // conta inteira: sem isso cada carregamento da página refaz 5 chamadas, e dois
 // farmers abrindo o painel junto derrubam os dois. Erro não entra no cache.
 const TTL = 60_000
-let cache: { em: number; fonte: Fonte } | null = null
+// Um cache por quadro: chave única misturaria os pipelines, que é exatamente o
+// que não pode acontecer aqui.
+const cache = new Map<string, { em: number; fonte: Fonte }>()
 
-export async function carregar(): Promise<Fonte> {
-  if (cache && Date.now() - cache.em < TTL) return cache.fonte
-  const fonte = await buscarTudo()
-  if (fonte.aoVivo) cache = { em: Date.now(), fonte }
+export async function carregar(slug: string): Promise<Fonte> {
+  const q = QUADROS[slug]
+  if (!q) throw new Error(`Quadro desconhecido: ${slug}`)
+
+  const guardado = cache.get(slug)
+  if (guardado && Date.now() - guardado.em < TTL) return guardado.fonte
+
+  const fonte = await buscarTudo(q)
+  if (fonte.aoVivo) cache.set(slug, { em: Date.now(), fonte })
   return fonte
 }

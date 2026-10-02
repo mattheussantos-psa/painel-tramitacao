@@ -1,84 +1,12 @@
-import { carregar, nomeCurador, curadorInativo, linkTicket } from '@/lib/hubspot'
-import {
-  avaliar,
-  cliente,
-  palestrante,
-  diasParaEvento,
-  diasNaEtapa,
-  diasParaTarefa,
-  alertas,
-} from '@/lib/sinaleira'
-import Painel from '@/components/Painel'
+import Quadro from './quadro'
+import { QUADROS } from '@/lib/sinaleira'
 
 // Nada de prerender no build: a pagina renderiza por requisicao e quem segura
 // o HubSpot e o cache com TTL dentro de carregar().
+export const metadata = { title: 'Sinaleira · Tramitação CS' }
+
 export const dynamic = 'force-dynamic'
 
-// Erro no fetch não pode virar tela branca com digest: na Vercel a mensagem
-// some nos logs e o painel fica indistinguível de "não tem ticket".
-function Falha({ mensagem }: { mensagem: string }) {
-  return (
-    <main style={{ maxWidth: 760, margin: '0 auto', padding: '56px 24px' }}>
-      <h1 style={{ fontSize: 28, fontWeight: 600, margin: 0, color: 'var(--vermelho)' }}>
-        Não consegui carregar os tickets
-      </h1>
-      <p style={{ color: 'var(--text-2)' }}>
-        O painel tem <code>HUBSPOT_TOKEN</code> configurado, então buscou ao vivo e a busca falhou.
-        Não caí no snapshot de propósito — número velho passando por atual é pior que erro.
-      </p>
-      <pre
-        style={{
-          background: 'var(--vermelho-bg)',
-          color: 'var(--vermelho)',
-          border: '1px solid var(--border-vermelho, transparent)',
-          borderRadius: 'var(--radius)',
-          padding: '14px 16px',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-          fontSize: 13,
-        }}
-      >
-        {mensagem}
-      </pre>
-    </main>
-  )
-}
-
-export default async function Page() {
-  let fonte
-  try {
-    fonte = await carregar()
-  } catch (e) {
-    return <Falha mensagem={e instanceof Error ? e.message : String(e)} />
-  }
-
-  const { tickets, owners, aoVivo, capturadoEm, atualizadoEm, aviso } = fonte
-  const hoje = Date.now()
-
-  const linhas = tickets
-    .map((t) => {
-      const a = avaliar(t, hoje)
-      return {
-        id: t.id,
-        link: linkTicket(t.id),
-        cliente: cliente(t.subject),
-        palestrante: palestrante(t.subject),
-        evento: t.evento,
-        diasEvento: diasParaEvento(t, hoje),
-        diasNaEtapa: diasNaEtapa(t, hoje),
-        diasTarefa: diasParaTarefa(t, hoje),
-        alertas: alertas(t, hoje),
-        stage: t.stage,
-        curador: nomeCurador(owners, t.curador),
-        curadorInativo: curadorInativo(owners, t.curador),
-        proprietario: nomeCurador(owners, t.proprietario),
-        proprietarioInativo: curadorInativo(owners, t.proprietario),
-        ...a,
-      }
-    })
-    // Por data do evento, nao por cor nem por atraso: ordenar por atraso
-    // agrupa as cores, porque a cor vem dele. O quadro tem que sair misturado.
-    .sort((a, b) => a.evento.localeCompare(b.evento))
-
-  return <Painel linhas={linhas} aoVivo={aoVivo} capturadoEm={capturadoEm} atualizadoEm={atualizadoEm} aviso={aviso} />
+export default function Page() {
+  return <Quadro quadro={QUADROS.cs} />
 }
