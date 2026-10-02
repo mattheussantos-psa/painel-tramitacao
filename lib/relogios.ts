@@ -75,6 +75,9 @@ export type Relogio = {
   chave: string
   etapa: string
   nome: string
+  // Nome curto para o card. "aceite da logística · 45d desde o onboarding"
+  // não cabe em coluna de 300px e vazava para fora do cartão.
+  curto: string
   regra: string
   confianca: Confianca
   gatilho: string
@@ -95,6 +98,7 @@ export const RELOGIOS: Relogio[] = [
     chave: 'log-aceite',
     etapa: 'Logística',
     nome: 'Aceite da logística',
+    curto: 'aceite',
     regra: 'Até 24h após o onboarding · amarelo 2 a 3 dias · vermelho 4+',
     confianca: 'hipotese',
     gatilho: 'data_de_realizacao_do_onboarding',
@@ -113,6 +117,7 @@ export const RELOGIOS: Relogio[] = [
     chave: 'log-emissao',
     etapa: 'Logística',
     nome: 'Emissão da logística',
+    curto: 'emissão',
     regra: 'Até 24h após o aceite · amarelo 2 a 3 dias · vermelho 4+',
     confianca: 'bloqueado',
     gatilho: '— não existe campo de aceite',
@@ -129,6 +134,7 @@ export const RELOGIOS: Relogio[] = [
     chave: 'contrato-envio',
     etapa: 'Contrato',
     nome: 'Envio do contrato',
+    curto: 'envio',
     regra: '1 dia útil após o onboarding · amarelo 2 a 3 dias · vermelho 4+',
     confianca: 'hipotese',
     gatilho: 'data_de_realizacao_do_onboarding',
@@ -147,6 +153,7 @@ export const RELOGIOS: Relogio[] = [
     chave: 'contrato-assinatura',
     etapa: 'Contrato',
     nome: 'Assinatura do contrato',
+    curto: 'assinatura',
     regra: 'Até a data em "Prazo de Assinatura" · amarelo 1 a 3 dias depois · vermelho 4+',
     confianca: 'fechado',
     gatilho: 'assinar_contrato',
@@ -181,6 +188,7 @@ export const RELOGIOS: Relogio[] = [
     chave: 'faturamento',
     etapa: 'Faturamento',
     nome: 'Emissão do faturamento',
+    curto: 'emissão',
     regra: 'Até 3 dias após a assinatura · amarelo 4 a 5 · vermelho 6+',
     confianca: 'hipotese',
     gatilho: 'data_de_assinatura_do_contrato',
@@ -203,6 +211,7 @@ export const RELOGIOS: Relogio[] = [
     chave: 'briefing-agendamento',
     etapa: 'Briefing',
     nome: 'Agendamento do briefing',
+    curto: 'agendamento',
     regra: 'Verde D-30 a D-25 · amarelo D-24 a D-15 · vermelho D-14 em diante',
     confianca: 'hipotese',
     gatilho: 'data_do_evento__ganho_',
@@ -226,6 +235,7 @@ export const RELOGIOS: Relogio[] = [
     chave: 'briefing-realizacao',
     etapa: 'Briefing',
     nome: 'Realização do briefing',
+    curto: 'realização',
     regra: 'Verde D-15 a D-11 · amarelo D-10 a D-8 · vermelho D-7 em diante',
     confianca: 'hipotese',
     gatilho: 'data_do_evento__ganho_',
@@ -280,7 +290,7 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
     if (melhor) {
       cor = v.estado as Cor
       fechado = rel.confianca === 'fechado'
-      texto = `${rel.nome.toLowerCase()} · ${v.texto}`
+      texto = `${rel.curto} · ${v.texto}`
     }
   }
   return cor ? { cor, texto } : null

@@ -625,6 +625,8 @@ function Cartao({ l }: { l: Linha }) {
           marginBottom: 7,
         }}
       >
+        {/* Deixa quebrar: com nowrap a frase do relogio passava 15px da
+            borda do card e ainda empurrava a data do evento 113px para fora. */}
         <span
           style={{
             fontSize: 13,
@@ -632,13 +634,17 @@ function Cartao({ l }: { l: Linha }) {
             // Card cinza nao tem cor de sinal para emprestar ao texto, e
             // --cinza como letra era o ultimo cinza que sobrava no card.
             color: l.cor === 'cinza' ? 'var(--text)' : `var(--${l.cor})`,
-            whiteSpace: 'nowrap',
+            minWidth: 0,
+            overflowWrap: 'anywhere',
+            lineHeight: 1.3,
           }}
         >
           {prazo(l)}
         </span>
         {l.evento && (
-          <span style={{ fontSize: 11, whiteSpace: 'nowrap' }}>evento {dataBr(l.evento)}</span>
+          <span style={{ fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}>
+            evento {dataBr(l.evento)}
+          </span>
         )}
       </span>
 

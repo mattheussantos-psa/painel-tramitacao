@@ -238,7 +238,7 @@ assert.equal(log('2026-09-27').cor, 'amarelo', '2 dias')
 assert.equal(log('2026-09-25').cor, 'vermelho', '4 dias')
 assert.equal(log('2026-09-28', 'Sim, com custo para PSA').cor, 'cinza', 'custo PSA nao tem prazo')
 assert.equal(log('2026-09-28', 'Evento Online').cor, 'cinza', 'sem logistica, sem prazo')
-assert.match(log('2026-09-25').texto, /aceite da log/, 'o card diz de qual relogio veio a cor')
+assert.match(log('2026-09-25').texto, /^aceite · /, 'o card diz de qual relogio veio a cor, em rotulo curto')
 
 // Contrato: envio em 1 dia util e assinatura contra a data do prazo, pior manda.
 const ctr = (over) => E({ stage: CTR, evento: '2026-11-20', ...over })
