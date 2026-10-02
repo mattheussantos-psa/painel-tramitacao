@@ -709,14 +709,30 @@ function Kanban({ colunas }: { colunas: { id: string; label: string; prazo: stri
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${colunas.length}, minmax(300px, 1fr))`,
+        display: 'flex',
         gap: 12,
         alignItems: 'start',
+        // Cinco colunas de 300px passam de 1500px: em tela menor o quadro
+        // estourava a pagina inteira e a barra horizontal ia parar no rodape
+        // da janela, com a ultima etapa fora do alcance. Igual ao HubSpot, a
+        // rolagem horizontal e do quadro, nao da pagina.
+        overflowX: 'auto',
+        paddingBottom: 6,
       }}
     >
       {colunas.map((col) => (
-        <div key={col.id} style={{ background: 'var(--cinza-bg)', borderRadius: 14, padding: 10, minWidth: 0 }}>
+        <div
+          key={col.id}
+          style={{
+            // Cresce para ocupar a sobra quando o monitor permite, mas nunca
+            // encolhe abaixo de 300px — abaixo disso o card fica ilegivel.
+            flex: '1 0 300px',
+            background: 'var(--cinza-bg)',
+            borderRadius: 14,
+            padding: 10,
+            minWidth: 0,
+          }}
+        >
           {/* Nome e contagem andam juntos: a contagem jogada na outra ponta
               da coluna obrigava a varrer a linha para ligar uma coisa a outra. */}
           <div style={{ padding: '5px 6px 11px' }}>
