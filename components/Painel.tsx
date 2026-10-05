@@ -197,36 +197,22 @@ type Faixa = { rotulo: string; dentro: (l: Linha) => boolean }
 // Dias desde o evento. Negativo quando o evento ainda nao aconteceu.
 const passou = (l: Linha) => -l.diasEvento
 
-const FAIXAS: Record<Regua, Faixa[]> = {
-  pre: [
-    { rotulo: '0–7 dias', dentro: (l) => l.diasEvento >= 0 && l.diasEvento <= 7 },
-    { rotulo: '8–15 dias', dentro: (l) => l.diasEvento >= 8 && l.diasEvento <= 15 },
-    { rotulo: '16–30 dias', dentro: (l) => l.diasEvento >= 16 && l.diasEvento <= 30 },
-  ],
-  // O "passou > 0" nao e redundante: antes o recorte da aba ja garantia que so
-  // chegavam eventos passados. Agora os dois horizontes leem a base inteira, e
-  // sem isso um evento no futuro (diasEvento positivo) satisfazia "<= 15" e
-  // caia na primeira faixa — o card dizia "Evento ja realizado 360".
-  pos: [
-    { rotulo: 'até 15 dias', dentro: (l) => passou(l) > 0 && passou(l) <= 15 },
-    { rotulo: '16–30 dias', dentro: (l) => passou(l) >= 16 && passou(l) <= 30 },
-    { rotulo: '31–90 dias', dentro: (l) => passou(l) >= 31 && passou(l) <= 90 },
-    { rotulo: 'mais de 90 dias', dentro: (l) => passou(l) > 90 },
-  ],
-}
-
-const TITULO: Record<Regua, { chapeu: string; descricao: string; preposicao: string }> = {
-  pre: {
-    chapeu: 'Evento em até 30 dias',
-    descricao: 'Data prevista do evento nos próximos 30 dias · por sinal',
-    preposicao: 'em',
-  },
-  pos: {
-    chapeu: 'Evento já realizado',
-    descricao: 'Ticket ainda aberto depois do evento · por sinal',
-    preposicao: 'há',
-  },
-}
+// Uma linha do tempo só, do evento mais antigo ao mais próximo. Eram dois
+// cards empilhados, um para antes e outro para depois do evento; separados,
+// a leitura mais útil — o quanto o atraso cresce conforme o evento fica para
+// trás — exigia comparar dois blocos distantes na tela.
+// O "passou > 0" não é redundante: sem ele um evento no futuro (diasEvento
+// positivo) satisfaz "<= 15" e cai na primeira faixa de passado.
+const FAIXAS: Faixa[] = [
+  { rotulo: 'há mais de 90 dias', dentro: (l) => passou(l) > 90 },
+  { rotulo: 'há 31–90 dias', dentro: (l) => passou(l) >= 31 && passou(l) <= 90 },
+  { rotulo: 'há 16–30 dias', dentro: (l) => passou(l) >= 16 && passou(l) <= 30 },
+  { rotulo: 'há até 15 dias', dentro: (l) => passou(l) > 0 && passou(l) <= 15 },
+  { rotulo: 'é hoje', dentro: (l) => l.diasEvento === 0 },
+  { rotulo: 'em até 7 dias', dentro: (l) => l.diasEvento >= 1 && l.diasEvento <= 7 },
+  { rotulo: 'em 8–15 dias', dentro: (l) => l.diasEvento >= 8 && l.diasEvento <= 15 },
+  { rotulo: 'em 16–30 dias', dentro: (l) => l.diasEvento >= 16 && l.diasEvento <= 30 },
+]
 
 // Texto sobre a barra: no laranja o branco não passa no contraste, então vai
 // escuro. Nos outros dois o branco é o que lê.
@@ -373,17 +359,14 @@ function Detalhe({
 // a pergunta é "quais são esses", e o filtro obrigava a rolar até os cards.
 function Horizonte({
   linhas,
-  regua,
   aoAbrir,
 }: {
   linhas: Linha[]
-  regua: Regua
   aoAbrir: (titulo: string, itens: Linha[]) => void
 }) {
   const cores: Cor[] = ['vermelho', 'amarelo', 'verde', 'cinza']
-  const { chapeu, descricao, preposicao } = TITULO[regua]
 
-  const faixas = FAIXAS[regua].map((f) => {
+  const faixas = FAIXAS.map((f) => {
     const dentro = linhas.filter(f.dentro)
     const por = Object.fromEntries(
       cores.map((c) => [c, dentro.filter((l) => l.cor === c).length]),
@@ -429,10 +412,10 @@ function Horizonte({
                 textTransform: 'uppercase',
               }}
             >
-              {chapeu}
+              Por data do evento
             </span>
             <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>
-              {descricao}
+              Eventos já realizados e os dos próximos 30 dias · por sinal
             </span>
           </span>
         </div>
@@ -471,7 +454,7 @@ function Horizonte({
               }}
             >
               <button
-                onClick={() => aoAbrir(`Evento ${preposicao} ${f.rotulo}`, linhas.filter(f.dentro))}
+                onClick={() => aoAbrir(`Evento ${f.rotulo}`, linhas.filter(f.dentro))}
                 disabled={!f.total}
                 style={{
                   border: 0,
@@ -521,11 +504,11 @@ function Horizonte({
                       key={c}
                       onClick={() =>
                         aoAbrir(
-                          `${CORES.find((x) => x.cor === c)?.label} · evento ${preposicao} ${f.rotulo}`,
+                          `${CORES.find((x) => x.cor === c)?.label} · evento ${f.rotulo}`,
                           linhas.filter((l) => f.dentro(l) && l.cor === c),
                         )
                       }
-                      aria-label={`Ver ${f.por[c]} em ${rotuloCor}, evento ${preposicao} ${f.rotulo}`}
+                      aria-label={`Ver ${f.por[c]} em ${rotuloCor}, evento ${f.rotulo}`}
                       style={{
                         flexGrow: f.por[c],
                         flexBasis: 0,
@@ -1726,19 +1709,7 @@ export default function Painel({
       )}
 
       {quadro.evento && (
-        <>
-          <Horizonte
-            linhas={base}
-            regua="pre"
-            aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
-          />
-
-          <Horizonte
-            linhas={base}
-            regua="pos"
-            aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })}
-          />
-        </>
+        <Horizonte linhas={base} aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })} />
       )}
 
       {/* Barra do quadro: a aba a esquerda, os contadores a direita, na mesma
@@ -1803,7 +1774,7 @@ export default function Painel({
           Sem corte de linhas: truncar em 6 escondia justamente quem tinha menos
           atraso mas muito volume. Clicar numa linha abre os tickets da pessoa,
           igual ao gráfico. */}
-      {proprietario ? (
+      {proprietario && (
         <Grupo style={{ marginTop: 28 }}>
           <div
             style={{
@@ -1824,57 +1795,6 @@ export default function Painel({
             aoAbrir={(l) => setDetalhe({ titulo: l.cliente, itens: [l] })}
           />
         </Grupo>
-      ) : (
-      <Grupo style={{ marginTop: 28, maxWidth: 620 }}>
-        <div style={{ ...LINHA_RANKING, color: 'var(--text-3)', fontSize: 12 }}>
-          <span>Por proprietário · {ranking.length}</span>
-          <span style={{ textAlign: 'right' }}>Atraso</span>
-          <span style={{ textAlign: 'right' }}>Atenção</span>
-          <span style={{ textAlign: 'right' }}>Em dia</span>
-          <span style={{ textAlign: 'right' }}>Total</span>
-        </div>
-
-        {ranking.map((r) => (
-          <button
-            key={r.nome}
-            onClick={() =>
-              setDetalhe({
-                titulo: r.nome,
-                itens: linhas.filter((l) => (l.proprietario ?? 'Sem proprietário') === r.nome),
-              })
-            }
-            className="linha"
-            style={{
-              ...LINHA_RANKING,
-              width: '100%',
-              textAlign: 'left',
-              border: 0,
-              borderTop: '1px solid var(--line)',
-              background: 'transparent',
-              fontSize: 14,
-              color: 'var(--text)',
-            }}
-          >
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {r.nome}
-            </span>
-            <span
-              style={{ textAlign: 'right', color: r.vermelho ? 'var(--vermelho)' : 'var(--text-3)' }}
-            >
-              {r.vermelho}
-            </span>
-            <span
-              style={{ textAlign: 'right', color: r.amarelo ? 'var(--amarelo)' : 'var(--text-3)' }}
-            >
-              {r.amarelo}
-            </span>
-            <span style={{ textAlign: 'right', color: r.verde ? 'var(--verde)' : 'var(--text-3)' }}>
-              {r.verde}
-            </span>
-            <span style={{ textAlign: 'right', color: 'var(--text-2)' }}>{r.total}</span>
-          </button>
-        ))}
-      </Grupo>
       )}
     </main>
   )
