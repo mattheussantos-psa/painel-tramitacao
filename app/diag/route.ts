@@ -2,6 +2,8 @@
 // recebe do HubSpot, em vez de inferir a partir do que ela desenha. Remover
 // assim que a investigação fechar.
 
+import { carregar } from '@/lib/hubspot'
+
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
@@ -12,6 +14,25 @@ export async function GET(req: Request) {
     filterGroups: [{ filters: [{ propertyName: 'hs_object_id', operator: 'EQ', value: id }] }],
     properties: ['subject', 'hs_pipeline_stage', 'hs_v2_date_entered_current_stage', 'hs_lastmodifieddate'],
     limit: 1,
+  }
+
+  // O que carregar() devolve: e a funcao que a pagina usa, com cache de 60s.
+  if (new URL(req.url).searchParams.get('carregar') === '1') {
+    const f = await carregar('cs')
+    const t = f.tickets.find((x) => x.id === id)
+    return Response.json(
+      {
+        agoraNoServidor: new Date().toISOString(),
+        regiao: process.env.VERCEL_REGION ?? '(local)',
+        atualizadoEm: f.atualizadoEm,
+        capturadoEm: f.capturadoEm,
+        aoVivo: f.aoVivo,
+        aviso: f.aviso ?? null,
+        tickets: f.tickets.length,
+        ticket: t ? { stage: t.stage, entrouEtapa: t.entrouEtapa, subject: t.subject } : null,
+      },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   }
 
   // A busca paginada, que e a que o painel usa de verdade.
