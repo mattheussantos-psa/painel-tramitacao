@@ -24,6 +24,10 @@ const PROPS = [
   'data_de_emissao',
   'adquirir_logistica',
   'data_prevista_de_pagamento_logistica',
+  'data_de_envio_contrato_cliente',
+  'data_de_envio_contrato_palestrante',
+  'prazo_de_assinatura__contrato_palestrante',
+  'data_de_assinatura__palestrante_',
 ]
 
 export type Owner = { nome: string; inativo: boolean }
@@ -137,6 +141,10 @@ async function buscarAoVivo(
         dataEmissao: iso(p.data_de_emissao),
         prazoLogistica: iso(p.adquirir_logistica),
         pagamentoLogistica: iso(p.data_prevista_de_pagamento_logistica),
+        envioCliente: iso(p.data_de_envio_contrato_cliente),
+        envioPalestrante: iso(p.data_de_envio_contrato_palestrante),
+        prazoAssinaturaPalestrante: iso(p.prazo_de_assinatura__contrato_palestrante),
+        dataAssinaturaPalestrante: iso(p.data_de_assinatura__palestrante_),
       }))
     }
     after = pagina.paging?.next?.after

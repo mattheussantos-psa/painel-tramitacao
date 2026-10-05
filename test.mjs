@@ -292,15 +292,20 @@ assert.equal(
 
 console.log('ok — etapas por relogio no CS')
 
-// Empate de cor entre envio e assinatura: o card tem que falar da assinatura,
-// que e o relogio com marco, e nao do envio, que nao sabe se foi enviado.
+// Empate de cor entre envio e assinatura. A data de envio ao cliente acabou
+// de ser criada e esta vazia na base, entao contrato sem ela nao significa
+// "nao enviado". Enquanto for assim manda a assinatura, que tem dado. Quando
+// a data de envio aparece, ela fecha o relogio do envio e sobra a assinatura
+// do mesmo jeito.
+const empate = { stage: CTR, evento: '2026-11-20', onboarding: '2026-08-01', prazoAssinatura: '2026-08-20' }
+assert.match(E(empate).texto, /^assinatura · /, 'sem registro de envio, cobra o dado confiavel')
 assert.match(
-  E({ stage: CTR, evento: '2026-11-20', onboarding: '2026-08-01', prazoAssinatura: '2026-08-20' }).texto,
-  /assinatura/,
-  'na duvida o card mostra o relogio que tem prova',
+  E({ ...empate, envioCliente: '2026-08-02' }).texto,
+  /^assinatura · /,
+  'enviado e nao assinado: cobra a assinatura, que antes ficava escondida atras do envio',
 )
 
-console.log('ok — empate escolhe o relogio com marco')
+console.log('ok — empate cobra o relogio com dado confiavel')
 
 // Faturamento entrou no CS em 02/10/2026 com a regra de 3 dias apos a
 // assinatura. Sem assinatura nao ha de onde contar: cinza, nao verde.
@@ -319,3 +324,38 @@ assert.equal(
 assert.match(fat({ dataAssinatura: '2026-09-20' }).texto, /^emissão · /)
 
 console.log('ok — faturamento no CS')
+
+// ---- minuta do palestrante ----
+// O formato de contrato diz quais minutas correm: 100% PSA roda as duas,
+// interveniente roda so a do cliente, cliente x palestrante so a do palestrante.
+const PSA100 = 'MC (Cliente x PSA) = 100% PSA'
+const INTERV = 'MC (Cliente x PSA x Palestrante)'
+const CLIPAL = 'MC (Cliente x Palestrante)'
+const pal = (chave, over) => RELOGIOS.find((r) => r.chave === chave).ver(T(over), HOJE)
+
+assert.equal(pal('palestrante-assinatura', { formatoContrato: INTERV }).estado, 'nao-aplica', 'interveniente nao tem minuta propria')
+assert.equal(pal('palestrante-assinatura', { formatoContrato: PSA100 }).estado, 'sem-dado', 'sem prazo preenchido')
+assert.equal(pal('palestrante-assinatura', { formatoContrato: PSA100, prazoAssinaturaPalestrante: '2026-10-05' }).estado, 'verde')
+assert.equal(pal('palestrante-assinatura', { formatoContrato: CLIPAL, prazoAssinaturaPalestrante: '2026-09-20' }).estado, 'vermelho')
+const palOk = pal('palestrante-assinatura', { formatoContrato: PSA100, prazoAssinaturaPalestrante: '2026-09-20', dataAssinaturaPalestrante: '2026-09-18' })
+assert.equal(palOk.estado, 'concluido')
+assert.equal(palOk.cumpriu, true)
+
+// Envio da minuta so sabe dizer se saiu: o gap depois da assinatura do cliente
+// nunca foi definido, entao nao ganha cor em vez de ganhar uma inventada.
+assert.equal(pal('palestrante-envio', { formatoContrato: PSA100 }).estado, 'bloqueado')
+assert.equal(pal('palestrante-envio', { formatoContrato: PSA100, envioPalestrante: '2026-09-10' }).estado, 'concluido')
+assert.equal(pal('palestrante-envio', { formatoContrato: INTERV }).estado, 'nao-aplica')
+
+// A data de envio ao cliente agora e marco de verdade, sem depender da assinatura.
+assert.equal(pal('contrato-envio', { formatoContrato: PSA100, onboarding: '2026-01-05', envioCliente: '2026-01-06' }).estado, 'concluido')
+assert.equal(pal('contrato-envio', { formatoContrato: CLIPAL }).estado, 'nao-aplica')
+
+// Na etapa, a minuta vencida puxa a cor mesmo com o contrato do cliente em dia.
+assert.equal(
+  E({ stage: CTR, evento: '2026-11-20', formatoContrato: PSA100, onboarding: '2026-09-28',
+      prazoAssinatura: '2026-10-20', envioCliente: '2026-09-29', prazoAssinaturaPalestrante: '2026-09-20' }).cor,
+  'vermelho',
+)
+
+console.log('ok — minuta do palestrante')

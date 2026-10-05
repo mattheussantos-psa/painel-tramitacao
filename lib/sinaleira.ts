@@ -25,6 +25,10 @@ export type Ticket = {
   dataEmissao: string
   prazoLogistica: string
   pagamentoLogistica: string
+  envioCliente: string
+  envioPalestrante: string
+  prazoAssinaturaPalestrante: string
+  dataAssinaturaPalestrante: string
   reunioes: { titulo: string; inicio: string; desfecho: string }[]
 }
 
@@ -35,7 +39,9 @@ export const completar = (t: Partial<Ticket>): Ticket => ({
   proximaTarefa: '', onboarding: '', statusContrato: '', entrouEtapa: '',
   logistica: '', tipoEmpresa: '', formatoContrato: '', prazoAssinatura: '',
   dataAssinatura: '', prazoBriefing: '', callBriefing: '', dataFaturamento: '',
-  dataEmissao: '', prazoLogistica: '', pagamentoLogistica: '', reunioes: [],
+  dataEmissao: '', prazoLogistica: '', pagamentoLogistica: '', envioCliente: '',
+  envioPalestrante: '', prazoAssinaturaPalestrante: '', dataAssinaturaPalestrante: '',
+  reunioes: [],
   ...t,
 })
 
@@ -102,7 +108,7 @@ export const prazoEmTexto = (r: Regra) =>
 // para o painel não precisar importar a lógica só para escrever um subtítulo.
 const REGRA_EM_TEXTO: Record<string, string> = {
   'Logística': 'prazo de aquisição · pagamento previsto',
-  'Contrato': 'envio 1 dia útil após o onboarding · assinatura na data do prazo',
+  'Contrato': 'envio 1 dia útil após o onboarding · assinatura na data do prazo · minuta do palestrante conforme o formato',
   'Briefing': 'agendar entre D-30 e D-25 · realizar entre D-15 e D-10',
   'Faturamento': 'emissão em até 3 dias após a assinatura',
 }

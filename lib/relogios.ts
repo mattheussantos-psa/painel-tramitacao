@@ -105,10 +105,24 @@ function contraPrazo(prazo: string, hoje: number, semDado: string): Veredito {
   }
 }
 
-// Formato em que o contrato e so entre cliente e palestrante: a PSA nao e
-// parte, entao os prazos de envio e assinatura do contrato do cliente nao
-// correm. Os outros formatos que o CS ainda nao mapeou seguem como estavam.
+// Qual minuta corre em cada formato de contrato, conforme o CS:
+//   100% PSA ................. cliente e palestrante
+//   Cliente x PSA x Palestrante .. só cliente (palestrante é interveniente)
+//   Cliente x Palestrante ........ só palestrante (a PSA não é parte)
+// Formato fora dessa lista mantém o relógio do cliente, que é como já estava:
+// mudar sem regra seria inventar.
 const SO_PALESTRANTE = ['MC (Cliente x Palestrante)']
+const COM_PALESTRANTE = ['MC (Cliente x PSA) = 100% PSA', 'MC (Cliente x Palestrante)']
+
+const usaCliente = (formato: string) => !SO_PALESTRANTE.includes(formato)
+const usaPalestrante = (formato: string) => COM_PALESTRANTE.includes(formato)
+
+const foraDoFormato = (texto: string): Veredito => ({
+  estado: 'nao-aplica',
+  dias: null,
+  texto,
+  cumpriu: null,
+})
 
 // Assinatura do cliente serve de prova indireta de envio: não dá para assinar
 // um contrato que não foi enviado.
@@ -150,16 +164,21 @@ export const RELOGIOS: Relogio[] = [
   {
     chave: 'contrato-envio',
     etapa: 'Contrato',
-    nome: 'Envio do contrato',
+    nome: 'Envio do contrato ao cliente',
     curto: 'envio',
     regra: '1 dia útil após o onboarding · amarelo 2 a 3 dias · vermelho 4+',
+    // Vira 'fechado' quando o time comecar a preencher a data de envio. Hoje
+    // ela e nova e esta vazia na base inteira, entao um contrato sem data nao
+    // significa 'nao enviado' — e so ausencia de registro. Como 'hipotese',
+    // perde o desempate para a assinatura, que tem dado de verdade (97% com
+    // prazo, 67% com data). Sem isso os 36 vermelhos da coluna diziam todos
+    // 'envio' e escondiam 23 assinaturas vencidas.
     confianca: 'hipotese',
     gatilho: 'data_de_realizacao_do_onboarding',
-    marco: 'assinatura serve de prova indireta — falta o valor "Enviado"',
-    pendencia: 'status_do_contrato só tem Assinado e Pendente: Pendente não separa "não enviei" de "enviei e não assinaram".',
+    marco: 'data_de_envio_contrato_cliente',
     ver: (t, hoje) => {
-      if (SO_PALESTRANTE.includes(t.formatoContrato))
-        return { estado: 'nao-aplica', dias: null, texto: 'contrato é entre cliente e palestrante', cumpriu: null }
+      if (!usaCliente(t.formatoContrato)) return foraDoFormato('contrato é entre cliente e palestrante')
+      if (tem(t.envioCliente)) return { estado: 'concluido', dias: null, texto: 'contrato enviado', cumpriu: null }
       if (contratoAssinado(t))
         return { estado: 'concluido', dias: null, texto: 'assinado, logo foi enviado', cumpriu: null }
       if (!tem(t.onboarding))
@@ -171,15 +190,14 @@ export const RELOGIOS: Relogio[] = [
   {
     chave: 'contrato-assinatura',
     etapa: 'Contrato',
-    nome: 'Assinatura do contrato',
+    nome: 'Assinatura do contrato pelo cliente',
     curto: 'assinatura',
     regra: 'Até a data em "Prazo de Assinatura" · amarelo 1 a 3 dias depois · vermelho 4+',
     confianca: 'fechado',
     gatilho: 'assinar_contrato',
     marco: 'data_de_assinatura_do_contrato / status_do_contrato',
     ver: (t, hoje) => {
-      if (SO_PALESTRANTE.includes(t.formatoContrato))
-        return { estado: 'nao-aplica', dias: null, texto: 'contrato é entre cliente e palestrante', cumpriu: null }
+      if (!usaCliente(t.formatoContrato)) return foraDoFormato('contrato é entre cliente e palestrante')
       if (!tem(t.prazoAssinatura))
         return { estado: 'sem-dado', dias: null, texto: 'sem prazo de assinatura', cumpriu: null }
 
@@ -203,6 +221,48 @@ export const RELOGIOS: Relogio[] = [
         texto: d <= 0 ? `faltam ${-d}d para o prazo` : `${d}d depois do prazo`,
         cumpriu: null,
       }
+    },
+  },
+  {
+    chave: 'palestrante-envio',
+    etapa: 'Contrato',
+    nome: 'Envio da minuta ao palestrante',
+    curto: 'minuta',
+    regra: 'Após a assinatura do cliente — gap ainda não definido pelo CS',
+    confianca: 'bloqueado',
+    gatilho: '— falta o gap acordado',
+    marco: 'data_de_envio_contrato_palestrante',
+    pendencia: 'O CS escreveu "após a assinatura de contrato com o cliente (definir gap)" e o número nunca veio. Sem ele a minuta não ganha cor: só diz se saiu.',
+    ver: (t) => {
+      if (!usaPalestrante(t.formatoContrato)) return foraDoFormato(t.formatoContrato || 'sem formato')
+      if (tem(t.envioPalestrante)) return { estado: 'concluido', dias: null, texto: 'minuta enviada', cumpriu: null }
+      return { estado: 'bloqueado', dias: null, texto: 'falta o prazo de envio da minuta', cumpriu: null }
+    },
+  },
+  {
+    chave: 'palestrante-assinatura',
+    etapa: 'Contrato',
+    nome: 'Assinatura do palestrante',
+    curto: 'assinatura do palestrante',
+    regra: 'Até a data em "Prazo de Assinatura Contrato Palestrante" · amarelo 1 a 3 dias depois · vermelho 4+',
+    confianca: 'fechado',
+    gatilho: 'prazo_de_assinatura__contrato_palestrante',
+    marco: 'data_de_assinatura__palestrante_',
+    pendencia: 'Faixa de cor não foi passada para o palestrante: aplica a mesma do contrato do cliente.',
+    ver: (t, hoje) => {
+      if (!usaPalestrante(t.formatoContrato)) return foraDoFormato(t.formatoContrato || 'sem formato')
+      if (tem(t.dataAssinaturaPalestrante)) {
+        if (!tem(t.prazoAssinaturaPalestrante))
+          return { estado: 'concluido', dias: null, texto: 'assinado pelo palestrante', cumpriu: null }
+        const atraso = emDias(dia(t.dataAssinaturaPalestrante), dia(t.prazoAssinaturaPalestrante))
+        return {
+          estado: 'concluido',
+          dias: atraso,
+          texto: atraso <= 0 ? `assinado ${-atraso}d antes do prazo` : `assinado ${atraso}d depois do prazo`,
+          cumpriu: atraso <= 0,
+        }
+      }
+      return contraPrazo(t.prazoAssinaturaPalestrante, hoje, 'sem prazo de assinatura do palestrante')
     },
   },
   {
