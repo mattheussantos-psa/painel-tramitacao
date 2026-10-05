@@ -11,7 +11,7 @@ import {
   type Regra,
   type Regua,
 } from '@/lib/sinaleira'
-import { RELOGIOS } from '@/lib/relogios'
+import { RELOGIOS, type Conta } from '@/lib/relogios'
 
 // O quadro vem do servidor porque a tabela de prazos e por pipeline. Com ela
 // fixa no cliente, os dois quadros dividiriam a mesma regua — que e justamente
@@ -33,6 +33,8 @@ export type Linha = {
   diasNaEtapa: number | null
   diasTarefa: number | null
   alertas: { chave: string; texto: string }[]
+  entrouEtapa: string
+  contas: Conta[]
   stage: string
   curador: string | null
   curadorInativo: boolean
@@ -650,17 +652,17 @@ function Matriz({
   )
 }
 
-function Cartao({ l }: { l: Linha }) {
+function Cartao({ l, aoAbrir }: { l: Linha; aoAbrir: () => void }) {
   const t = tarefa(l)
   return (
-    <a
-      href={l.link}
-      target="_blank"
-      rel="noreferrer"
+    <button
+      onClick={aoAbrir}
       className="cartao"
       style={{
         display: 'block',
-        textDecoration: 'none',
+        width: '100%',
+        textAlign: 'left',
+        font: 'inherit',
         color: 'inherit',
         // O fundo tingido é o sinal. A barra vai como sombra interna e não
         // como border-left: assim ela acompanha o raio do canto em vez de
@@ -781,8 +783,194 @@ function Cartao({ l }: { l: Linha }) {
           ))}
         </span>
       )}
-    </a>
+    </button>
   )
+}
+
+// Clicar no card abre a conta daquele ticket: cada relógio da etapa, a data
+// que ele leu e no que deu. Antes o clique ia direto para o HubSpot, e lá o
+// farmer via as propriedades soltas sem saber qual delas pintou o card.
+function Conta({ l, aoFechar }: { l: Linha; aoFechar: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    if (!ref.current?.open) ref.current?.showModal()
+  }, [])
+
+  return (
+    <dialog
+      ref={ref}
+      onClose={aoFechar}
+      onClick={(e) => {
+        if (e.target === ref.current) ref.current?.close()
+      }}
+      style={{
+        width: 'min(560px, calc(100vw - 32px))',
+        maxHeight: '82vh',
+        padding: 0,
+        border: 0,
+        borderRadius: 14,
+        background: 'var(--card)',
+        color: 'var(--text)',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '15px 18px',
+          borderBottom: '1px solid var(--line)',
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em' }}>{l.cliente}</div>
+          <div style={{ fontSize: 13 }}>{l.palestrante || '—'}</div>
+        </div>
+        <button onClick={() => ref.current?.close()} aria-label="Fechar" style={FECHAR}>
+          ×
+        </button>
+      </div>
+
+      <div style={{ padding: '14px 18px 18px', overflowY: 'auto', maxHeight: 'calc(82vh - 128px)' }}>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13, marginBottom: 14 }}>
+          <span>
+            Etapa <b>{l.etapa}</b>
+          </span>
+          <span>
+            {l.diasNaEtapa === null ? 'sem data de entrada' : `${l.diasNaEtapa}d parado`}
+            {l.entrouEtapa ? ` · entrou em ${dataBr(l.entrouEtapa)}` : ''}
+          </span>
+          {l.evento && (
+            <span>
+              Evento <b>{dataBr(l.evento)}</b>
+            </span>
+          )}
+        </div>
+
+        {l.contas.length === 0 && (
+          <p style={{ fontSize: 13, margin: 0 }}>
+            Esta etapa não roda relógio. A cor vem do prazo da própria etapa: {prazo(l)}.
+          </p>
+        )}
+
+        {l.contas.map((c, i) => (
+          <div
+            key={c.chave}
+            style={{
+              marginTop: i ? 12 : 0,
+              paddingTop: i ? 12 : 0,
+              borderTop: i ? '1px solid var(--line)' : 0,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>{c.nome}</span>
+              <span style={{ ...PILULA, ...corDoEstado(c.estado) }}>{ROTULO_ESTADO[c.estado]}</span>
+            </div>
+            <div style={{ fontSize: 13, marginTop: 2 }}>{c.texto}</div>
+            <div style={{ fontSize: 12, marginTop: 5 }}>{c.regra}</div>
+
+            {c.campos.map((f) => (
+              <div key={f.papel} style={{ fontSize: 12, marginTop: 4 }}>
+                {f.papel} <code style={CODIGO}>{f.prop}</code>
+                {CAMPO_TEM_VALOR.test(f.prop) && (
+                  <>
+                    {' '}
+                    <b>{f.valor ? dataBr(f.valor) : 'vazio'}</b>
+                  </>
+                )}
+              </div>
+            ))}
+
+            {c.prazoAnteriorAEntrada && (
+              <div style={AVISO}>
+                O prazo é anterior à entrada do ticket nesta etapa. Pode ser data preenchida em
+                outro momento do processo, que veio junto na reorganização do pipeline — vale
+                conferir antes de cobrar.
+              </div>
+            )}
+          </div>
+        ))}
+
+        {l.alertas.length > 0 && (
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+            {l.alertas.map((a) => (
+              <div key={a.chave} style={{ ...AVISO, background: 'var(--vermelho-bg)', color: 'var(--vermelho)' }}>
+                {a.texto}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <a
+          href={l.link}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            display: 'inline-block',
+            marginTop: 16,
+            background: 'var(--link)',
+            color: '#fff',
+            textDecoration: 'none',
+            borderRadius: 9,
+            padding: '9px 15px',
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          Abrir no HubSpot
+        </a>
+      </div>
+    </dialog>
+  )
+}
+
+// Propriedade de verdade tem valor para mostrar; "sair da etapa é o único
+// sinal" é prosa e não tem.
+const CAMPO_TEM_VALOR = /^[a-z0-9_]+$/
+
+const ROTULO_ESTADO: Record<string, string> = {
+  vermelho: 'Vencido',
+  amarelo: 'Alerta',
+  verde: 'No prazo',
+  concluido: 'Concluído',
+  'nao-iniciado': 'Ainda não começou',
+  'nao-aplica': 'Não se aplica',
+  'sem-dado': 'Falta a data',
+  bloqueado: 'Sem como medir',
+}
+
+const corDoEstado = (e: string): React.CSSProperties =>
+  e === 'vermelho' || e === 'amarelo' || e === 'verde'
+    ? { background: `var(--${e}-bg)`, color: `var(--${e})` }
+    : { background: 'var(--cinza-bg)', color: 'var(--text)' }
+
+const PILULA: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 600,
+  borderRadius: 6,
+  padding: '2px 8px',
+  whiteSpace: 'nowrap',
+}
+
+const AVISO: React.CSSProperties = {
+  marginTop: 8,
+  background: 'var(--amarelo-bg)',
+  color: 'var(--amarelo)',
+  borderRadius: 8,
+  padding: '8px 10px',
+  fontSize: 12,
+}
+
+const FECHAR: React.CSSProperties = {
+  border: 0,
+  background: 'transparent',
+  color: 'var(--text-2)',
+  fontSize: 22,
+  lineHeight: 1,
+  padding: 0,
+  flexShrink: 0,
 }
 
 // Kanban: a etapa vira coluna e cada coluna rola sozinha. É o mesmo desenho do
@@ -999,8 +1187,10 @@ const CODIGO: React.CSSProperties = {
 
 function Kanban({
   colunas,
+  aoAbrirConta,
 }: {
   colunas: { id: string; label: string; prazo: string; regras: Explicacao[]; itens: Linha[] }[]
+  aoAbrirConta: (l: Linha) => void
 }) {
   // Uma regra aberta por vez: com estado em cada coluna, passar o mouse pela
   // fileira de icones deixava varios baloes abertos ao mesmo tempo.
@@ -1089,7 +1279,7 @@ function Kanban({
             }}
           >
             {col.itens.map((l) => (
-              <Cartao key={l.id} l={l} />
+              <Cartao key={l.id} l={l} aoAbrir={() => aoAbrirConta(l)} />
             ))}
             {col.itens.length === 0 && (
               <p style={{ color: 'var(--text-3)', fontSize: 13, padding: '10px 6px', margin: 0 }}>Nada aqui.</p>
@@ -1239,6 +1429,7 @@ export default function Painel({
   const [comTarefa, setComTarefa] = useState(false)
   const [alerta, setAlerta] = useState('')
   const [detalhe, setDetalhe] = useState<{ titulo: string; itens: Linha[] } | null>(null)
+  const [conta, setConta] = useState<Linha | null>(null)
 
   // A aba e controle do kanban, nao da pagina: filtros, alertas, horizontes e
   // ranking leem a base inteira e so o quadro recorta por regua.
@@ -1533,6 +1724,8 @@ export default function Painel({
         </Grupo>
       )}
 
+      {conta && <Conta l={conta} aoFechar={() => setConta(null)} />}
+
       {detalhe && (
         <Detalhe
           titulo={detalhe.titulo}
@@ -1647,7 +1840,7 @@ export default function Painel({
         </div>
       </div>
 
-      <Kanban colunas={colunas} />
+      <Kanban colunas={colunas} aoAbrirConta={setConta} />
 
 
 

@@ -1,5 +1,5 @@
 import { carregar, nomeCurador, curadorInativo, linkTicket } from '@/lib/hubspot'
-import { avaliarEtapa } from '@/lib/relogios'
+import { avaliarEtapa, explicar } from '@/lib/relogios'
 import {
   cliente,
   palestrante,
@@ -67,6 +67,8 @@ export default async function Quadro({ quadro }: { quadro: Quadro }) {
         diasNaEtapa: diasNaEtapa(t, hoje),
         diasTarefa: diasParaTarefa(t, hoje),
         alertas: alertas(t, hoje),
+        entrouEtapa: t.entrouEtapa,
+        contas: explicar(t, quadro.sla[t.stage]?.label ?? '', hoje),
         stage: t.stage,
         curador: nomeCurador(owners, t.curador),
         curadorInativo: curadorInativo(owners, t.curador),

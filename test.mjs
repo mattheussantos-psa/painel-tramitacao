@@ -10,7 +10,7 @@ import {
   ENCERRADAS,
   QUADROS,
 } from './lib/sinaleira.ts'
-import { RELOGIOS, avaliarEtapa, diasUteis, EXIGE_MINUTA_PALESTRANTE } from './lib/relogios.ts'
+import { RELOGIOS, avaliarEtapa, diasUteis, explicar, EXIGE_MINUTA_PALESTRANTE } from './lib/relogios.ts'
 
 // A API v3 manda "2026-09-30", a camada de relatório manda epoch em ms.
 // Assumir um formato só derrubou o painel em produção com "Invalid time value".
@@ -359,3 +359,36 @@ assert.equal(
 )
 
 console.log('ok — minuta do palestrante')
+
+// ---- a conta que o card abre ----
+// A explicacao sai da mesma regua que pinta o card: se divergirem, o farmer
+// cobra uma coisa e o quadro mostra outra.
+const conta = explicar(
+  T({ stage: LOG, logistica: REEMBOLSO, prazoLogistica: '2026-09-20', pagamentoLogistica: '2026-10-05', entrouEtapa: '2026-10-02' }),
+  'Contratar Logística',
+  HOJE,
+)
+assert.equal(conta.length, 2, 'a etapa de logistica tem dois relogios')
+assert.equal(conta[0].estado, 'vermelho')
+assert.deepEqual(
+  conta[0].campos.map((c) => [c.prop, c.valor]),
+  [['adquirir_logistica', '2026-09-20'], ['— sair da etapa é o único sinal de que foi adquirida', '']],
+  'mostra a propriedade lida e o valor que ela tinha',
+)
+assert.equal(conta[1].estado, 'verde', 'pagamento ainda no prazo')
+
+// O aviso que separa dado herdado de atraso real: prazo anterior a entrada.
+assert.equal(conta[0].prazoAnteriorAEntrada, true, 'prazo 20/09 contra entrada 02/10')
+const noCiclo = explicar(
+  T({ stage: LOG, logistica: REEMBOLSO, prazoLogistica: '2026-10-20', entrouEtapa: '2026-10-02' }),
+  'Contratar Logística',
+  HOJE,
+)
+assert.equal(noCiclo[0].prazoAnteriorAEntrada, false, 'prazo do proprio ciclo nao leva aviso')
+
+// A cor da conta e a mesma do card, sempre.
+const t2 = T({ stage: LOG, logistica: REEMBOLSO, prazoLogistica: '2026-09-20', entrouEtapa: '2026-10-02', evento: '2026-11-20' })
+assert.equal(avaliarEtapa(t2, HOJE, QUADROS.cs.sla).cor, 'vermelho')
+assert.ok(explicar(t2, 'Contratar Logística', HOJE).some((c) => c.estado === 'vermelho'))
+
+console.log('ok — conta do card bate com a cor do card')
