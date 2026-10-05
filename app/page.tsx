@@ -7,6 +7,6 @@ export const metadata = { title: 'Sinaleira · Tramitação CS' }
 
 export const dynamic = 'force-dynamic'
 
-export default function Page() {
-  return <Quadro quadro={QUADROS.cs} />
+export default function Page({ searchParams }: { searchParams: { r?: string } }) {
+  return <Quadro quadro={QUADROS.cs} forcar={!!searchParams.r} />
 }

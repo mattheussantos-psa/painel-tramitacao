@@ -43,10 +43,10 @@ function Falha({ mensagem }: { mensagem: string }) {
 // Um quadro por pipeline. A mesma montagem serve os dois porque o que muda é
 // a tabela de prazos e se o quadro corre contra a data do evento — o resto do
 // cálculo é igual.
-export default async function Quadro({ quadro }: { quadro: Quadro }) {
+export default async function Quadro({ quadro, forcar }: { quadro: Quadro; forcar?: boolean }) {
   let fonte
   try {
-    fonte = await carregar(quadro.slug)
+    fonte = await carregar(quadro.slug, forcar)
   } catch (e) {
     return <Falha mensagem={e instanceof Error ? e.message : String(e)} />
   }

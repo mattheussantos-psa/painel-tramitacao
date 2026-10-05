@@ -918,6 +918,35 @@ const COR_DO_ESTADO: Record<string, Cor> = {
 
 // Kanban: a etapa vira coluna e cada coluna rola sozinha. É o mesmo desenho do
 // HubSpot, e dispensa o filtro de etapa — a coluna já é o filtro.
+// Recarrega pulando o cache de 60s do servidor. Sem o ?r o botao devolveria
+// o mesmo retrato por ate um minuto — e depois de mexer no HubSpot e isso que
+// faz alguem achar que o painel esta errado.
+function Atualizar() {
+  const [indo, setIndo] = useState(false)
+  return (
+    <button
+      onClick={() => {
+        setIndo(true)
+        window.location.href = `${window.location.pathname}?r=${Date.now()}`
+      }}
+      disabled={indo}
+      style={{
+        height: 28,
+        padding: '0 11px',
+        border: 0,
+        borderRadius: 7,
+        background: 'var(--cinza-bg)',
+        color: 'var(--text)',
+        font: 'inherit',
+        fontSize: 13,
+        flexShrink: 0,
+      }}
+    >
+      {indo ? 'Atualizando…' : 'Atualizar'}
+    </button>
+  )
+}
+
 // A regra de cada etapa fica a um passar de mouse do cabeçalho. Quem abre o
 // painel não tem como adivinhar por que um card está vermelho, e mandar a
 // régua por mensagem desatualiza no primeiro ajuste.
@@ -1507,9 +1536,22 @@ export default function Painel({
           >
             Sinaleira
           </h1>
-          <p style={{ color: 'var(--text-2)', margin: '8px 0 0', fontSize: 14 }}>
-            {quadro.nome} · {linhas.length} tickets abertos ·{' '}
-            {aoVivo ? `ao vivo, ${atualizadoEm}` : `snapshot de ${dataBr(capturadoEm)}`}
+          <p
+            style={{
+              color: 'var(--text-2)',
+              margin: '8px 0 0',
+              fontSize: 14,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+            }}
+          >
+            <span>
+              {quadro.nome} · {linhas.length} tickets abertos ·{' '}
+              {aoVivo ? `ao vivo, ${atualizadoEm}` : `snapshot de ${dataBr(capturadoEm)}`}
+            </span>
+            <Atualizar />
           </p>
         </div>
 

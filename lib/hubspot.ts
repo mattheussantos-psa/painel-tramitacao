@@ -348,12 +348,15 @@ const TTL = 60_000
 // que não pode acontecer aqui.
 const cache = new Map<string, { em: number; fonte: Fonte }>()
 
-export async function carregar(slug: string): Promise<Fonte> {
+// forcar pula o cache: e o que o botao Atualizar usa. Sem isso o botao
+// devolveria o mesmo retrato por ate um minuto, que e justamente o que leva
+// alguem a desconfiar do painel depois de mexer no HubSpot.
+export async function carregar(slug: string, forcar = false): Promise<Fonte> {
   const q = QUADROS[slug]
   if (!q) throw new Error(`Quadro desconhecido: ${slug}`)
 
   const guardado = cache.get(slug)
-  if (guardado && Date.now() - guardado.em < TTL) return guardado.fonte
+  if (!forcar && guardado && Date.now() - guardado.em < TTL) return guardado.fonte
 
   const fonte = await buscarTudo(q)
   if (fonte.aoVivo) cache.set(slug, { em: Date.now(), fonte })
