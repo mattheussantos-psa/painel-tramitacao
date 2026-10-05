@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   ABAS,
   AMARELO_ANTES,
@@ -790,16 +790,28 @@ function Cartao({ l }: { l: Linha }) {
 // A regra de cada etapa fica a um passar de mouse do cabeçalho. Quem abre o
 // painel não tem como adivinhar por que um card está vermelho, e mandar a
 // régua por mensagem desatualiza no primeiro ajuste.
-const LARGURA_REGRAS = 290
+const LARGURA_REGRAS = 300
 
-function Regras({ etapa, itens }: { etapa: string; itens: Explicacao[] }) {
-  // Posicao fixa, calculada na hora de abrir. Dentro da coluna o balao e
-  // cortado: o quadro rola na horizontal, e overflow-x recorta os dois eixos.
+function Regras({
+  etapa,
+  itens,
+  aberta,
+  aoAbrir,
+  aoFechar,
+}: {
+  etapa: string
+  itens: Explicacao[]
+  aberta: boolean
+  aoAbrir: () => void
+  aoFechar: () => void
+}) {
+  // Posicao fixa, calculada ao abrir. Dentro da coluna o balao sai cortado: o
+  // quadro rola na horizontal, e overflow-x recorta os dois eixos.
   const [onde, setOnde] = useState<{ top: number; left: number } | null>(null)
   const botao = useRef<HTMLButtonElement>(null)
   const balao = useRef<HTMLSpanElement>(null)
 
-  const abrir = () => {
+  const posicionar = () => {
     const r = botao.current?.getBoundingClientRect()
     if (!r) return
     setOnde({
@@ -808,9 +820,15 @@ function Regras({ etapa, itens }: { etapa: string; itens: Explicacao[] }) {
     })
   }
 
-  // Depois de montado da para medir a altura real e puxar o balao para cima
-  // quando ele passaria do rodape. Chutar a altura antes erra: a etapa com
-  // quatro relogios ocupa quatro vezes a de um.
+  useEffect(() => {
+    if (aberta) posicionar()
+    else setOnde(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aberta])
+
+  // Depois de montado da para medir a altura real e subir o balao quando ele
+  // passaria do rodape. Chutar a altura erra: a etapa com quatro relogios
+  // ocupa quatro vezes a de um.
   useLayoutEffect(() => {
     if (!onde || !balao.current) return
     const r = balao.current.getBoundingClientRect()
@@ -820,35 +838,46 @@ function Regras({ etapa, itens }: { etapa: string; itens: Explicacao[] }) {
     if (topo !== onde.top) setOnde({ ...onde, top: topo })
   }, [onde])
 
-  // Preso a tela, o balao nao acompanha a rolagem: fecha em vez de descolar.
+  // Fica aberto ate mandarem fechar. Fechar ao tirar o mouse parecia obvio e
+  // era inutilizavel: para ler o fim do texto e preciso rolar dentro do balao,
+  // e qualquer movimento do ponteiro o apagava no meio da leitura.
   useEffect(() => {
-    if (!onde) return
-    const fechar = () => setOnde(null)
-    window.addEventListener('scroll', fechar, true)
-    return () => window.removeEventListener('scroll', fechar, true)
-  }, [onde])
+    if (!aberta) return
+    const dentro = (alvo: EventTarget | null) =>
+      alvo instanceof Node && (!!balao.current?.contains(alvo) || !!botao.current?.contains(alvo))
+
+    const naTecla = (e: KeyboardEvent) => e.key === 'Escape' && aoFechar()
+    const noClique = (e: MouseEvent) => !dentro(e.target) && aoFechar()
+    // Rolagem dentro do balao e leitura, nao saida: so a de fora fecha.
+    const naRolagem = (e: Event) => !dentro(e.target) && aoFechar()
+
+    document.addEventListener('keydown', naTecla)
+    document.addEventListener('mousedown', noClique)
+    window.addEventListener('scroll', naRolagem, true)
+    return () => {
+      document.removeEventListener('keydown', naTecla)
+      document.removeEventListener('mousedown', noClique)
+      window.removeEventListener('scroll', naRolagem, true)
+    }
+  }, [aberta, aoFechar])
 
   if (!itens.length) return null
-  const aberto = !!onde
 
   return (
-    <span
-      style={{ marginLeft: 'auto', flexShrink: 0, lineHeight: 0 }}
-      onMouseEnter={abrir}
-      onMouseLeave={() => setOnde(null)}
-    >
+    <span style={{ marginLeft: 'auto', flexShrink: 0, lineHeight: 0 }}>
       <button
         ref={botao}
-        onClick={() => (aberto ? setOnde(null) : abrir())}
+        onMouseEnter={aoAbrir}
+        onClick={() => (aberta ? aoFechar() : aoAbrir())}
         aria-label={`Regras de ${etapa}`}
-        aria-expanded={aberto}
+        aria-expanded={aberta}
         style={{
           width: 20,
           height: 20,
           borderRadius: 10,
           border: 0,
           padding: 0,
-          background: aberto ? 'var(--card)' : 'transparent',
+          background: aberta ? 'var(--card)' : 'transparent',
           boxShadow: 'inset 0 0 0 1.5px var(--text-2)',
           color: 'var(--text)',
           fontSize: 12,
@@ -863,20 +892,21 @@ function Regras({ etapa, itens }: { etapa: string; itens: Explicacao[] }) {
       {onde && (
         <span
           ref={balao}
-          role="tooltip"
+          role="dialog"
+          aria-label={`Regras de ${etapa}`}
           style={{
             position: 'fixed',
             top: onde.top,
             left: onde.left,
             zIndex: 50,
             width: LARGURA_REGRAS,
-            maxHeight: '62vh',
+            maxHeight: '70vh',
             overflowY: 'auto',
             background: 'var(--card)',
             border: '1px solid var(--line)',
             borderRadius: 12,
             boxShadow: '0 10px 28px rgba(0,0,0,0.28)',
-            padding: '12px 14px',
+            padding: '12px 14px 14px',
             fontSize: 12,
             fontWeight: 400,
             lineHeight: 1.45,
@@ -887,7 +917,33 @@ function Regras({ etapa, itens }: { etapa: string; itens: Explicacao[] }) {
             cursor: 'default',
           }}
         >
-          <span style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>{etapa}</span>
+          <span
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 10,
+              marginBottom: 9,
+            }}
+          >
+            <span style={{ fontWeight: 600, fontSize: 13 }}>{etapa}</span>
+            <button
+              onClick={aoFechar}
+              aria-label="Fechar"
+              style={{
+                border: 0,
+                background: 'transparent',
+                color: 'var(--text-2)',
+                fontSize: 16,
+                lineHeight: 1,
+                padding: 0,
+                flexShrink: 0,
+              }}
+            >
+              ×
+            </button>
+          </span>
+
           {itens.map((e, i) => (
             <span
               key={e.nome}
@@ -932,6 +988,7 @@ function Regras({ etapa, itens }: { etapa: string; itens: Explicacao[] }) {
   )
 }
 
+
 const CODIGO: React.CSSProperties = {
   background: 'var(--cinza-bg)',
   borderRadius: 4,
@@ -945,6 +1002,11 @@ function Kanban({
 }: {
   colunas: { id: string; label: string; prazo: string; regras: Explicacao[]; itens: Linha[] }[]
 }) {
+  // Uma regra aberta por vez: com estado em cada coluna, passar o mouse pela
+  // fileira de icones deixava varios baloes abertos ao mesmo tempo.
+  const [regras, setRegras] = useState<string | null>(null)
+  const fechar = useCallback(() => setRegras(null), [])
+
   return (
     <div
       className="rolagem"
@@ -1002,7 +1064,13 @@ function Kanban({
               >
                 {col.itens.length}
               </span>
-              <Regras etapa={col.label} itens={col.regras} />
+              <Regras
+                etapa={col.label}
+                itens={col.regras}
+                aberta={regras === col.id}
+                aoAbrir={() => setRegras(col.id)}
+                aoFechar={fechar}
+              />
             </div>
             <div style={{ fontSize: 11, marginTop: 2 }}>{col.prazo}</div>
           </div>
