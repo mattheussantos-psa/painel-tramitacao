@@ -68,18 +68,20 @@ export type Regra = { label: string; ordem: number } & (
   | { tipo: 'relogio' }
 )
 
-// Ordem e rótulos espelham o board do HubSpot, relidos da API em 02/10/2026.
-// O CS virou o funil da Tramitação: Onboarding, Logística, Contrato,
-// Faturamento e Briefing, com "Em andamento" aposentada no fim do board.
+// Ordem e rótulos espelham o board do HubSpot, relidos da API em 05/10/2026.
+// O CS virou o funil da Tramitação e as etapas passaram a ter nome de ação:
+// Contratar Logística, Assinar Contrato, Faturar, Realizar Briefing. Nessa
+// rodada "Aguardando Onboarding" deixou de existir e "Coleta de NPS" entrou.
 // Etapa que existe no HubSpot e falta aqui some do painel sem avisar — foi o
 // que aconteceu com Logística e Contrato, e sumiram 152 tickets.
 export const SLA: Record<string, Regra> = {
-  '1088360204': { label: 'Aguardando Onboarding', ordem: 1, tipo: 'dias', dias: 7 },
-  '1450325173': { label: 'Logística', ordem: 2, tipo: 'relogio' },
-  '1450325174': { label: 'Contrato', ordem: 3, tipo: 'relogio' },
-  '1450683393': { label: 'Faturamento', ordem: 4, tipo: 'relogio' },
-  '1450325175': { label: 'Briefing', ordem: 5, tipo: 'relogio' },
-  '1448673032': { label: 'Aguardando Evento', ordem: 6, tipo: 'evento' },
+  '1450325173': { label: 'Contratar Logística', ordem: 1, tipo: 'relogio' },
+  '1450325174': { label: 'Assinar Contrato', ordem: 2, tipo: 'relogio' },
+  '1450683393': { label: 'Faturar', ordem: 3, tipo: 'relogio' },
+  '1450325175': { label: 'Realizar Briefing', ordem: 4, tipo: 'relogio' },
+  '1448673032': { label: 'Aguardando Evento', ordem: 5, tipo: 'evento' },
+  // Etapa nova, sem regra de prazo acordada: cinza mostrando o tempo parado.
+  '1451268423': { label: 'Coleta de NPS', ordem: 6, tipo: 'sem-prazo' },
   '1088361911': { label: 'Pagamento Pós-Palestra', ordem: 7, tipo: 'dias', dias: 20 },
   '1333136740': { label: 'Aguardando NF Palestrante', ordem: 8, tipo: 'dias', dias: 20 },
   // O HubSpot jogou "Em andamento" para o fim do board e ela está com zero
@@ -107,10 +109,11 @@ export const prazoEmTexto = (r: Regra) =>
 // Resumo da regra para o cabeçalho da coluna. Fica aqui e não em relogios.ts
 // para o painel não precisar importar a lógica só para escrever um subtítulo.
 const REGRA_EM_TEXTO: Record<string, string> = {
-  'Logística': 'prazo de aquisição · pagamento previsto',
-  'Contrato': 'envio 1 dia útil após o onboarding · assinatura na data do prazo · minuta do palestrante conforme o formato',
-  'Briefing': 'agendar entre D-30 e D-25 · realizar entre D-15 e D-10',
-  'Faturamento': 'emissão em até 3 dias após a assinatura',
+  'Contratar Logística': 'prazo de aquisição · pagamento previsto',
+  'Assinar Contrato':
+    'envio 1 dia útil após o onboarding · assinatura na data do prazo · minuta do palestrante conforme o formato',
+  'Realizar Briefing': 'agendar entre D-30 e D-25 · realizar entre D-15 e D-10',
+  'Faturar': 'emissão em até 3 dias após a assinatura',
 }
 
 // As outras 4 etapas do CS têm closed_date preenchido — ticket encerrado, sai

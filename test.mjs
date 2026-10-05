@@ -41,16 +41,17 @@ const t = (over) => ({
 })
 
 // Prazo e tempo NA ETAPA: o relogio comeca quando o ticket entra nela.
-// Aguardando Onboarding tem 7 dias.
-const onb = avaliar(t({ stage: '1088360204', entrouEtapa: '2026-09-25' }), HOJE)
-assert.equal(onb.vence, '2026-10-02')
-assert.equal(onb.dias, -3)
+// Pagamento Pos-Palestra tem 20 dias. (Aguardando Onboarding, que era o caso
+// original deste teste, deixou de existir no pipeline em 05/10/2026.)
+const onb = avaliar(t({ stage: '1088361911', entrouEtapa: '2026-09-13' }), HOJE)
+assert.equal(onb.vence, '2026-10-03')
+assert.equal(onb.dias, -4)
 assert.equal(onb.cor, 'amarelo')
 
 // O caso que a regua antiga errava: ticket criado dias antes do evento nao
 // pode nascer atrasado por um prazo anterior a propria entrada na etapa.
-const deloitte = avaliar(t({ stage: '1088360204', evento: '2026-09-30', entrouEtapa: '2026-09-25' }), HOJE)
-assert.equal(deloitte.cor, 'amarelo', 'nao pode ser vermelho: entrou ha 4 dias e tem 7')
+const deloitte = avaliar(t({ stage: '1088361911', evento: '2026-09-30', entrouEtapa: '2026-09-25' }), HOJE)
+assert.equal(deloitte.cor, 'verde', 'nao pode ser vermelho: entrou ha 4 dias e tem 20')
 
 // Em andamento tem 20 dias na etapa
 assert.equal(avaliar(t({ stage: '1088360205', entrouEtapa: '2026-09-20' }), HOJE).cor, 'verde')
@@ -274,8 +275,8 @@ assert.equal(
 )
 
 // As cinco etapas antigas seguem por tempo na etapa, sem relogio.
-assert.equal(E({ stage: '1088360204', entrouEtapa: '2026-09-27', evento: '2026-11-01' }).cor, 'verde')
-assert.equal(E({ stage: '1088360204', entrouEtapa: '2026-09-01', evento: '2026-11-01' }).cor, 'vermelho')
+assert.equal(E({ stage: '1088361911', entrouEtapa: '2026-09-27', evento: '2026-11-01' }).cor, 'verde')
+assert.equal(E({ stage: '1088361911', entrouEtapa: '2026-03-01', evento: '2026-11-01' }).cor, 'vermelho')
 
 // Contrato so entre cliente e palestrante: a PSA nao e parte, entao os prazos
 // do contrato do cliente nao correm.
@@ -292,20 +293,19 @@ assert.equal(
 
 console.log('ok — etapas por relogio no CS')
 
-// Empate de cor entre envio e assinatura. A data de envio ao cliente acabou
-// de ser criada e esta vazia na base, entao contrato sem ela nao significa
-// "nao enviado". Enquanto for assim manda a assinatura, que tem dado. Quando
-// a data de envio aparece, ela fecha o relogio do envio e sobra a assinatura
-// do mesmo jeito.
+// Empate de cor entre envio e assinatura: manda quem trava primeiro. Os dois
+// tem marco proprio — data de envio ao cliente e data de assinatura — entao
+// contrato sem registro de envio e cobrado como envio, e so depois que a data
+// de envio aparece a assinatura assume o card.
 const empate = { stage: CTR, evento: '2026-11-20', onboarding: '2026-08-01', prazoAssinatura: '2026-08-20' }
-assert.match(E(empate).texto, /^assinatura · /, 'sem registro de envio, cobra o dado confiavel')
+assert.match(E(empate).texto, /^envio · /, 'nao enviado: o envio trava a assinatura')
 assert.match(
   E({ ...empate, envioCliente: '2026-08-02' }).texto,
   /^assinatura · /,
   'enviado e nao assinado: cobra a assinatura, que antes ficava escondida atras do envio',
 )
 
-console.log('ok — empate cobra o relogio com dado confiavel')
+console.log('ok — empate cobra quem trava primeiro')
 
 // Faturamento entrou no CS em 02/10/2026 com a regra de 3 dias apos a
 // assinatura. Sem assinatura nao ha de onde contar: cinza, nao verde.

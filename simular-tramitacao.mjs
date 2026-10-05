@@ -209,7 +209,7 @@ const ETAPAS_TRAMITACAO = Object.entries(SLA_TRAMITACAO)
   .map(([id, r]) => ({
     id,
     label: r.label,
-    relogios: RELOGIOS.filter((rel) => rel.etapa === r.label),
+    relogios: RELOGIOS.filter((rel) => rel.etapa.includes(r.label)),
   }))
 
 const PESO = { vermelho: 3, amarelo: 2, verde: 1 }

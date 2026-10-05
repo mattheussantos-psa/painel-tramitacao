@@ -73,7 +73,10 @@ export type Confianca = 'fechado' | 'hipotese' | 'bloqueado'
 
 export type Relogio = {
   chave: string
-  etapa: string
+  // Rótulos de etapa que este relógio serve. É lista porque o mesmo passo tem
+  // nome diferente nos dois pipelines — "Contratar Logística" no CS e
+  // "Logística" na Tramitação — e porque o CS renomeia etapa com frequência.
+  etapa: string[]
   nome: string
   // Nome curto para o card. "aceite da logística · 45d desde o onboarding"
   // não cabe em coluna de 300px e vazava para fora do cartão.
@@ -131,7 +134,7 @@ const contratoAssinado = (t: TicketSim) => t.statusContrato === 'Assinado' || te
 export const RELOGIOS: Relogio[] = [
   {
     chave: 'log-aquisicao',
-    etapa: 'Logística',
+    etapa: ['Contratar Logística', 'Logística'],
     nome: 'Aquisição da logística',
     curto: 'aquisição',
     regra: 'Até a data em "Prazo de aquisição da Logística" · amarelo 1 a 3 dias depois · vermelho 4+',
@@ -147,7 +150,7 @@ export const RELOGIOS: Relogio[] = [
   },
   {
     chave: 'log-pagamento',
-    etapa: 'Logística',
+    etapa: ['Contratar Logística', 'Logística'],
     nome: 'Pagamento da logística',
     curto: 'pagamento',
     regra: 'Até a data em "Data prevista de pagamento Logística" · amarelo 1 a 3 dias depois · vermelho 4+',
@@ -163,17 +166,11 @@ export const RELOGIOS: Relogio[] = [
   },
   {
     chave: 'contrato-envio',
-    etapa: 'Contrato',
+    etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Envio do contrato ao cliente',
     curto: 'envio',
     regra: '1 dia útil após o onboarding · amarelo 2 a 3 dias · vermelho 4+',
-    // Vira 'fechado' quando o time comecar a preencher a data de envio. Hoje
-    // ela e nova e esta vazia na base inteira, entao um contrato sem data nao
-    // significa 'nao enviado' — e so ausencia de registro. Como 'hipotese',
-    // perde o desempate para a assinatura, que tem dado de verdade (97% com
-    // prazo, 67% com data). Sem isso os 36 vermelhos da coluna diziam todos
-    // 'envio' e escondiam 23 assinaturas vencidas.
-    confianca: 'hipotese',
+    confianca: 'fechado',
     gatilho: 'data_de_realizacao_do_onboarding',
     marco: 'data_de_envio_contrato_cliente',
     ver: (t, hoje) => {
@@ -189,7 +186,7 @@ export const RELOGIOS: Relogio[] = [
   },
   {
     chave: 'contrato-assinatura',
-    etapa: 'Contrato',
+    etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do contrato pelo cliente',
     curto: 'assinatura',
     regra: 'Até a data em "Prazo de Assinatura" · amarelo 1 a 3 dias depois · vermelho 4+',
@@ -225,7 +222,7 @@ export const RELOGIOS: Relogio[] = [
   },
   {
     chave: 'palestrante-envio',
-    etapa: 'Contrato',
+    etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Envio da minuta ao palestrante',
     curto: 'minuta',
     regra: 'Após a assinatura do cliente — gap ainda não definido pelo CS',
@@ -241,7 +238,7 @@ export const RELOGIOS: Relogio[] = [
   },
   {
     chave: 'palestrante-assinatura',
-    etapa: 'Contrato',
+    etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do palestrante',
     curto: 'assinatura do palestrante',
     regra: 'Até a data em "Prazo de Assinatura Contrato Palestrante" · amarelo 1 a 3 dias depois · vermelho 4+',
@@ -267,7 +264,7 @@ export const RELOGIOS: Relogio[] = [
   },
   {
     chave: 'faturamento',
-    etapa: 'Faturamento',
+    etapa: ['Faturar', 'Faturamento'],
     nome: 'Emissão do faturamento',
     curto: 'emissão',
     regra: 'Até 3 dias após a assinatura · amarelo 4 a 5 · vermelho 6+',
@@ -290,7 +287,7 @@ export const RELOGIOS: Relogio[] = [
   },
   {
     chave: 'briefing-agendamento',
-    etapa: 'Briefing',
+    etapa: ['Realizar Briefing', 'Briefing'],
     nome: 'Agendamento do briefing',
     curto: 'agendamento',
     regra: 'Verde D-30 a D-25 · amarelo D-24 a D-15 · vermelho D-14 em diante',
@@ -314,7 +311,7 @@ export const RELOGIOS: Relogio[] = [
   },
   {
     chave: 'briefing-realizacao',
-    etapa: 'Briefing',
+    etapa: ['Realizar Briefing', 'Briefing'],
     nome: 'Realização do briefing',
     curto: 'realização',
     regra: 'Verde D-15 a D-11 · amarelo D-10 a D-8 · vermelho D-7 em diante',
@@ -358,7 +355,7 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
   let texto = ''
   let fechado = false
   for (const rel of RELOGIOS) {
-    if (rel.etapa !== etapa) continue
+    if (!rel.etapa.includes(etapa)) continue
     const v = rel.ver(t, hoje)
     if (!PESO[v.estado]) continue
     // Empate de cor: ganha o relógio que tem marco de conclusão. Com os dois
