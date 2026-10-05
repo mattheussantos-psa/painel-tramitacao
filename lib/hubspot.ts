@@ -22,6 +22,8 @@ const PROPS = [
   'data_e_hora_da_call_de_briefing',
   'data_de_faturamento',
   'data_de_emissao',
+  'adquirir_logistica',
+  'data_prevista_de_pagamento_logistica',
 ]
 
 export type Owner = { nome: string; inativo: boolean }
@@ -133,6 +135,8 @@ async function buscarAoVivo(
         callBriefing: iso(p.data_e_hora_da_call_de_briefing),
         dataFaturamento: iso(p.data_de_faturamento),
         dataEmissao: iso(p.data_de_emissao),
+        prazoLogistica: iso(p.adquirir_logistica),
+        pagamentoLogistica: iso(p.data_prevista_de_pagamento_logistica),
       }))
     }
     after = pagina.paging?.next?.after

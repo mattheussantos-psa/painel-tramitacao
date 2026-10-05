@@ -87,7 +87,28 @@ export type Relogio = {
   ver: (t: TicketSim, hoje: number) => Veredito
 }
 
-const LOG_COM_PRAZO = 'Sim, com reembolso do cliente'
+const LOG_REEMBOLSO = 'Sim, com reembolso do cliente'
+const LOG_CUSTO_PSA = 'Sim, com custo para PSA'
+
+// Prazo que é uma data no proprio ticket. Mesma faixa que o CS definiu para a
+// assinatura de contrato: verde ate a data, amarelo 1 a 3 dias depois,
+// vermelho do quarto em diante. Sem a data nao da para cobrar — cinza, nunca
+// verde por omissao.
+function contraPrazo(prazo: string, hoje: number, semDado: string): Veredito {
+  if (!tem(prazo)) return { estado: 'sem-dado', dias: null, texto: semDado, cumpriu: null }
+  const d = emDias(hojeEmDias(hoje), dia(prazo))
+  return {
+    estado: d <= 0 ? 'verde' : faixa(d, 0, 3),
+    dias: d,
+    texto: d <= 0 ? `faltam ${-d}d para o prazo` : `${d}d depois do prazo`,
+    cumpriu: null,
+  }
+}
+
+// Formato em que o contrato e so entre cliente e palestrante: a PSA nao e
+// parte, entao os prazos de envio e assinatura do contrato do cliente nao
+// correm. Os outros formatos que o CS ainda nao mapeou seguem como estavam.
+const SO_PALESTRANTE = ['MC (Cliente x Palestrante)']
 
 // Assinatura do cliente serve de prova indireta de envio: não dá para assinar
 // um contrato que não foi enviado.
@@ -95,40 +116,36 @@ const contratoAssinado = (t: TicketSim) => t.statusContrato === 'Assinado' || te
 
 export const RELOGIOS: Relogio[] = [
   {
-    chave: 'log-aceite',
+    chave: 'log-aquisicao',
     etapa: 'Logística',
-    nome: 'Aceite da logística',
-    curto: 'aceite',
-    regra: 'Até 24h após o onboarding · amarelo 2 a 3 dias · vermelho 4+',
+    nome: 'Aquisição da logística',
+    curto: 'aquisição',
+    regra: 'Até a data em "Prazo de aquisição da Logística" · amarelo 1 a 3 dias depois · vermelho 4+',
     confianca: 'hipotese',
-    gatilho: 'data_de_realizacao_do_onboarding',
-    marco: '— não existe campo de aceite',
-    pendencia: 'Sem marco de conclusão, todo ticket antigo aparece vencido. O campo autorizacao_logistica já existe com as opções certas e está vazio nos 358.',
+    gatilho: 'adquirir_logistica',
+    marco: '— sair da etapa é o único sinal de que foi adquirida',
+    pendencia: 'Faixa de cor não foi acordada: aplica a mesma da assinatura de contrato, que o CS definiu para prazo em data.',
     ver: (t, hoje) => {
-      if (t.logistica !== LOG_COM_PRAZO)
+      if (t.logistica !== LOG_REEMBOLSO && t.logistica !== LOG_CUSTO_PSA)
         return { estado: 'nao-aplica', dias: null, texto: t.logistica || 'sem resposta', cumpriu: null }
-      if (!tem(t.onboarding))
-        return { estado: 'sem-dado', dias: null, texto: 'sem data de onboarding', cumpriu: null }
-      const d = emDias(hojeEmDias(hoje), dia(t.onboarding))
-      return { estado: faixa(d, 1, 3), dias: d, texto: `${d}d desde o onboarding`, cumpriu: null }
+      return contraPrazo(t.prazoLogistica, hoje, 'sem prazo de aquisição')
     },
   },
   {
-    chave: 'log-emissao',
+    chave: 'log-pagamento',
     etapa: 'Logística',
-    nome: 'Emissão da logística',
-    curto: 'emissão',
-    regra: 'Até 24h após o aceite · amarelo 2 a 3 dias · vermelho 4+',
-    confianca: 'bloqueado',
-    gatilho: '— não existe campo de aceite',
-    marco: '— não existe campo de emissão',
-    pendencia: 'Relógio impossível hoje: sem data de aceite não há de onde contar.',
-    ver: (t) => ({
-      estado: t.logistica === LOG_COM_PRAZO ? 'bloqueado' : 'nao-aplica',
-      dias: null,
-      texto: t.logistica === LOG_COM_PRAZO ? 'falta a data de aceite' : t.logistica || 'sem resposta',
-      cumpriu: null,
-    }),
+    nome: 'Pagamento da logística',
+    curto: 'pagamento',
+    regra: 'Até a data em "Data prevista de pagamento Logística" · amarelo 1 a 3 dias depois · vermelho 4+',
+    confianca: 'hipotese',
+    gatilho: 'data_prevista_de_pagamento_logistica',
+    marco: '— sair da etapa é o único sinal de que foi pago',
+    pendencia: 'Só vale para logística com reembolso do cliente, conforme a regra do CS.',
+    ver: (t, hoje) => {
+      if (t.logistica !== LOG_REEMBOLSO)
+        return { estado: 'nao-aplica', dias: null, texto: t.logistica || 'sem resposta', cumpriu: null }
+      return contraPrazo(t.pagamentoLogistica, hoje, 'sem data prevista de pagamento')
+    },
   },
   {
     chave: 'contrato-envio',
@@ -141,6 +158,8 @@ export const RELOGIOS: Relogio[] = [
     marco: 'assinatura serve de prova indireta — falta o valor "Enviado"',
     pendencia: 'status_do_contrato só tem Assinado e Pendente: Pendente não separa "não enviei" de "enviei e não assinaram".',
     ver: (t, hoje) => {
+      if (SO_PALESTRANTE.includes(t.formatoContrato))
+        return { estado: 'nao-aplica', dias: null, texto: 'contrato é entre cliente e palestrante', cumpriu: null }
       if (contratoAssinado(t))
         return { estado: 'concluido', dias: null, texto: 'assinado, logo foi enviado', cumpriu: null }
       if (!tem(t.onboarding))
@@ -159,6 +178,8 @@ export const RELOGIOS: Relogio[] = [
     gatilho: 'assinar_contrato',
     marco: 'data_de_assinatura_do_contrato / status_do_contrato',
     ver: (t, hoje) => {
+      if (SO_PALESTRANTE.includes(t.formatoContrato))
+        return { estado: 'nao-aplica', dias: null, texto: 'contrato é entre cliente e palestrante', cumpriu: null }
       if (!tem(t.prazoAssinatura))
         return { estado: 'sem-dado', dias: null, texto: 'sem prazo de assinatura', cumpriu: null }
 

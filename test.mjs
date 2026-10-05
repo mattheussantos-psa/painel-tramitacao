@@ -168,22 +168,26 @@ const T = (over) => ({
 })
 const R = Object.fromEntries(RELOGIOS.map((r) => [r.chave, (t) => r.ver(T(t), HOJE)]))
 const REEMBOLSO = 'Sim, com reembolso do cliente'
+const CUSTO_PSA = 'Sim, com custo para PSA'
 
 // Dias uteis: de sexta 25/09 ate terca 29/09 sao 2 uteis, nao 4.
 assert.equal(diasUteis('2026-09-25', Date.parse('2026-09-29T00:00:00Z')), 2)
 assert.equal(diasUteis('2026-09-28', Date.parse('2026-09-29T00:00:00Z')), 1)
 
-// A logistica so cobra prazo quando o cliente reembolsa.
-assert.equal(R['log-aceite']({ logistica: 'Sim, com custo para PSA' }).estado, 'nao-aplica')
-assert.equal(R['log-aceite']({ logistica: 'Evento Online' }).estado, 'nao-aplica')
-assert.equal(R['log-aceite']({ logistica: 'Não' }).estado, 'nao-aplica')
-assert.equal(R['log-aceite']({ logistica: REEMBOLSO }).estado, 'sem-dado', 'sem onboarding nao ha de onde contar')
-assert.equal(R['log-aceite']({ logistica: REEMBOLSO, onboarding: '2026-09-28' }).estado, 'verde')
-assert.equal(R['log-aceite']({ logistica: REEMBOLSO, onboarding: '2026-09-27' }).estado, 'amarelo')
-assert.equal(R['log-aceite']({ logistica: REEMBOLSO, onboarding: '2026-09-25' }).estado, 'vermelho')
-// Sem data de aceite no HubSpot, a emissao nao tem de onde contar.
-assert.equal(R['log-emissao']({ logistica: REEMBOLSO }).estado, 'bloqueado')
-assert.equal(R['log-emissao']({ logistica: 'Evento Online' }).estado, 'nao-aplica')
+// Aquisicao vale para quem a PSA organiza, com custo dela ou com reembolso.
+assert.equal(R['log-aquisicao']({ logistica: 'Evento Online' }).estado, 'nao-aplica')
+assert.equal(R['log-aquisicao']({ logistica: 'Não' }).estado, 'nao-aplica')
+assert.equal(R['log-aquisicao']({ logistica: CUSTO_PSA }).estado, 'sem-dado', 'sem a data nao da para cobrar')
+assert.equal(R['log-aquisicao']({ logistica: CUSTO_PSA, prazoLogistica: '2026-10-05' }).estado, 'verde')
+assert.equal(R['log-aquisicao']({ logistica: REEMBOLSO, prazoLogistica: '2026-09-27' }).estado, 'amarelo')
+assert.equal(R['log-aquisicao']({ logistica: REEMBOLSO, prazoLogistica: '2026-09-20' }).estado, 'vermelho')
+
+// Pagamento so corre quando o cliente reembolsa: com custo para a PSA nao ha
+// pagamento a cobrar do cliente.
+assert.equal(R['log-pagamento']({ logistica: CUSTO_PSA, pagamentoLogistica: '2026-09-20' }).estado, 'nao-aplica')
+assert.equal(R['log-pagamento']({ logistica: REEMBOLSO }).estado, 'sem-dado')
+assert.equal(R['log-pagamento']({ logistica: REEMBOLSO, pagamentoLogistica: '2026-10-05' }).estado, 'verde')
+assert.equal(R['log-pagamento']({ logistica: REEMBOLSO, pagamentoLogistica: '2026-09-20' }).estado, 'vermelho')
 
 // Assinatura e o unico relogio com as duas pontas: da pra dizer se cumpriu.
 const noPrazo = R['contrato-assinatura']({ prazoAssinatura: '2026-09-20', dataAssinatura: '2026-09-18' })
@@ -231,14 +235,20 @@ console.log('ok — relogios da Tramitacao')
 const E = (over) => avaliarEtapa(T({ entrouEtapa: '2026-09-01', ...over }), HOJE, QUADROS.cs.sla)
 const LOG = '1450325173', CTR = '1450325174', BRF = '1450325175'
 
-// Logistica: 24h apos o onboarding, e so para quem tem reembolso do cliente.
-const log = (onboarding, logistica = REEMBOLSO) => E({ stage: LOG, logistica, onboarding, evento: '2026-10-20' })
-assert.equal(log('2026-09-28').cor, 'verde', '1 dia')
-assert.equal(log('2026-09-27').cor, 'amarelo', '2 dias')
-assert.equal(log('2026-09-25').cor, 'vermelho', '4 dias')
-assert.equal(log('2026-09-28', 'Sim, com custo para PSA').cor, 'cinza', 'custo PSA nao tem prazo')
-assert.equal(log('2026-09-28', 'Evento Online').cor, 'cinza', 'sem logistica, sem prazo')
-assert.match(log('2026-09-25').texto, /^aceite · /, 'o card diz de qual relogio veio a cor, em rotulo curto')
+// Logistica anda por duas datas do proprio ticket, e o pior manda.
+const log = (over) => E({ stage: LOG, evento: '2026-10-20', logistica: REEMBOLSO, ...over })
+assert.equal(log({ prazoLogistica: '2026-10-05', pagamentoLogistica: '2026-10-05' }).cor, 'verde')
+assert.equal(log({ prazoLogistica: '2026-10-05', pagamentoLogistica: '2026-09-20' }).cor, 'vermelho', 'pagamento vencido puxa a etapa')
+assert.match(log({ prazoLogistica: '2026-10-05', pagamentoLogistica: '2026-09-20' }).texto, /^pagamento · /)
+assert.equal(log({ prazoLogistica: '2026-09-20', pagamentoLogistica: '2026-10-05' }).cor, 'vermelho', 'aquisicao vencida tambem')
+// Com custo para a PSA so corre a aquisicao.
+assert.equal(log({ logistica: CUSTO_PSA, prazoLogistica: '2026-09-20', pagamentoLogistica: '2026-09-20' }).cor, 'vermelho')
+assert.match(log({ logistica: CUSTO_PSA, prazoLogistica: '2026-09-20', pagamentoLogistica: '2026-09-20' }).texto, /^aquisição · /)
+// Log externa e evento online seguem fora de qualquer prazo.
+assert.equal(log({ logistica: 'Não', prazoLogistica: '2026-09-20' }).cor, 'cinza')
+assert.equal(log({ logistica: 'Evento Online', prazoLogistica: '2026-09-20' }).cor, 'cinza')
+// Sem as datas preenchidas o card nao vira verde por omissao.
+assert.equal(log({}).cor, 'cinza', 'sem prazo e sem pagamento')
 
 // Contrato: envio em 1 dia util e assinatura contra a data do prazo, pior manda.
 const ctr = (over) => E({ stage: CTR, evento: '2026-11-20', ...over })
@@ -266,6 +276,19 @@ assert.equal(
 // As cinco etapas antigas seguem por tempo na etapa, sem relogio.
 assert.equal(E({ stage: '1088360204', entrouEtapa: '2026-09-27', evento: '2026-11-01' }).cor, 'verde')
 assert.equal(E({ stage: '1088360204', entrouEtapa: '2026-09-01', evento: '2026-11-01' }).cor, 'vermelho')
+
+// Contrato so entre cliente e palestrante: a PSA nao e parte, entao os prazos
+// do contrato do cliente nao correm.
+assert.equal(
+  ctr({ onboarding: '2026-01-05', prazoAssinatura: '2026-01-10', formatoContrato: 'MC (Cliente x Palestrante)' }).cor,
+  'cinza',
+  'sem a PSA no contrato nao ha prazo de envio nem de assinatura do cliente',
+)
+assert.equal(
+  ctr({ onboarding: '2026-01-05', prazoAssinatura: '2026-01-10', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }).cor,
+  'vermelho',
+  'com a PSA no contrato os prazos do cliente valem',
+)
 
 console.log('ok — etapas por relogio no CS')
 

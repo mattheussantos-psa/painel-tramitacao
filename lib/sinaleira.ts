@@ -23,6 +23,8 @@ export type Ticket = {
   callBriefing: string
   dataFaturamento: string
   dataEmissao: string
+  prazoLogistica: string
+  pagamentoLogistica: string
   reunioes: { titulo: string; inicio: string; desfecho: string }[]
 }
 
@@ -33,7 +35,7 @@ export const completar = (t: Partial<Ticket>): Ticket => ({
   proximaTarefa: '', onboarding: '', statusContrato: '', entrouEtapa: '',
   logistica: '', tipoEmpresa: '', formatoContrato: '', prazoAssinatura: '',
   dataAssinatura: '', prazoBriefing: '', callBriefing: '', dataFaturamento: '',
-  dataEmissao: '', reunioes: [],
+  dataEmissao: '', prazoLogistica: '', pagamentoLogistica: '', reunioes: [],
   ...t,
 })
 
@@ -99,7 +101,7 @@ export const prazoEmTexto = (r: Regra) =>
 // Resumo da regra para o cabeçalho da coluna. Fica aqui e não em relogios.ts
 // para o painel não precisar importar a lógica só para escrever um subtítulo.
 const REGRA_EM_TEXTO: Record<string, string> = {
-  'Logística': 'aprovação em 24h após o onboarding',
+  'Logística': 'prazo de aquisição · pagamento previsto',
   'Contrato': 'envio 1 dia útil após o onboarding · assinatura na data do prazo',
   'Briefing': 'agendar entre D-30 e D-25 · realizar entre D-15 e D-10',
   'Faturamento': 'emissão em até 3 dias após a assinatura',
