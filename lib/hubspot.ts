@@ -52,7 +52,12 @@ const PAUSA = 300
 
 async function chamar(url: string | URL, init: RequestInit, onde: string) {
   for (let tentativa = 0; ; tentativa++) {
-    const res = await fetch(url, init)
+    // O fetch do Next e instrumentado e guarda a resposta por conta propria.
+    // Sem no-store o painel servia resposta velha carimbando "ao vivo": em
+    // 05/10/2026 um ticket aparecia na etapa de tres dias antes enquanto a
+    // mesma busca, feita no mesmo processo com no-store, trazia a etapa certa.
+    // force-dynamic na pagina nao cobre isso — e cache de dado, nao de rota.
+    const res = await fetch(url, { ...init, cache: 'no-store' })
     if (res.status !== 429 || tentativa >= 4) return json(res, onde)
 
     const retryAfter = Number(res.headers.get('Retry-After'))
