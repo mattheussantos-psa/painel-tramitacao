@@ -392,3 +392,30 @@ assert.equal(avaliarEtapa(tLog, HOJE, QUADROS.cs.sla).cor, 'vermelho')
 assert.ok(contas.some((c) => c.estado === 'vermelho'))
 
 console.log('ok — conta do card bate com a cor do card')
+
+// ---- evento passado manda na cor ----
+// Etapa com relogio e trabalho que tem que acontecer ANTES do evento. Com o
+// evento passado e o ticket ainda nela, esta atrasado — nao importa o que
+// diga a data da propriedade. Caso real: Votorantim Cimentos, evento 02/10,
+// parado em Contratar Logistica, verde porque o pagamento estava marcado para
+// 09/11.
+const votorantim = T({
+  stage: LOG, logistica: REEMBOLSO, evento: '2026-09-26',
+  prazoLogistica: '', pagamentoLogistica: '2026-11-09', entrouEtapa: '2026-09-26',
+})
+assert.equal(avaliarEtapa(votorantim, HOJE, QUADROS.cs.sla).cor, 'vermelho')
+assert.match(avaliarEtapa(votorantim, HOJE, QUADROS.cs.sla).texto, /evento foi em 26\/09\/2026/)
+assert.equal(explicar(votorantim, 'Contratar Logística', HOJE).eventoPassou, true)
+
+// Com o evento no futuro a regra dos prazos continua mandando.
+const futuro = T({ ...votorantim, evento: '2026-11-20' })
+assert.equal(avaliarEtapa(futuro, HOJE, QUADROS.cs.sla).cor, 'verde', 'pagamento ainda no prazo')
+
+// Etapa pos-evento nao e afetada: ali o evento passado e o normal.
+assert.equal(
+  avaliarEtapa(T({ stage: '1088361911', evento: '2026-09-01', entrouEtapa: '2026-09-27' }), HOJE, QUADROS.cs.sla).cor,
+  'verde',
+  'Pagamento Pos-Palestra existe justamente depois do evento',
+)
+
+console.log('ok — evento passado manda na cor')

@@ -61,6 +61,8 @@ export function diasUteis(de: string | undefined, ate: number) {
   return n
 }
 
+const br = (d: string) => d.split('-').reverse().join('/')
+
 const faixa = (d: number, verde: number, amarelo: number): Cor =>
   d <= verde ? 'verde' : d <= amarelo ? 'amarelo' : 'vermelho'
 
@@ -350,6 +352,9 @@ const PESO: Record<string, number> = { vermelho: 3, amarelo: 2, verde: 1 }
 // pior. O texto diz qual deles, senão o número não significa nada.
 // Relógio bloqueado não vira verde por omissão — devolve null, que o painel
 // pinta de cinza.
+export const eventoPassou = (t: TicketSim, hoje: number) =>
+  tem(t.evento) && emDias(dia(t.evento), hojeEmDias(hoje)) < 0
+
 export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
   let cor: Cor | null = null
   let texto = ''
@@ -386,6 +391,18 @@ export function avaliarEtapa(
   const base = avaliar(t, hoje, sla)
   const regra = sla[t.stage]
   if (regra?.tipo !== 'relogio') return base
+
+  // Etapa com relógio é etapa de trabalho que tem que acontecer ANTES do
+  // evento. Se o evento já passou e o ticket ainda está nela, está atrasado —
+  // e isso vale mais que qualquer data de propriedade. Sem esta regra, um
+  // ticket com o evento três dias atrás ficava verde porque o pagamento da
+  // logística estava marcado para dali a um mês.
+  if (eventoPassou(t, hoje))
+    return {
+      ...base,
+      cor: 'vermelho',
+      texto: `evento foi em ${br(t.evento)} e a etapa não fechou`,
+    }
 
   const s = corDaEtapa(t, regra.label, hoje)
   if (s) return { ...base, cor: s.cor, texto: s.texto }
@@ -433,7 +450,6 @@ export type Conta = {
   herdado?: boolean
 }
 
-const br = (d: string) => d.split('-').reverse().join('/')
 
 function porQue(rel: Relogio, t: TicketSim, v: Veredito): string {
   const g = dataDe(t, rel.gatilho)
@@ -482,5 +498,5 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
     }
   })
 
-  return { datas, contas }
+  return { datas, contas, eventoPassou: eventoPassou(t, hoje) }
 }

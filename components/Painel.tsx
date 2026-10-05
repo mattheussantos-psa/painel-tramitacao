@@ -34,7 +34,7 @@ export type Linha = {
   diasTarefa: number | null
   alertas: { chave: string; texto: string }[]
   entrouEtapa: string
-  conta: { datas: { rotulo: string; valor: string }[]; contas: Conta[] }
+  conta: { datas: { rotulo: string; valor: string }[]; contas: Conta[]; eventoPassou: boolean }
   stage: string
   curador: string | null
   curadorInativo: boolean
@@ -865,6 +865,14 @@ function Conta({ l, aoFechar }: { l: Linha; aoFechar: () => void }) {
           </tbody>
         </table>
 
+        {l.conta.eventoPassou && (
+          <p style={{ fontSize: 13, margin: '14px 0 0', lineHeight: 1.5 }}>
+            <Ponto cor="vermelho" /> <b>Evento já aconteceu</b> — foi em {dataBr(l.evento)} e o
+            ticket continua nesta etapa, que é trabalho de antes do evento. Isso manda na cor, acima
+            de qualquer prazo abaixo.
+          </p>
+        )}
+
         {contas.map((c) => (
           <p key={c.chave} style={{ fontSize: 13, margin: '14px 0 0', lineHeight: 1.5 }}>
             <Ponto cor={COR_DO_ESTADO[c.estado] ?? 'cinza'} />{' '}
@@ -1393,7 +1401,6 @@ export default function Painel({
   atualizadoEm: string
   aviso?: string
 }) {
-  const [regua, setRegua] = useState<'pre' | 'pos'>('pre')
   const [cor, setCor] = useState<Cor | null>(null)
   const [curador, setCurador] = useState('')
   const [proprietario, setProprietario] = useState('')
@@ -1439,12 +1446,11 @@ export default function Painel({
       (!alerta || l.alertas.some((a) => a.chave === alerta)),
   )
 
-  // Quadro sem data de evento não tem antes/depois: todo ticket cairia em
-  // "depois" por falta de data, o que seria uma divisão inventada.
-  const doKanban = useMemo(
-    () => (quadro.evento ? base.filter((l) => l.regua === regua) : base),
-    [base, regua, quadro.evento],
-  )
+  // O quadro mostra tudo. A aba antes/depois do evento saiu: etapa de
+  // trabalho com o evento já passado agora é vermelha por regra, então
+  // esconder metade do quadro só servia para o atraso não aparecer. Os dois
+  // cards de horizonte continuam dando o recorte por data do evento.
+  const doKanban = base
 
 
   // A cor fica de fora da contagem de propósito: se entrasse, clicar em
@@ -1749,44 +1755,6 @@ export default function Painel({
           marginBottom: 12,
         }}
       >
-        {/* Sem data de evento não há antes nem depois: a aba sai, e o quadro
-            inteiro fica numa régua só. */}
-        <div
-          style={{
-            display: quadro.evento ? 'inline-flex' : 'none',
-            background: 'var(--cinza-bg)',
-            borderRadius: 8,
-            padding: 2,
-            height: 34,
-          }}
-        >
-          {(
-            [
-              ['pre', 'Antes do evento'],
-              ['pos', 'Depois do evento'],
-            ] as const
-          ).map(([v, label]) => (
-            <button
-              key={v}
-              onClick={() => {
-                setRegua(v)
-                setCor(null)
-              }}
-              style={{
-                border: 0,
-                borderRadius: 6,
-                padding: '0 14px',
-                fontSize: 13,
-                fontWeight: regua === v ? 500 : 400,
-                background: regua === v ? 'var(--card)' : 'transparent',
-                color: regua === v ? 'var(--text)' : 'var(--text-2)',
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {visiveisCores.map(({ cor: c, label }) => {
             const marcado = cor === c
