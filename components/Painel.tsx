@@ -1,8 +1,17 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ABAS, prazoEmTexto, type Cor, type Regra, type Regua } from '@/lib/sinaleira'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  ABAS,
+  AMARELO_ANTES,
+  TOLERANCIA,
+  prazoEmTexto,
+  type Cor,
+  type Regra,
+  type Regua,
+} from '@/lib/sinaleira'
+import { RELOGIOS } from '@/lib/relogios'
 
 // O quadro vem do servidor porque a tabela de prazos e por pipeline. Com ela
 // fixa no cliente, os dois quadros dividiriam a mesma regua — que e justamente
@@ -57,7 +66,55 @@ const CONTROLE: React.CSSProperties = {
 const etapasDo = (sla: Record<string, Regra>) =>
   Object.entries(sla)
     .sort(([, a], [, b]) => a.ordem - b.ordem)
-    .map(([id, r]) => ({ id, label: r.label, prazo: prazoEmTexto(r) }))
+    .map(([id, r]) => ({ id, label: r.label, prazo: prazoEmTexto(r), regras: regrasDa(r) }))
+
+export type Explicacao = {
+  nome: string
+  regra: string
+  dispara?: string
+  fecha?: string
+  pendencia?: string
+}
+
+// A explicação sai da mesma régua que pinta o card. Escrever o texto à mão
+// aqui faria o painel mentir no dia seguinte a uma calibração.
+function regrasDa(r: Regra): Explicacao[] {
+  if (r.tipo === 'relogio')
+    return RELOGIOS.filter((x) => x.etapa.includes(r.label)).map((x) => ({
+      nome: x.nome,
+      regra: x.regra,
+      dispara: x.gatilho,
+      fecha: x.marco,
+      pendencia: x.pendencia,
+    }))
+
+  if (r.tipo === 'dias')
+    return [
+      {
+        nome: 'Tempo na etapa',
+        regra: `Vence ${r.dias} dias depois de o ticket entrar na etapa · amarelo a partir de ${AMARELO_ANTES} dias antes do vencimento · vermelho ${TOLERANCIA + 1} dias depois dele`,
+        dispara: 'hs_v2_date_entered_current_stage',
+        fecha: 'sair da etapa',
+      },
+    ]
+
+  if (r.tipo === 'evento')
+    return [
+      {
+        nome: 'Até o evento',
+        regra: `Vence na data do evento · amarelo a partir de ${AMARELO_ANTES} dias antes · vermelho ${TOLERANCIA + 1} dias depois`,
+        dispara: 'data_do_evento__ganho_',
+        fecha: 'sair da etapa',
+      },
+    ]
+
+  return [
+    {
+      nome: 'Sem prazo acordado',
+      regra: 'O CS ainda não definiu prazo para esta etapa. O card fica cinza e mostra só há quantos dias o ticket está parado.',
+    },
+  ]
+}
 
 const LINHA_RANKING: React.CSSProperties = {
   display: 'grid',
@@ -730,7 +787,164 @@ function Cartao({ l }: { l: Linha }) {
 
 // Kanban: a etapa vira coluna e cada coluna rola sozinha. É o mesmo desenho do
 // HubSpot, e dispensa o filtro de etapa — a coluna já é o filtro.
-function Kanban({ colunas }: { colunas: { id: string; label: string; prazo: string; itens: Linha[] }[] }) {
+// A regra de cada etapa fica a um passar de mouse do cabeçalho. Quem abre o
+// painel não tem como adivinhar por que um card está vermelho, e mandar a
+// régua por mensagem desatualiza no primeiro ajuste.
+const LARGURA_REGRAS = 290
+
+function Regras({ etapa, itens }: { etapa: string; itens: Explicacao[] }) {
+  // Posicao fixa, calculada na hora de abrir. Dentro da coluna o balao e
+  // cortado: o quadro rola na horizontal, e overflow-x recorta os dois eixos.
+  const [onde, setOnde] = useState<{ top: number; left: number } | null>(null)
+  const botao = useRef<HTMLButtonElement>(null)
+  const balao = useRef<HTMLSpanElement>(null)
+
+  const abrir = () => {
+    const r = botao.current?.getBoundingClientRect()
+    if (!r) return
+    setOnde({
+      top: r.bottom + 6,
+      left: Math.max(8, Math.min(r.right - LARGURA_REGRAS, window.innerWidth - LARGURA_REGRAS - 8)),
+    })
+  }
+
+  // Depois de montado da para medir a altura real e puxar o balao para cima
+  // quando ele passaria do rodape. Chutar a altura antes erra: a etapa com
+  // quatro relogios ocupa quatro vezes a de um.
+  useLayoutEffect(() => {
+    if (!onde || !balao.current) return
+    const r = balao.current.getBoundingClientRect()
+    const sobra = r.bottom - (window.innerHeight - 8)
+    if (sobra <= 0) return
+    const topo = Math.max(8, onde.top - sobra)
+    if (topo !== onde.top) setOnde({ ...onde, top: topo })
+  }, [onde])
+
+  // Preso a tela, o balao nao acompanha a rolagem: fecha em vez de descolar.
+  useEffect(() => {
+    if (!onde) return
+    const fechar = () => setOnde(null)
+    window.addEventListener('scroll', fechar, true)
+    return () => window.removeEventListener('scroll', fechar, true)
+  }, [onde])
+
+  if (!itens.length) return null
+  const aberto = !!onde
+
+  return (
+    <span
+      style={{ marginLeft: 'auto', flexShrink: 0, lineHeight: 0 }}
+      onMouseEnter={abrir}
+      onMouseLeave={() => setOnde(null)}
+    >
+      <button
+        ref={botao}
+        onClick={() => (aberto ? setOnde(null) : abrir())}
+        aria-label={`Regras de ${etapa}`}
+        aria-expanded={aberto}
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          border: 0,
+          padding: 0,
+          background: aberto ? 'var(--card)' : 'transparent',
+          boxShadow: 'inset 0 0 0 1.5px var(--text-2)',
+          color: 'var(--text)',
+          fontSize: 12,
+          fontWeight: 700,
+          fontFamily: 'Georgia, serif',
+          lineHeight: '17px',
+        }}
+      >
+        i
+      </button>
+
+      {onde && (
+        <span
+          ref={balao}
+          role="tooltip"
+          style={{
+            position: 'fixed',
+            top: onde.top,
+            left: onde.left,
+            zIndex: 50,
+            width: LARGURA_REGRAS,
+            maxHeight: '62vh',
+            overflowY: 'auto',
+            background: 'var(--card)',
+            border: '1px solid var(--line)',
+            borderRadius: 12,
+            boxShadow: '0 10px 28px rgba(0,0,0,0.28)',
+            padding: '12px 14px',
+            fontSize: 12,
+            fontWeight: 400,
+            lineHeight: 1.45,
+            letterSpacing: 0,
+            whiteSpace: 'normal',
+            textAlign: 'left',
+            display: 'block',
+            cursor: 'default',
+          }}
+        >
+          <span style={{ display: 'block', fontWeight: 600, marginBottom: 8 }}>{etapa}</span>
+          {itens.map((e, i) => (
+            <span
+              key={e.nome}
+              style={{
+                display: 'block',
+                marginTop: i ? 10 : 0,
+                paddingTop: i ? 10 : 0,
+                borderTop: i ? '1px solid var(--line)' : 0,
+              }}
+            >
+              <span style={{ display: 'block', fontWeight: 600 }}>{e.nome}</span>
+              <span style={{ display: 'block', marginTop: 1 }}>{e.regra}</span>
+              {e.dispara && (
+                <span style={{ display: 'block', marginTop: 4 }}>
+                  Dispara em <code style={CODIGO}>{e.dispara}</code>
+                </span>
+              )}
+              {e.fecha && (
+                <span style={{ display: 'block', marginTop: 2 }}>
+                  Fecha em <code style={CODIGO}>{e.fecha}</code>
+                </span>
+              )}
+              {e.pendencia && (
+                <span
+                  style={{
+                    display: 'block',
+                    marginTop: 6,
+                    background: 'var(--amarelo-bg)',
+                    color: 'var(--amarelo)',
+                    borderRadius: 7,
+                    padding: '6px 8px',
+                  }}
+                >
+                  {e.pendencia}
+                </span>
+              )}
+            </span>
+          ))}
+        </span>
+      )}
+    </span>
+  )
+}
+
+const CODIGO: React.CSSProperties = {
+  background: 'var(--cinza-bg)',
+  borderRadius: 4,
+  padding: '1px 5px',
+  fontSize: 11,
+  overflowWrap: 'anywhere',
+}
+
+function Kanban({
+  colunas,
+}: {
+  colunas: { id: string; label: string; prazo: string; regras: Explicacao[]; itens: Linha[] }[]
+}) {
   return (
     <div
       className="rolagem"
@@ -788,6 +1002,7 @@ function Kanban({ colunas }: { colunas: { id: string; label: string; prazo: stri
               >
                 {col.itens.length}
               </span>
+              <Regras etapa={col.label} itens={col.regras} />
             </div>
             <div style={{ fontSize: 11, marginTop: 2 }}>{col.prazo}</div>
           </div>
