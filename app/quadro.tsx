@@ -68,7 +68,7 @@ export default async function Quadro({ quadro }: { quadro: Quadro }) {
         diasTarefa: diasParaTarefa(t, hoje),
         alertas: alertas(t, hoje),
         entrouEtapa: t.entrouEtapa,
-        contas: explicar(t, quadro.sla[t.stage]?.label ?? '', hoje),
+        conta: explicar(t, quadro.sla[t.stage]?.label ?? '', hoje),
         stage: t.stage,
         curador: nomeCurador(owners, t.curador),
         curadorInativo: curadorInativo(owners, t.curador),

@@ -363,32 +363,32 @@ console.log('ok — minuta do palestrante')
 // ---- a conta que o card abre ----
 // A explicacao sai da mesma regua que pinta o card: se divergirem, o farmer
 // cobra uma coisa e o quadro mostra outra.
-const conta = explicar(
-  T({ stage: LOG, logistica: REEMBOLSO, prazoLogistica: '2026-09-20', pagamentoLogistica: '2026-10-05', entrouEtapa: '2026-10-02' }),
-  'Contratar Logística',
-  HOJE,
-)
-assert.equal(conta.length, 2, 'a etapa de logistica tem dois relogios')
-assert.equal(conta[0].estado, 'vermelho')
-assert.deepEqual(
-  conta[0].campos.map((c) => [c.prop, c.valor]),
-  [['adquirir_logistica', '2026-09-20'], ['— sair da etapa é o único sinal de que foi adquirida', '']],
-  'mostra a propriedade lida e o valor que ela tinha',
-)
-assert.equal(conta[1].estado, 'verde', 'pagamento ainda no prazo')
+const tLog = T({ stage: LOG, logistica: REEMBOLSO, prazoLogistica: '2026-09-20', pagamentoLogistica: '2026-10-05', entrouEtapa: '2026-10-02', evento: '2026-11-20' })
+const { datas, contas } = explicar(tLog, 'Contratar Logística', HOJE)
 
-// O aviso que separa dado herdado de atraso real: prazo anterior a entrada.
-assert.equal(conta[0].prazoAnteriorAEntrada, true, 'prazo 20/09 contra entrada 02/10')
-const noCiclo = explicar(
-  T({ stage: LOG, logistica: REEMBOLSO, prazoLogistica: '2026-10-20', entrouEtapa: '2026-10-02' }),
-  'Contratar Logística',
-  HOJE,
+// A tabela traz data com nome humano, nao nome de propriedade.
+assert.deepEqual(
+  datas.map((d) => [d.rotulo, d.valor]),
+  [['Prazo de aquisição', '2026-09-20'], ['Pagamento previsto', '2026-10-05']],
 )
-assert.equal(noCiclo[0].prazoAnteriorAEntrada, false, 'prazo do proprio ciclo nao leva aviso')
+
+// Uma frase por relogio, com a data e a conta de dias.
+assert.equal(contas[0].estado, 'vermelho')
+assert.equal(contas[0].porque, 'Prazo de aquisição 20/09/2026 venceu há 9 dias.')
+assert.equal(contas[1].estado, 'verde')
+assert.equal(contas[1].porque, 'Pagamento previsto 05/10/2026 ainda não venceu: faltam 6 dias.')
+
+// Prazo anterior a entrada na etapa e dado possivelmente herdado.
+assert.equal(contas[0].herdado, true, 'prazo 20/09 contra entrada 02/10')
+assert.equal(contas[1].herdado, false, 'prazo do proprio ciclo nao leva aviso')
+
+// Sem data preenchida a frase pede o preenchimento em vez de inventar prazo.
+const semData = explicar(T({ stage: LOG, logistica: CUSTO_PSA, entrouEtapa: '2026-10-02' }), 'Contratar Logística', HOJE)
+assert.equal(semData.contas[0].estado, 'sem-dado')
+assert.equal(semData.contas[0].porque, 'Falta preencher Prazo de aquisição.')
 
 // A cor da conta e a mesma do card, sempre.
-const t2 = T({ stage: LOG, logistica: REEMBOLSO, prazoLogistica: '2026-09-20', entrouEtapa: '2026-10-02', evento: '2026-11-20' })
-assert.equal(avaliarEtapa(t2, HOJE, QUADROS.cs.sla).cor, 'vermelho')
-assert.ok(explicar(t2, 'Contratar Logística', HOJE).some((c) => c.estado === 'vermelho'))
+assert.equal(avaliarEtapa(tLog, HOJE, QUADROS.cs.sla).cor, 'vermelho')
+assert.ok(contas.some((c) => c.estado === 'vermelho'))
 
 console.log('ok — conta do card bate com a cor do card')

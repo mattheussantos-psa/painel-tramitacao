@@ -392,63 +392,95 @@ export function avaliarEtapa(
   return { ...base, texto: 'sem prazo nesta etapa' }
 }
 
-// Da propriedade do HubSpot para o campo do ticket, só para o diálogo poder
-// mostrar o valor que o relógio leu. O que não estiver aqui — "sair da etapa
-// é o único sinal", por exemplo — aparece sem valor, que é a verdade.
-const CAMPO: Record<string, keyof TicketSim> = {
-  adquirir_logistica: 'prazoLogistica',
-  data_prevista_de_pagamento_logistica: 'pagamentoLogistica',
-  data_de_realizacao_do_onboarding: 'onboarding',
-  assinar_contrato: 'prazoAssinatura',
-  data_de_assinatura_do_contrato: 'dataAssinatura',
-  data_de_envio_contrato_cliente: 'envioCliente',
-  data_de_envio_contrato_palestrante: 'envioPalestrante',
-  prazo_de_assinatura__contrato_palestrante: 'prazoAssinaturaPalestrante',
-  data_de_assinatura__palestrante_: 'dataAssinaturaPalestrante',
-  data_do_evento__ganho_: 'evento',
+// Nome humano e campo do ticket para cada propriedade que um relógio lê. O
+// diálogo mostra "Prazo de aquisição", não "adquirir_logistica": quem abre o
+// painel não precisa saber o nome interno da propriedade.
+const PROP: Record<string, { rotulo: string; campo: keyof TicketSim }> = {
+  data_de_realizacao_do_onboarding: { rotulo: 'Onboarding', campo: 'onboarding' },
+  adquirir_logistica: { rotulo: 'Prazo de aquisição', campo: 'prazoLogistica' },
+  data_prevista_de_pagamento_logistica: { rotulo: 'Pagamento previsto', campo: 'pagamentoLogistica' },
+  data_de_envio_contrato_cliente: { rotulo: 'Envio ao cliente', campo: 'envioCliente' },
+  assinar_contrato: { rotulo: 'Prazo de assinatura', campo: 'prazoAssinatura' },
+  data_de_assinatura_do_contrato: { rotulo: 'Assinatura do cliente', campo: 'dataAssinatura' },
+  data_de_envio_contrato_palestrante: { rotulo: 'Envio ao palestrante', campo: 'envioPalestrante' },
+  prazo_de_assinatura__contrato_palestrante: {
+    rotulo: 'Prazo de assinatura do palestrante',
+    campo: 'prazoAssinaturaPalestrante',
+  },
+  data_de_assinatura__palestrante_: {
+    rotulo: 'Assinatura do palestrante',
+    campo: 'dataAssinaturaPalestrante',
+  },
+  data_do_evento__ganho_: { rotulo: 'Evento', campo: 'evento' },
 }
 
-const valor = (t: TicketSim, prop: string) => {
-  const campo = CAMPO[prop]
-  if (!campo) return ''
-  const v = t[campo]
-  return typeof v === 'string' ? v : ''
+const dataDe = (t: TicketSim, prop: string) => {
+  const p = PROP[prop]
+  if (!p) return null
+  const v = t[p.campo]
+  return { rotulo: p.rotulo, valor: typeof v === 'string' ? v : '' }
 }
 
 export type Conta = {
   chave: string
   nome: string
-  regra: string
   estado: Estado
-  texto: string
-  campos: { papel: string; prop: string; valor: string }[]
-  // Prazo preenchido antes de o ticket entrar na etapa. Na migracao do
-  // pipeline em 02/10/2026 isso aconteceu em 30 dos 42 tickets com data da
-  // coluna de logistica: o prazo veio junto de outro momento do processo e o
-  // card nasce vermelho sem ninguem ter atrasado nada.
-  prazoAnteriorAEntrada?: boolean
+  // Uma frase dizendo por que esta nessa cor, com a data e a conta de dias.
+  porque: string
+  // Prazo preenchido antes de o ticket entrar na etapa: na reorganizacao do
+  // pipeline em 02/10/2026 isso valeu para 30 dos 42 tickets com data da
+  // coluna de logistica, que nasceram vermelhos sem ninguem ter atrasado.
+  herdado?: boolean
 }
 
-// Abre a conta de um ticket: cada relógio da etapa, o que ele leu e no que deu.
-// Sai da mesma régua que pinta o card — não é um texto paralelo que desatualiza.
-export function explicar(t: TicketSim, etapa: string, hoje: number): Conta[] {
+const br = (d: string) => d.split('-').reverse().join('/')
+
+function porQue(rel: Relogio, t: TicketSim, v: Veredito): string {
+  const g = dataDe(t, rel.gatilho)
+  const quando = g?.valor ? `${g.rotulo} ${br(g.valor)}` : g?.rotulo
+
+  if (v.estado === 'sem-dado') return `Falta preencher ${quando ?? 'a data que inicia o prazo'}.`
+  if (v.estado === 'nao-aplica') return `Não se aplica: ${v.texto}.`
+  if (v.estado === 'bloqueado') return `Sem como medir: ${v.texto}.`
+  if (v.estado === 'concluido') return `Concluída — ${v.texto}.`
+  if (v.estado === 'nao-iniciado') return `Ainda não começou a contar: ${v.texto}.`
+
+  const d = v.dias ?? 0
+  if (d > 0) return `${quando} venceu há ${d} ${d === 1 ? 'dia' : 'dias'}.`
+  if (d === 0) return `${quando} vence hoje.`
+  return `${quando} ainda não venceu: faltam ${-d} ${-d === 1 ? 'dia' : 'dias'}.`
+}
+
+// Abre a conta de um ticket: as datas que os relógios da etapa leram e, para
+// cada relógio, uma frase dizendo por que deu aquela cor. Sai da mesma régua
+// que pinta o card — não é um texto paralelo que desatualiza.
+export function explicar(t: TicketSim, etapa: string, hoje: number) {
+  const meus = RELOGIOS.filter((rel) => rel.etapa.includes(etapa))
   const entrou = dia(t.entrouEtapa)
-  return RELOGIOS.filter((rel) => rel.etapa.includes(etapa)).map((rel) => {
+
+  const datas: { rotulo: string; valor: string }[] = []
+  const vistos = new Set<string>()
+  for (const rel of meus)
+    for (const prop of [rel.gatilho, rel.marco]) {
+      const d = dataDe(t, prop)
+      if (!d || vistos.has(d.rotulo)) continue
+      vistos.add(d.rotulo)
+      datas.push(d)
+    }
+
+  const contas: Conta[] = meus.map((rel) => {
     const v = rel.ver(t, hoje)
-    const campos = [
-      { papel: 'Dispara em', prop: rel.gatilho, valor: valor(t, rel.gatilho) },
-      { papel: 'Fecha em', prop: rel.marco, valor: valor(t, rel.marco) },
-    ]
-    const gatilho = dia(valor(t, rel.gatilho))
+    const g = dataDe(t, rel.gatilho)
+    const prazo = dia(g?.valor ?? '')
     return {
       chave: rel.chave,
       nome: rel.nome,
-      regra: rel.regra,
       estado: v.estado,
-      texto: v.texto,
-      campos,
-      prazoAnteriorAEntrada:
-        Number.isFinite(gatilho) && Number.isFinite(entrou) && gatilho < entrou,
+      porque: porQue(rel, t, v),
+      herdado:
+        !!PESO[v.estado] && Number.isFinite(prazo) && Number.isFinite(entrou) && prazo < entrou,
     }
   })
+
+  return { datas, contas }
 }
