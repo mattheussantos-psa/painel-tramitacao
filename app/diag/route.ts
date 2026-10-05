@@ -14,6 +14,49 @@ export async function GET(req: Request) {
     limit: 1,
   }
 
+  // A busca paginada, que e a que o painel usa de verdade.
+  const url = new URL(req.url)
+  if (url.searchParams.get('paginado') === '1') {
+    const ETAPAS = ['1450325173','1450325174','1450683393','1450325175','1448673032','1451268423','1088361911','1333136740','1088360205']
+    let after: string | undefined
+    let total = 0
+    const vistos = new Map<string, number>()
+    const achados: unknown[] = []
+    const paginas: number[] = []
+    do {
+      const r: Response = await fetch('https://api.hubapi.com/crm/v3/objects/tickets/search', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({
+          filterGroups: [{ filters: [
+            { propertyName: 'hs_pipeline', operator: 'EQ', value: '748675953' },
+            { propertyName: 'hs_pipeline_stage', operator: 'IN', values: ETAPAS },
+          ] }],
+          properties: ['hs_pipeline_stage', 'hs_v2_date_entered_current_stage'],
+          sorts: [{ propertyName: 'hs_object_id', direction: 'ASCENDING' }],
+          limit: 100,
+          after,
+        }),
+      })
+      const j: any = await r.json()
+      paginas.push((j.results ?? []).length)
+      for (const t of j.results ?? []) {
+        total++
+        vistos.set(t.id, (vistos.get(t.id) ?? 0) + 1)
+        if (t.id === id) achados.push({ pagina: paginas.length, ...t.properties })
+      }
+      after = j.paging?.next?.after
+      await new Promise((r) => setTimeout(r, 300))
+    } while (after)
+    const repetidos = [...vistos.entries()].filter(([, n]) => n > 1)
+    return Response.json(
+      { agoraNoServidor: new Date().toISOString(), regiao: process.env.VERCEL_REGION ?? '(local)',
+        total, distintos: vistos.size, paginas, repetidos, achados },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+
   const inicio = Date.now()
   const res = await fetch('https://api.hubapi.com/crm/v3/objects/tickets/search', {
     method: 'POST',
