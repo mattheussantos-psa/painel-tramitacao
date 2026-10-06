@@ -68,7 +68,7 @@ export type Regra = { label: string; ordem: number } & (
   | { tipo: 'relogio' }
 )
 
-// Ordem e rótulos espelham o board do HubSpot, relidos da API em 05/10/2026.
+// Ordem e rótulos espelham o board do HubSpot, relidos da API em 06/10/2026.
 // O CS virou o funil da Tramitação e as etapas passaram a ter nome de ação:
 // Contratar Logística, Assinar Contrato, Faturar, Realizar Briefing. Nessa
 // rodada "Aguardando Onboarding" deixou de existir e "Coleta de NPS" entrou.
@@ -79,15 +79,19 @@ export const SLA: Record<string, Regra> = {
   '1450325174': { label: 'Assinar Contrato', ordem: 2, tipo: 'relogio' },
   '1450683393': { label: 'Faturar', ordem: 3, tipo: 'relogio' },
   '1450325175': { label: 'Realizar Briefing', ordem: 4, tipo: 'relogio' },
-  '1448673032': { label: 'Aguardando Evento', ordem: 5, tipo: 'evento' },
-  // Etapa nova, sem regra de prazo acordada: cinza mostrando o tempo parado.
-  '1451268423': { label: 'Coleta de NPS', ordem: 6, tipo: 'sem-prazo' },
-  '1088361911': { label: 'Pagamento Pós-Palestra', ordem: 7, tipo: 'dias', dias: 20 },
-  '1333136740': { label: 'Aguardando NF Palestrante', ordem: 8, tipo: 'dias', dias: 20 },
+  // Etapa nova de 06/10/2026, sem regra de prazo acordada: cinza mostrando o
+  // tempo parado. Fica antes do evento no board, mas sem regra nao entra na
+  // conta de "evento passado manda na cor" — isso vale so para etapa com
+  // relogio, e inventar aqui seria supor.
+  '1452885000': { label: 'Confirmar PGTO Pré palestra', ordem: 5, tipo: 'sem-prazo' },
+  '1448673032': { label: 'Aguardando Evento', ordem: 6, tipo: 'evento' },
+  '1451268423': { label: 'Coletar NPS e Fotos', ordem: 7, tipo: 'sem-prazo' },
+  '1088361911': { label: 'Confirmar PGTO Pós palestra', ordem: 8, tipo: 'dias', dias: 20 },
+  '1333136740': { label: 'Solicitar NF Palestrante', ordem: 9, tipo: 'dias', dias: 20 },
   // O HubSpot jogou "Em andamento" para o fim do board e ela está com zero
   // ticket. Fica aqui porque continua aberta lá, e some do quadro sozinha
   // enquanto ninguém a usar.
-  '1088360205': { label: 'Em andamento', ordem: 13, tipo: 'dias', dias: 20 },
+  '1088360205': { label: 'Em andamento', ordem: 14, tipo: 'dias', dias: 20 },
 }
 
 // Ficam fora do painel por decisao do CS: nao ha prazo acordado para elas e

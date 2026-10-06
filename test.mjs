@@ -71,7 +71,13 @@ assert.equal(avaliar(t({ stage: '1088360205', evento: '2026-09-29' }), HOJE).reg
 
 for (const id of Object.keys(ENCERRADAS))
   assert.ok(!(id in SLA), `etapa encerrada ${id} nao devia ter prazo`)
-assert.equal(Object.keys(SLA).length, 9)
+assert.equal(Object.keys(SLA).length, 10)
+
+// Etapas sem regra acordada ficam cinza mostrando o tempo parado, nunca verde.
+for (const id of ['1452885000', '1451268423']) {
+  assert.equal(SLA[id].tipo, 'sem-prazo', 'etapa sem regra do CS')
+  assert.equal(avaliar(t({ stage: id, entrouEtapa: '2026-09-01' }), HOJE).cor, 'cinza')
+}
 
 // Logistica, Contrato e Briefing entraram no CS em 02/10/2026 e levaram os
 // tickets de "Em andamento". Sem elas na tabela o painel perdia 152 tickets.
