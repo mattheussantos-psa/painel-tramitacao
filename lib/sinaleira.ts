@@ -331,4 +331,10 @@ export const QUADROS: Record<string, Quadro> = {
   },
 }
 
-export const ABAS = Object.values(QUADROS).map((q) => ({ slug: q.slug, nome: q.nome, href: q.href }))
+// As guias do painel. O quadro do pipeline TESTE | Tramitação saiu daqui em
+// 06/10/2026 e deu lugar ao calendário; a rota /tramitacao continua de pé,
+// só não é mais linkada.
+export const ABAS = [
+  { slug: 'cs', nome: 'Tramitação CS', href: '/' },
+  { slug: 'calendario', nome: 'Calendário', href: '/calendario' },
+]

@@ -1,4 +1,4 @@
-import { carregar, nomeCurador, curadorInativo, linkTicket } from '@/lib/hubspot'
+import { carregar, nomeCurador, curadorInativo, linkTicket, type Fonte } from '@/lib/hubspot'
 import { avaliarEtapa, explicar } from '@/lib/relogios'
 import {
   cliente,
@@ -43,18 +43,11 @@ function Falha({ mensagem }: { mensagem: string }) {
 // Um quadro por pipeline. A mesma montagem serve os dois porque o que muda é
 // a tabela de prazos e se o quadro corre contra a data do evento — o resto do
 // cálculo é igual.
-export default async function Quadro({ quadro, forcar }: { quadro: Quadro; forcar?: boolean }) {
-  let fonte
-  try {
-    fonte = await carregar(quadro.slug, forcar)
-  } catch (e) {
-    return <Falha mensagem={e instanceof Error ? e.message : String(e)} />
-  }
-
-  const { tickets, owners, aoVivo, capturadoEm, atualizadoEm, aviso } = fonte
-  const hoje = Date.now()
-
-  const linhas = tickets
+// A mesma linha serve o quadro e o calendário: duas montagens dariam duas
+// cores para o mesmo ticket na hora que uma das duas ficasse para trás.
+export function linhasDe(fonte: Fonte, quadro: Quadro, hoje: number) {
+  const { tickets, owners } = fonte
+  return tickets
     .map((t) => {
       const a = avaliarEtapa(t, hoje, quadro.sla)
       return {
@@ -83,6 +76,18 @@ export default async function Quadro({ quadro, forcar }: { quadro: Quadro; forca
     .sort((a, b) =>
       quadro.evento ? a.evento.localeCompare(b.evento) : a.cliente.localeCompare(b.cliente, 'pt-BR'),
     )
+}
+
+export default async function Quadro({ quadro, forcar }: { quadro: Quadro; forcar?: boolean }) {
+  let fonte
+  try {
+    fonte = await carregar(quadro.slug, forcar)
+  } catch (e) {
+    return <Falha mensagem={e instanceof Error ? e.message : String(e)} />
+  }
+
+  const { aoVivo, capturadoEm, atualizadoEm, aviso } = fonte
+  const linhas = linhasDe(fonte, quadro, Date.now())
 
   return (
     <Painel

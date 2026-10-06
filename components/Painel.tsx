@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import Cabecalho from './Cabecalho'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   ABAS,
@@ -774,7 +774,7 @@ function Cartao({ l, aoAbrir }: { l: Linha; aoAbrir: () => void }) {
 // frase por relógio dizendo o porquê da cor. Nada disso cabe no card — são
 // 180 na tela — e no HubSpot o farmer vê as propriedades soltas sem saber
 // qual delas pintou o card.
-function Conta({ l, aoFechar }: { l: Linha; aoFechar: () => void }) {
+export function Conta({ l, aoFechar }: { l: Linha; aoFechar: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     if (!ref.current?.open) ref.current?.showModal()
@@ -909,35 +909,6 @@ const COR_DO_ESTADO: Record<string, Cor> = {
 
 // Kanban: a etapa vira coluna e cada coluna rola sozinha. É o mesmo desenho do
 // HubSpot, e dispensa o filtro de etapa — a coluna já é o filtro.
-// Recarrega pulando o cache de 60s do servidor. Sem o ?r o botao devolveria
-// o mesmo retrato por ate um minuto — e depois de mexer no HubSpot e isso que
-// faz alguem achar que o painel esta errado.
-function Atualizar() {
-  const [indo, setIndo] = useState(false)
-  return (
-    <button
-      onClick={() => {
-        setIndo(true)
-        window.location.href = `${window.location.pathname}?r=${Date.now()}`
-      }}
-      disabled={indo}
-      style={{
-        height: 28,
-        padding: '0 11px',
-        border: 0,
-        borderRadius: 7,
-        background: 'var(--cinza-bg)',
-        color: 'var(--text)',
-        font: 'inherit',
-        fontSize: 13,
-        flexShrink: 0,
-      }}
-    >
-      {indo ? 'Atualizando…' : 'Atualizar'}
-    </button>
-  )
-}
-
 // A regra de cada etapa fica a um passar de mouse do cabeçalho. Quem abre o
 // painel não tem como adivinhar por que um card está vermelho, e mandar a
 // régua por mensagem desatualiza no primeiro ajuste.
@@ -1501,86 +1472,13 @@ export default function Painel({
 
   return (
     <main style={{ maxWidth: 1680, margin: '0 auto', padding: '44px 32px 72px' }}>
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-          flexWrap: 'wrap',
-          marginBottom: 24,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontFamily: 'var(--display)',
-              fontSize: 44,
-              fontWeight: 800,
-              letterSpacing: '0.01em',
-              lineHeight: 1,
-              margin: 0,
-              textTransform: 'uppercase',
-            }}
-          >
-            Sinaleira
-          </h1>
-          <p
-            style={{
-              color: 'var(--text-2)',
-              margin: '8px 0 0',
-              fontSize: 14,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              flexWrap: 'wrap',
-            }}
-          >
-            <span>
-              {quadro.nome} · {linhas.length} tickets abertos ·{' '}
-              {aoVivo ? `ao vivo, ${atualizadoEm}` : `snapshot de ${dataBr(capturadoEm)}`}
-            </span>
-            <Atualizar />
-          </p>
-        </div>
-
-        {/* Guia de quadro. É link e não estado: cada pipeline tem a própria
-            URL, o próprio fetch e o próprio cache — trocar de aba não pode
-            arrastar ticket de um quadro para o outro. */}
-        <nav
-          style={{
-            display: 'inline-flex',
-            background: 'var(--cinza-bg)',
-            borderRadius: 9,
-            padding: 2,
-            height: 36,
-          }}
-        >
-          {ABAS.map((a) => {
-            const ativa = a.slug === quadro.slug
-            return (
-              <Link
-                key={a.slug}
-                href={a.href}
-                prefetch={false}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  borderRadius: 7,
-                  padding: '0 15px',
-                  fontSize: 13,
-                  fontWeight: ativa ? 600 : 400,
-                  textDecoration: 'none',
-                  background: ativa ? 'var(--card)' : 'transparent',
-                  color: 'var(--text)',
-                }}
-              >
-                {a.nome}
-              </Link>
-            )
-          })}
-        </nav>
-      </header>
+      <Cabecalho
+        slug={quadro.slug}
+        resumo={`${quadro.nome} · ${linhas.length} tickets abertos`}
+        aoVivo={aoVivo}
+        atualizadoEm={atualizadoEm}
+        capturadoEm={capturadoEm}
+      />
 
       {aviso && (
         <p
