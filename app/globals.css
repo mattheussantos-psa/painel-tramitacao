@@ -154,3 +154,18 @@ dialog::backdrop {
   scrollbar-width: thin;
   scrollbar-color: var(--text-3) transparent;
 }
+
+/* Esqueleto de carregamento. Respiro leve para a tela nao parecer congelada
+   enquanto o servidor busca no HubSpot. */
+.pulsando {
+  animation: pulsando 1.1s ease-in-out infinite;
+}
+
+@keyframes pulsando {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulsando { animation: none; }
+}

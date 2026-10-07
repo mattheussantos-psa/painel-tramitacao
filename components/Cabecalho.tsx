@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
 import { ABAS } from '@/lib/sinaleira'
 
 const dataBr = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '—')
@@ -37,6 +38,62 @@ function Atualizar() {
 
 // Cabeçalho de todas as guias. Vive num arquivo só para o quadro e o
 // calendário não divergirem no título, no horário e na barra de guias.
+// A barra de guias sozinha: o esqueleto de carregamento usa a mesma, para a
+// casca nao piscar enquanto a pagina nova nao chega. Guia e link e nao
+// estado: cada uma tem a propria URL e o proprio fetch, e trocar de guia nao
+// pode arrastar dado de uma para a outra.
+export function Guias({ slug }: { slug: string }) {
+  const router = useRouter()
+  const [indo, comecar] = useTransition()
+  const [alvo, setAlvo] = useState<string | null>(null)
+
+  return (
+    <nav
+      style={{
+        display: 'inline-flex',
+        background: 'var(--cinza-bg)',
+        borderRadius: 9,
+        padding: 2,
+        height: 36,
+      }}
+    >
+      {ABAS.map((a) => {
+        const ativa = a.slug === slug
+        return (
+          <Link
+            key={a.slug}
+            href={a.href}
+            prefetch={false}
+            onClick={(e) => {
+              // Navegacao pela mao para a guia clicada acender na hora. Com
+              // o Link puro o clique nao devolvia nada por ate um segundo e
+              // parecia que o botao nao funcionava.
+              if (ativa) return
+              e.preventDefault()
+              setAlvo(a.slug)
+              comecar(() => router.push(a.href))
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              borderRadius: 7,
+              padding: '0 15px',
+              fontSize: 13,
+              fontWeight: ativa ? 600 : 400,
+              textDecoration: 'none',
+              background: ativa || (indo && alvo === a.slug) ? 'var(--card)' : 'transparent',
+              color: 'var(--text)',
+              opacity: indo && alvo !== a.slug && !ativa ? 0.5 : 1,
+            }}
+          >
+            {indo && alvo === a.slug ? 'Abrindo…' : a.nome}
+          </Link>
+        )
+      })}
+    </nav>
+  )
+}
+
 export default function Cabecalho({
   slug,
   resumo,
@@ -93,41 +150,7 @@ export default function Cabecalho({
         </p>
       </div>
 
-      {/* Guia é link e não estado: cada uma tem a própria URL e o próprio
-          fetch, e trocar de guia não pode arrastar dado de uma para a outra. */}
-      <nav
-        style={{
-          display: 'inline-flex',
-          background: 'var(--cinza-bg)',
-          borderRadius: 9,
-          padding: 2,
-          height: 36,
-        }}
-      >
-        {ABAS.map((a) => {
-          const ativa = a.slug === slug
-          return (
-            <Link
-              key={a.slug}
-              href={a.href}
-              prefetch={false}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                borderRadius: 7,
-                padding: '0 15px',
-                fontSize: 13,
-                fontWeight: ativa ? 600 : 400,
-                textDecoration: 'none',
-                background: ativa ? 'var(--card)' : 'transparent',
-                color: 'var(--text)',
-              }}
-            >
-              {a.nome}
-            </Link>
-          )
-        })}
-      </nav>
+      <Guias slug={slug} />
     </header>
   )
 }
