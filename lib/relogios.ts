@@ -44,6 +44,10 @@ export type Veredito = {
   // assinatura vence em onboarding + 20 dias: sem isto o diálogo mostraria a
   // data do onboarding como se fosse o prazo.
   prazo?: string
+  // O relógio não corre porque falta classificar o ticket, não porque o caso
+  // é isento. O card fica cinza nos dois, mas só este é acionável — e some do
+  // diálogo se não for marcado, porque não-se-aplica não é mostrado.
+  faltaDado?: boolean
   // Quando o marco existe, diz se foi cumprido dentro do prazo. null quando
   // não dá para saber.
   cumpriu: boolean | null
@@ -129,11 +133,12 @@ const COM_PALESTRANTE = ['MC (Cliente x PSA) = 100% PSA', 'MC (Cliente x Palestr
 const usaCliente = (formato: string) => !SO_PALESTRANTE.includes(formato)
 const usaPalestrante = (formato: string) => COM_PALESTRANTE.includes(formato)
 
-const foraDoFormato = (texto: string): Veredito => ({
+const foraDoFormato = (texto: string, faltaDado = false): Veredito => ({
   estado: 'nao-aplica',
   dias: null,
   texto,
   cumpriu: null,
+  faltaDado,
 })
 
 // Assinatura do cliente serve de prova indireta de envio: não dá para assinar
@@ -207,7 +212,12 @@ export const RELOGIOS: Relogio[] = [
     ver: (t, hoje) => {
       if (!usaCliente(t.formatoContrato)) return foraDoFormato('contrato é entre cliente e palestrante')
       if (t.formatoEmpresa !== EMPRESA_PRIVADA)
-        return foraDoFormato(t.formatoEmpresa || 'Formato da Empresa em branco')
+        return t.formatoEmpresa
+          ? foraDoFormato(`a empresa é ${t.formatoEmpresa}, e o prazo de 20 dias vale só para Empresa Privada`)
+          : foraDoFormato(
+              'Formato da Empresa está em branco, então o prazo de 20 dias não corre — preencha para o painel cobrar',
+              true,
+            )
 
       const limite = dia(t.onboarding) + DIAS_ASSINATURA * DIA
       const prazo = Number.isFinite(limite) ? iso(limite) : undefined
@@ -260,7 +270,8 @@ export const RELOGIOS: Relogio[] = [
     marco: 'data_de_envio_contrato_palestrante',
     pendencia: 'O CS escreveu "após a assinatura de contrato com o cliente (definir gap)" e o número nunca veio. Sem ele a minuta não ganha cor: só diz se saiu.',
     ver: (t) => {
-      if (!usaPalestrante(t.formatoContrato)) return foraDoFormato(t.formatoContrato || 'sem formato')
+      if (!usaPalestrante(t.formatoContrato))
+        return foraDoFormato(t.formatoContrato || 'Formato de Contrato está em branco', !t.formatoContrato)
       if (tem(t.envioPalestrante)) return { estado: 'concluido', dias: null, texto: 'minuta enviada', cumpriu: null }
       return { estado: 'bloqueado', dias: null, texto: 'falta o prazo de envio da minuta', cumpriu: null }
     },
@@ -276,7 +287,8 @@ export const RELOGIOS: Relogio[] = [
     marco: 'data_de_assinatura__palestrante_',
     pendencia: 'Faixa de cor não foi passada para o palestrante: aplica a mesma do contrato do cliente.',
     ver: (t, hoje) => {
-      if (!usaPalestrante(t.formatoContrato)) return foraDoFormato(t.formatoContrato || 'sem formato')
+      if (!usaPalestrante(t.formatoContrato))
+        return foraDoFormato(t.formatoContrato || 'Formato de Contrato está em branco', !t.formatoContrato)
       if (tem(t.dataAssinaturaPalestrante)) {
         if (!tem(t.prazoAssinaturaPalestrante))
           return { estado: 'concluido', dias: null, texto: 'assinado pelo palestrante', cumpriu: null }
@@ -479,6 +491,9 @@ export type Conta = {
   estado: Estado
   // Uma frase dizendo por que esta nessa cor, com a data e a conta de dias.
   porque: string
+  // Relogio parado por campo em branco: o dialogo mostra mesmo sendo
+  // nao-aplica, porque e a unica forma de alguem saber o que preencher.
+  faltaDado?: boolean
   // Prazo preenchido antes de o ticket entrar na etapa: na reorganizacao do
   // pipeline em 02/10/2026 isso valeu para 30 dos 42 tickets com data da
   // coluna de logistica, que nasceram vermelhos sem ninguem ter atrasado.
@@ -496,6 +511,7 @@ function porQue(rel: Relogio, t: TicketSim, v: Veredito): string {
       ? `${g.rotulo} ${br(g.valor)}`
       : g?.rotulo
 
+  if (v.faltaDado) return `${v.texto[0].toUpperCase()}${v.texto.slice(1)}.`
   if (v.estado === 'sem-dado') return `Falta preencher ${quando ?? 'a data que inicia o prazo'}.`
   if (v.estado === 'nao-aplica') return `Não se aplica: ${v.texto}.`
   if (v.estado === 'bloqueado') return `Sem como medir: ${v.texto}.`
@@ -541,6 +557,7 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
       nome: rel.nome,
       estado: v.estado,
       porque: porQue(rel, t, v),
+      faltaDado: v.faltaDado,
       herdado:
         !!PESO[v.estado] && Number.isFinite(prazo) && Number.isFinite(entrou) && prazo < entrou,
     }

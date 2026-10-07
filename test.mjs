@@ -459,3 +459,29 @@ assert.match(R['contrato-assinatura']({ formatoEmpresa: '', onboarding: '' }).te
 assert.equal(E({ stage: CTR, evento: '2026-11-20', formatoEmpresa: 'Órgão Público' }).cor, 'cinza')
 
 console.log('ok — assinatura so para empresa privada')
+
+// Campo em branco para o relogio e cinza no card, mas tem que aparecer no
+// dialogo: isento e falta de preenchimento ficam iguais na cor, e so um dos
+// dois alguem consegue resolver.
+const semFormato = explicar(
+  T({ stage: CTR, formatoEmpresa: '', formatoContrato: '', onboarding: '2026-01-01', evento: '2026-11-20' }),
+  'Assinar Contrato',
+  HOJE,
+)
+const branco = semFormato.contas.filter((c) => c.faltaDado)
+assert.equal(branco.length, 3, 'assinatura do cliente e os dois relogios do palestrante')
+assert.match(branco[0].porque, /^Formato da Empresa está em branco/)
+assert.match(branco[1].porque, /^Formato de Contrato está em branco/)
+
+// Isento de verdade nao leva a marca: nao ha o que preencher.
+const publico = explicar(
+  T({ stage: CTR, formatoEmpresa: 'Órgão Público', formatoContrato: 'MC (Cliente x PSA) = 100% PSA', evento: '2026-11-20' }),
+  'Assinar Contrato',
+  HOJE,
+)
+const assinatura = publico.contas.find((c) => c.chave === 'contrato-assinatura')
+assert.equal(assinatura.estado, 'nao-aplica')
+assert.equal(assinatura.faltaDado, false)
+assert.match(assinatura.porque, /Órgão Público/)
+
+console.log('ok — campo em branco aparece no dialogo')

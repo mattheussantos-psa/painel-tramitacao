@@ -785,7 +785,13 @@ export function Conta({ l, aoFechar }: { l: Linha; aoFechar: () => void }) {
     { rotulo: 'Entrou nesta etapa', valor: l.entrouEtapa },
   ].filter((d) => d.rotulo !== 'Evento' || d.valor)
 
-  const contas = l.conta.contas.filter((c) => c.estado !== 'nao-aplica')
+  // Nao-se-aplica some do dialogo, menos quando a razao e campo em branco:
+  // ai e a unica forma de alguem saber por que o relogio nao corre.
+  const contas = l.conta.contas
+    .filter((c) => c.estado !== 'nao-aplica' || c.faltaDado)
+    // Os dois relogios do palestrante param pelo mesmo campo em branco e
+    // diriam a mesma frase duas vezes.
+    .filter((c, i, todas) => !c.faltaDado || todas.findIndex((x) => x.porque === c.porque) === i)
 
   return (
     <dialog
