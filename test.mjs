@@ -168,7 +168,7 @@ console.log('ok — quadros separados')
 // ---- relogios da Tramitacao ----
 const T = (over) => ({
   id: '1', subject: 'ACME - Fulano', stage: '1', proprietario: null,
-  evento: '', logistica: '', tipoEmpresa: '', formatoContrato: '',
+  evento: '', logistica: '', tipoEmpresa: '', formatoEmpresa: 'Empresa Privada', formatoContrato: '',
   onboarding: '', prazoAssinatura: '', dataAssinatura: '', statusContrato: '',
   dataFaturamento: '', dataEmissao: '', prazoBriefing: '', callBriefing: '',
   reunioes: [], ...over,
@@ -176,6 +176,7 @@ const T = (over) => ({
 const R = Object.fromEntries(RELOGIOS.map((r) => [r.chave, (t) => r.ver(T(t), HOJE)]))
 const REEMBOLSO = 'Sim, com reembolso do cliente'
 const CUSTO_PSA = 'Sim, com custo para PSA'
+const PRIVADA = 'Empresa Privada'
 
 // Dias uteis: de sexta 25/09 ate terca 29/09 sao 2 uteis, nao 4.
 assert.equal(diasUteis('2026-09-25', Date.parse('2026-09-29T00:00:00Z')), 2)
@@ -199,7 +200,7 @@ assert.equal(R['log-pagamento']({ logistica: REEMBOLSO, pagamentoLogistica: '202
 // Assinatura: 20 dias a partir do onboarding. Exemplo do CS: onboarding em
 // 07/10 vence em 27/10. Nao ha faixa de atencao — verde ate o prazo, vermelho
 // depois — e sem onboarding conta como atrasado.
-const assin = (over) => R['contrato-assinatura'](over)
+const assin = (over) => R['contrato-assinatura']({ formatoEmpresa: PRIVADA, ...over })
 assert.equal(assin({ onboarding: '2026-10-07' }).prazo, '2026-10-27', 'onboarding + 20 dias')
 assert.equal(assin({ onboarding: '2026-09-20' }).estado, 'verde', 'vence 10/10, ainda no prazo')
 assert.equal(assin({ onboarding: '2026-09-09' }).estado, 'verde', 'vence hoje 29/09')
@@ -443,3 +444,18 @@ assert.equal(
 )
 
 console.log('ok — evento passado manda na cor')
+
+// O prazo de assinatura vale so para empresa privada: orgao publico, Sistema S
+// e associacao tem rito proprio, e formato em branco nao vira regra por
+// suposicao — sao 44 dos 118 da etapa.
+for (const f of ['Órgão Público', 'Sistema S (SEST/SENAT/SEBRAE/SESCOOP)', 'Associação', 'Agência', '']) {
+  const v = R['contrato-assinatura']({ formatoEmpresa: f, onboarding: '2026-01-01' })
+  assert.equal(v.estado, 'nao-aplica', `formato "${f}" nao devia correr o prazo`)
+}
+assert.equal(R['contrato-assinatura']({ formatoEmpresa: PRIVADA, onboarding: '2026-01-01' }).estado, 'vermelho')
+assert.match(R['contrato-assinatura']({ formatoEmpresa: '', onboarding: '' }).texto, /em branco/)
+
+// Na etapa, empresa nao privada sem onboarding fica cinza em vez de vermelha.
+assert.equal(E({ stage: CTR, evento: '2026-11-20', formatoEmpresa: 'Órgão Público' }).cor, 'cinza')
+
+console.log('ok — assinatura so para empresa privada')

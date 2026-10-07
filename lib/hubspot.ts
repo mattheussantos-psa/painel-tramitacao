@@ -15,6 +15,7 @@ const PROPS = [
   // Lidos pelos relogios das etapas Logistica, Contrato e Briefing.
   'logistica_sera_organizada_pela_psa_',
   'tipo_de_empresa_contratante',
+  'formato_da_empresa',
   'formato_de_contrato__ganho_',
   'assinar_contrato',
   'data_de_assinatura_do_contrato',
@@ -137,6 +138,7 @@ async function buscarAoVivo(
         entrouEtapa: iso(p.hs_v2_date_entered_current_stage),
         logistica: p.logistica_sera_organizada_pela_psa_ ?? '',
         tipoEmpresa: p.tipo_de_empresa_contratante ?? '',
+        formatoEmpresa: p.formato_da_empresa ?? '',
         formatoContrato: p.formato_de_contrato__ganho_ ?? '',
         prazoAssinatura: iso(p.assinar_contrato),
         dataAssinatura: iso(p.data_de_assinatura_do_contrato),

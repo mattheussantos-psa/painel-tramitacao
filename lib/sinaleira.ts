@@ -16,6 +16,7 @@ export type Ticket = {
   // etapas que usam relógio — e vazio vira cinza, nunca verde.
   logistica: string
   tipoEmpresa: string
+  formatoEmpresa: string
   formatoContrato: string
   prazoAssinatura: string
   dataAssinatura: string
@@ -37,7 +38,7 @@ export type Ticket = {
 export const completar = (t: Partial<Ticket>): Ticket => ({
   id: '', subject: '', stage: '', evento: '', curador: null, proprietario: null,
   proximaTarefa: '', onboarding: '', statusContrato: '', entrouEtapa: '',
-  logistica: '', tipoEmpresa: '', formatoContrato: '', prazoAssinatura: '',
+  logistica: '', tipoEmpresa: '', formatoEmpresa: '', formatoContrato: '', prazoAssinatura: '',
   dataAssinatura: '', prazoBriefing: '', callBriefing: '', dataFaturamento: '',
   dataEmissao: '', prazoLogistica: '', pagamentoLogistica: '', envioCliente: '',
   envioPalestrante: '', prazoAssinaturaPalestrante: '', dataAssinaturaPalestrante: '',

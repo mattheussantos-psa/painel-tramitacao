@@ -198,14 +198,16 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do contrato pelo cliente',
     curto: 'assinatura',
-    regra: '20 dias a partir do onboarding · vermelho depois disso · sem onboarding também é vermelho',
+    regra: 'Só para Empresa Privada · 20 dias a partir do onboarding · vermelho depois disso · sem onboarding também é vermelho',
     confianca: 'fechado',
     gatilho: 'data_de_realizacao_do_onboarding',
     marco: 'data_de_assinatura_do_contrato / status_do_contrato',
     pendencia:
-      'Não há faixa de atenção: o CS definiu verde até o prazo e vermelho depois. A data manual em "Prazo de Assinatura de Contrato" deixou de valer como prazo.',
+      'Vale só para Formato da Empresa = Empresa Privada, e 44 dos 118 tickets da etapa estão com esse campo em branco — nesses o relógio não corre. Não há faixa de atenção: o CS definiu verde até o prazo e vermelho depois.',
     ver: (t, hoje) => {
       if (!usaCliente(t.formatoContrato)) return foraDoFormato('contrato é entre cliente e palestrante')
+      if (t.formatoEmpresa !== EMPRESA_PRIVADA)
+        return foraDoFormato(t.formatoEmpresa || 'Formato da Empresa em branco')
 
       const limite = dia(t.onboarding) + DIAS_ASSINATURA * DIA
       const prazo = Number.isFinite(limite) ? iso(limite) : undefined
@@ -365,6 +367,14 @@ export const RELOGIOS: Relogio[] = [
 ]
 
 export const ORGAO_PUBLICO = 'Órgão Público'
+
+// O prazo de 20 dias para assinar vale só para empresa privada. Órgão
+// público, Sistema S e associação têm rito próprio de contratação, e cobrar
+// o mesmo prazo deles daria vermelho que ninguém pode resolver.
+// Formato em branco não entra: aplicar regra de empresa privada a uma empresa
+// que ninguém classificou seria supor. São 44 dos 118 da etapa — a conversa é
+// preencher o campo, não afrouxar a régua.
+export const EMPRESA_PRIVADA = 'Empresa Privada'
 
 // Formatos em que a PSA contrata o palestrante por minuta própria. Com
 // interveniente (Cliente x PSA x Palestrante) a minuta individual cai.
