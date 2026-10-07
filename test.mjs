@@ -196,15 +196,27 @@ assert.equal(R['log-pagamento']({ logistica: REEMBOLSO }).estado, 'sem-dado')
 assert.equal(R['log-pagamento']({ logistica: REEMBOLSO, pagamentoLogistica: '2026-10-05' }).estado, 'verde')
 assert.equal(R['log-pagamento']({ logistica: REEMBOLSO, pagamentoLogistica: '2026-09-20' }).estado, 'vermelho')
 
-// Assinatura e o unico relogio com as duas pontas: da pra dizer se cumpriu.
-const noPrazo = R['contrato-assinatura']({ prazoAssinatura: '2026-09-20', dataAssinatura: '2026-09-18' })
-assert.equal(noPrazo.cumpriu, true)
-const atrasado = R['contrato-assinatura']({ prazoAssinatura: '2026-09-20', dataAssinatura: '2026-09-24' })
+// Assinatura: 20 dias a partir do onboarding. Exemplo do CS: onboarding em
+// 07/10 vence em 27/10. Nao ha faixa de atencao — verde ate o prazo, vermelho
+// depois — e sem onboarding conta como atrasado.
+const assin = (over) => R['contrato-assinatura'](over)
+assert.equal(assin({ onboarding: '2026-10-07' }).prazo, '2026-10-27', 'onboarding + 20 dias')
+assert.equal(assin({ onboarding: '2026-09-20' }).estado, 'verde', 'vence 10/10, ainda no prazo')
+assert.equal(assin({ onboarding: '2026-09-09' }).estado, 'verde', 'vence hoje 29/09')
+assert.equal(assin({ onboarding: '2026-09-08' }).estado, 'vermelho', 'venceu ontem')
+assert.equal(assin({ onboarding: '2026-09-08' }).dias, 1)
+assert.equal(assin({}).estado, 'vermelho', 'sem onboarding conta como atrasado')
+assert.match(assin({}).texto, /sem data de onboarding/)
+
+// As duas pontas: da pra dizer se cumpriu, agora contra o prazo calculado.
+const noPrazo = assin({ onboarding: '2026-08-20', dataAssinatura: '2026-09-05' })
+assert.equal(noPrazo.cumpriu, true, 'assinou em 05/09, prazo era 09/09')
+const atrasado = assin({ onboarding: '2026-08-20', dataAssinatura: '2026-09-13' })
 assert.equal(atrasado.cumpriu, false)
 assert.equal(atrasado.dias, 4)
-assert.equal(R['contrato-assinatura']({ prazoAssinatura: '2026-10-05' }).estado, 'verde')
-assert.equal(R['contrato-assinatura']({ prazoAssinatura: '2026-09-27' }).estado, 'amarelo')
-assert.equal(R['contrato-assinatura']({ prazoAssinatura: '2026-09-20' }).estado, 'vermelho')
+
+// A data manual deixou de valer como prazo: so o onboarding manda.
+assert.equal(assin({ prazoAssinatura: '2026-12-31' }).estado, 'vermelho', 'data manual nao salva ticket sem onboarding')
 
 // Contrato assinado prova que foi enviado, mesmo sem o valor "Enviado".
 assert.equal(R['contrato-envio']({ onboarding: '2026-01-01', statusContrato: 'Assinado' }).estado, 'concluido')
@@ -257,15 +269,21 @@ assert.equal(log({ logistica: 'Evento Online', prazoLogistica: '2026-09-20' }).c
 // Sem as datas preenchidas o card nao vira verde por omissao.
 assert.equal(log({}).cor, 'cinza', 'sem prazo e sem pagamento')
 
-// Contrato: envio em 1 dia util e assinatura contra a data do prazo, pior manda.
+// Contrato: envio em 1 dia util e assinatura em 20 dias do onboarding, pior
+// manda.
 const ctr = (over) => E({ stage: CTR, evento: '2026-11-20', ...over })
-assert.equal(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-10-10' }).cor, 'verde')
-assert.equal(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-09-20' }).cor, 'vermelho', 'assinatura vencida puxa a etapa')
-assert.match(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-09-20' }).texto, /assinatura/)
-// 25/09 e sexta: ate 29/09 sao 2 dias uteis, nao 4.
-assert.equal(ctr({ onboarding: '2026-09-25', prazoAssinatura: '2026-10-10' }).cor, 'amarelo', 'fim de semana nao conta')
+assert.equal(ctr({ onboarding: '2026-09-28' }).cor, 'verde', 'enviado ontem, assinatura vence em 18/10')
+assert.equal(ctr({ onboarding: '2026-08-20' }).cor, 'vermelho', 'assinatura venceu em 09/09')
+// Os dois vermelhos: manda quem trava primeiro, que e o envio.
+assert.match(ctr({ onboarding: '2026-08-20' }).texto, /^envio · /)
+// Com o envio registrado sobra a assinatura, que e a que o farmer cobra.
+assert.match(ctr({ onboarding: '2026-08-20', envioCliente: '2026-08-21' }).texto, /^assinatura · /)
+assert.equal(ctr({}).cor, 'vermelho', 'sem onboarding a assinatura ja conta como atrasada')
+// 25/09 e sexta: ate 29/09 sao 2 dias uteis, nao 4. O envio fica amarelo e a
+// assinatura verde, entao a etapa sai amarela.
+assert.equal(ctr({ onboarding: '2026-09-25' }).cor, 'amarelo', 'fim de semana nao conta')
 assert.equal(
-  ctr({ onboarding: '2026-01-05', prazoAssinatura: '2026-01-10', dataAssinatura: '2026-01-08' }).cor,
+  ctr({ onboarding: '2026-01-05', dataAssinatura: '2026-01-08' }).cor,
   'cinza',
   'assinado fecha os dois relogios da etapa',
 )

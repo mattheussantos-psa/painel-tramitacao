@@ -8,7 +8,7 @@
 //
 // Nada aqui é aplicado em produção: serve à simulação sobre dados reais do CS.
 
-import { avaliar, hojeEmDias, type Avaliacao, type Regra, type Ticket } from './sinaleira.ts'
+import { DIAS_ASSINATURA, avaliar, hojeEmDias, type Avaliacao, type Regra, type Ticket } from './sinaleira.ts'
 
 export type Cor = 'verde' | 'amarelo' | 'vermelho'
 
@@ -40,6 +40,10 @@ export type Veredito = {
   // Dias que importam para a leitura: decorridos, ou que faltam para o evento.
   dias: number | null
   texto: string
+  // Data limite, quando ela é calculada e não lida de uma propriedade. A
+  // assinatura vence em onboarding + 20 dias: sem isto o diálogo mostraria a
+  // data do onboarding como se fosse o prazo.
+  prazo?: string
   // Quando o marco existe, diz se foi cumprido dentro do prazo. null quando
   // não dá para saber.
   cumpriu: boolean | null
@@ -60,6 +64,9 @@ export function diasUteis(de: string | undefined, ate: number) {
   }
   return n
 }
+
+// Data ISO a partir de um instante, para o prazo que o painel calcula.
+const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 
 const br = (d: string) => d.split('-').reverse().join('/')
 
@@ -191,33 +198,51 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do contrato pelo cliente',
     curto: 'assinatura',
-    regra: 'Até a data em "Prazo de Assinatura" · amarelo 1 a 3 dias depois · vermelho 4+',
+    regra: '20 dias a partir do onboarding · vermelho depois disso · sem onboarding também é vermelho',
     confianca: 'fechado',
-    gatilho: 'assinar_contrato',
+    gatilho: 'data_de_realizacao_do_onboarding',
     marco: 'data_de_assinatura_do_contrato / status_do_contrato',
+    pendencia:
+      'Não há faixa de atenção: o CS definiu verde até o prazo e vermelho depois. A data manual em "Prazo de Assinatura de Contrato" deixou de valer como prazo.',
     ver: (t, hoje) => {
       if (!usaCliente(t.formatoContrato)) return foraDoFormato('contrato é entre cliente e palestrante')
-      if (!tem(t.prazoAssinatura))
-        return { estado: 'sem-dado', dias: null, texto: 'sem prazo de assinatura', cumpriu: null }
+
+      const limite = dia(t.onboarding) + DIAS_ASSINATURA * DIA
+      const prazo = Number.isFinite(limite) ? iso(limite) : undefined
 
       // Único relógio com as duas pontas: dá para dizer se cumpriu de verdade.
       if (tem(t.dataAssinatura)) {
-        const atraso = emDias(dia(t.dataAssinatura), dia(t.prazoAssinatura))
+        if (!prazo)
+          return { estado: 'concluido', dias: null, texto: 'assinado', cumpriu: null }
+        const atraso = emDias(dia(t.dataAssinatura), limite)
         return {
           estado: 'concluido',
           dias: atraso,
+          prazo,
           texto: atraso <= 0 ? `assinado ${-atraso}d antes do prazo` : `assinado ${atraso}d depois do prazo`,
           cumpriu: atraso <= 0,
         }
       }
       if (t.statusContrato === 'Assinado')
-        return { estado: 'concluido', dias: null, texto: 'assinado, sem data registrada', cumpriu: null }
+        return { estado: 'concluido', dias: null, prazo, texto: 'assinado, sem data registrada', cumpriu: null }
 
-      const d = emDias(hojeEmDias(hoje), dia(t.prazoAssinatura))
+      // Sem onboarding o prazo nem começa a correr, e o CS decidiu que isso
+      // conta como atrasado: contrato sem onboarding registrado é o caso que
+      // mais some, justamente por não ter data para cobrar.
+      if (!prazo)
+        return {
+          estado: 'vermelho',
+          dias: null,
+          texto: 'sem data de onboarding, não há prazo para cobrar',
+          cumpriu: null,
+        }
+
+      const d = emDias(hojeEmDias(hoje), limite)
       return {
-        estado: d <= 0 ? 'verde' : faixa(d, 0, 3),
+        estado: d > 0 ? 'vermelho' : 'verde',
         dias: d,
-        texto: d <= 0 ? `faltam ${-d}d para o prazo` : `${d}d depois do prazo`,
+        prazo,
+        texto: d > 0 ? `${d}d depois do prazo` : `faltam ${-d}d para o prazo`,
         cumpriu: null,
       }
     },
@@ -453,7 +478,13 @@ export type Conta = {
 
 function porQue(rel: Relogio, t: TicketSim, v: Veredito): string {
   const g = dataDe(t, rel.gatilho)
-  const quando = g?.valor ? `${g.rotulo} ${br(g.valor)}` : g?.rotulo
+  // Prazo calculado manda: dizer "Onboarding 07/10 venceu há 9 dias" esconde
+  // que o prazo era 27/10, e quem lê não tem como refazer a conta.
+  const quando = v.prazo
+    ? `O prazo era ${br(v.prazo)}`
+    : g?.valor
+      ? `${g.rotulo} ${br(g.valor)}`
+      : g?.rotulo
 
   if (v.estado === 'sem-dado') return `Falta preencher ${quando ?? 'a data que inicia o prazo'}.`
   if (v.estado === 'nao-aplica') return `Não se aplica: ${v.texto}.`
@@ -461,7 +492,10 @@ function porQue(rel: Relogio, t: TicketSim, v: Veredito): string {
   if (v.estado === 'concluido') return `Concluída — ${v.texto}.`
   if (v.estado === 'nao-iniciado') return `Ainda não começou a contar: ${v.texto}.`
 
-  const d = v.dias ?? 0
+  // Cor sem contagem de dias: a frase do próprio relógio já diz tudo.
+  if (v.dias === null) return `${v.texto[0].toUpperCase()}${v.texto.slice(1)}.`
+
+  const d = v.dias
   if (d > 0) return `${quando} venceu há ${d} ${d === 1 ? 'dia' : 'dias'}.`
   if (d === 0) return `${quando} vence hoje.`
   return `${quando} ainda não venceu: faltam ${-d} ${-d === 1 ? 'dia' : 'dias'}.`
@@ -486,6 +520,10 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
 
   const contas: Conta[] = meus.map((rel) => {
     const v = rel.ver(t, hoje)
+    if (v.prazo && !vistos.has('Prazo de assinatura')) {
+      vistos.add('Prazo de assinatura')
+      datas.push({ rotulo: 'Prazo de assinatura', valor: v.prazo })
+    }
     const g = dataDe(t, rel.gatilho)
     const prazo = dia(g?.valor ?? '')
     return {
