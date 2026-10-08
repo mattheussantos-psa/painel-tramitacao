@@ -11,6 +11,7 @@ import {
   QUADROS,
 } from './lib/sinaleira.ts'
 import { RELOGIOS, avaliarEtapa, diasUteis, explicar, EXIGE_MINUTA_PALESTRANTE } from './lib/relogios.ts'
+import { classificar, agrupar } from './lib/closer.ts'
 
 // A API v3 manda "2026-09-30", a camada de relatório manda epoch em ms.
 // Assumir um formato só derrubou o painel em produção com "Invalid time value".
@@ -523,3 +524,58 @@ assert.equal(assinatura.faltaDado, false)
 assert.match(assinatura.porque, /Associação/)
 
 console.log('ok — campo em branco aparece no dialogo')
+
+// ---- guia Closer: proposta no mesmo dia ----
+// Regra trazida do painel Negocios Ativos. HOJE no teste e 29/09/2026 09:00 BRT.
+const N = (over) => ({
+  id: 'd1', nome: 'Negocio', ownerId: '1',
+  criadoMs: Date.parse('2026-09-20T12:00:00Z'),
+  qualificacaoMs: Date.parse('2026-09-25T00:00:00Z'), // campo DATE, meia-noite UTC
+  propostaMs: null, reunioes: [], ...over,
+})
+const dia = (d, h = '15:00') => Date.parse(`${d}T${h}:00Z`)
+const cls = (o) => classificar(N(o), HOJE)
+
+// Sem reuniao: o evento e a qualificacao.
+assert.deepEqual(cls({ propostaMs: dia('2026-09-25') }), { balde: 'sem', estado: 'no_dia', reuniaoMs: null })
+assert.equal(cls({ propostaMs: dia('2026-09-26') }).estado, 'fora', 'proposta no dia seguinte')
+assert.equal(cls({}).estado, 'fora', 'qualificou e nunca mandou proposta')
+assert.equal(cls({ qualificacaoMs: Date.parse('2026-09-29T00:00:00Z') }).estado, 'aguardando', 'qualificou hoje')
+
+// Com reuniao: vale o dia de qualquer reuniao ja ocorrida.
+const reuniaoVenda = (d, h) => [{ ms: dia(d, h), tipo: 'B2B | Reunião de Venda' }]
+assert.equal(cls({ reunioes: reuniaoVenda('2026-09-24'), propostaMs: dia('2026-09-24') }).estado, 'no_dia')
+assert.equal(cls({ reunioes: reuniaoVenda('2026-09-24'), propostaMs: dia('2026-09-26') }).estado, 'fora')
+// Proposta no dia da qualificacao tambem vale: mandou rapido e so depois marcou.
+assert.equal(cls({ reunioes: reuniaoVenda('2026-09-28'), propostaMs: dia('2026-09-25') }).estado, 'no_dia')
+// Reuniao futura: a janela nem abriu.
+assert.equal(cls({ reunioes: reuniaoVenda('2026-10-10') }).estado, 'aguardando')
+// Reuniao de hoje que ja aconteceu: o dia nao acabou, ainda da tempo.
+assert.equal(cls({ reunioes: reuniaoVenda('2026-09-29', '08:00') }).estado, 'aguardando')
+
+// So reuniao de venda conta. Relacionamento nao joga o negocio para o balde com.
+assert.equal(cls({ reunioes: [{ ms: dia('2026-09-24'), tipo: 'B2B | Relacionamento' }] }).balde, 'sem')
+// Reuniao sem tipo entra quando e a primeira do negocio.
+assert.equal(cls({ reunioes: [{ ms: dia('2026-09-24'), tipo: '' }] }).balde, 'com')
+assert.equal(
+  cls({ reunioes: [{ ms: dia('2026-09-24'), tipo: '' }, { ms: dia('2026-09-26'), tipo: '' }] }).balde,
+  'com',
+  'a segunda sem tipo nao conta, mas a primeira ja jogou no balde com',
+)
+
+// A razao do card: aguardando fica FORA do denominador.
+const grupo = agrupar(
+  [
+    N({ id: 'a', propostaMs: dia('2026-09-25') }),
+    N({ id: 'b', propostaMs: dia('2026-09-26') }),
+    N({ id: 'c', qualificacaoMs: Date.parse('2026-09-29T00:00:00Z') }),
+  ],
+  () => 'Closer X',
+  HOJE,
+)
+assert.equal(grupo.length, 1)
+assert.equal(grupo[0].semCumpriu, 1)
+assert.equal(grupo[0].semTestavel, 2, 'o aguardando nao entra no denominador')
+assert.equal(grupo[0].semAguardando, 1)
+
+console.log('ok — proposta no mesmo dia')

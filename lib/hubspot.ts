@@ -1,4 +1,5 @@
 import { QUADROS, completar, iso, tarefaMaisUrgente, type Quadro, type Tarefa, type Ticket } from './sinaleira'
+import { chamar } from './http'
 import snapshot from '@/data/snapshot.json'
 import curadores from '@/data/curadores.json'
 
@@ -50,32 +51,6 @@ const espera = (ms: number) => new Promise((r) => setTimeout(r, ms))
 // outro integrador consumindo a cota derruba o painel do mesmo jeito. Então
 // espaça as chamadas e tenta de novo no 429 em vez de morrer.
 const PAUSA = 300
-
-async function chamar(url: string | URL, init: RequestInit, onde: string) {
-  for (let tentativa = 0; ; tentativa++) {
-    // O fetch do Next e instrumentado e guarda a resposta por conta propria.
-    // Sem no-store o painel servia resposta velha carimbando "ao vivo": em
-    // 05/10/2026 um ticket aparecia na etapa de tres dias antes enquanto a
-    // mesma busca, feita no mesmo processo com no-store, trazia a etapa certa.
-    // force-dynamic na pagina nao cobre isso — e cache de dado, nao de rota.
-    const res = await fetch(url, { ...init, cache: 'no-store' })
-    if (res.status !== 429 || tentativa >= 4) return json(res, onde)
-
-    const retryAfter = Number(res.headers.get('Retry-After'))
-    await espera(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2 ** tentativa * 500)
-  }
-}
-
-async function json(res: Response, onde: string) {
-  // O HubSpot devolve HTML em alguns erros (owner desativado, token sem scope).
-  // Sem esta checagem o .json() estoura com um erro que não diz nada.
-  if (!res.ok) {
-    // 600 e nao 300: a resposta de escopo faltando traz a lista de escopos
-    // exigidos no fim do corpo, que é justamente o que precisamos ler.
-    throw new Error(`HubSpot ${onde} respondeu ${res.status}: ${(await res.text()).slice(0, 600)}`)
-  }
-  return res.json()
-}
 
 async function buscarAoVivo(
   token: string,
@@ -223,7 +198,7 @@ async function buscarTarefas(token: string, ticketIds: string[]) {
 
 // Os owners arquivados não vêm na listagem padrão, e são justamente os que
 // interessam: ticket parado com curador que saiu não tem quem atue.
-async function buscarOwners(token: string): Promise<Owners> {
+export async function buscarOwners(token: string): Promise<Owners> {
   const owners: Owners = {}
 
   for (const arquivados of [false, true]) {

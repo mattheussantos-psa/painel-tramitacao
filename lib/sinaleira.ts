@@ -349,4 +349,5 @@ export const QUADROS: Record<string, Quadro> = {
 export const ABAS = [
   { slug: 'cs', nome: 'Tramitação CS', href: '/' },
   { slug: 'calendario', nome: 'Calendário', href: '/calendario' },
+  { slug: 'closer', nome: 'Closer', href: '/closer' },
 ]
