@@ -1,12 +1,11 @@
 import { carregar, nomeCurador, curadorInativo, linkTicket, type Fonte } from '@/lib/hubspot'
-import { avaliarEtapa, explicar } from '@/lib/relogios'
+import { alertas, avaliarEtapa, explicar } from '@/lib/relogios'
 import {
   cliente,
   palestrante,
   diasParaEvento,
   diasNaEtapa,
   diasParaTarefa,
-  alertas,
   type Quadro,
 } from '@/lib/sinaleira'
 import Painel from '@/components/Painel'
@@ -59,7 +58,7 @@ export function linhasDe(fonte: Fonte, quadro: Quadro, hoje: number) {
         diasEvento: diasParaEvento(t, hoje),
         diasNaEtapa: diasNaEtapa(t, hoje),
         diasTarefa: diasParaTarefa(t, hoje),
-        alertas: alertas(t, hoje),
+        alertas: alertas(t, hoje, quadro.sla),
         entrouEtapa: t.entrouEtapa,
         conta: explicar(t, quadro.sla[t.stage]?.label ?? '', hoje),
         stage: t.stage,

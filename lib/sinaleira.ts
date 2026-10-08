@@ -249,34 +249,8 @@ export const DIAS_PARA_ASSINAR: Record<string, number> = {
   'Sistema S (SEST/SENAT/SEBRAE/SESCOOP)': 30,
   'Órgão Público': 45,
 }
-// Briefing: cobrado a partir de D-15 do evento.
-export const DIAS_BRIEFING = 15
-
-export function alertas(t: Ticket, hoje: number = Date.now()): Alerta[] {
-  const agora = hojeEmDias(hoje)
-  const out: Alerta[] = []
-
-  // status_do_contrato está em 99% dos tickets das etapas do farmer e distingue
-  // Assinado de Pendente — é o sinal mais confiável que existe hoje.
-  // Mesma tabela do relógio da etapa. Com número próprio aqui, um órgão
-  // público com 25 dias ficaria verde no quadro e aceso no alerta.
-  const prazo = DIAS_PARA_ASSINAR[t.formatoEmpresa]
-  if (prazo && t.onboarding && t.statusContrato !== 'Assinado') {
-    if (emDias(agora, dia(t.onboarding) + prazo * DIA) > 0)
-      out.push({ chave: 'contrato', texto: 'Contrato pendente de assinatura' })
-  }
-
-  // Valida pela data de realização do onboarding: sem onboarding feito, o
-  // briefing não teria como estar agendado. Só faz sentido antes do evento —
-  // depois dele não há mais o que antecipar.
-  if (!t.onboarding && t.evento && emDias(dia(t.evento), agora) >= 0) {
-    if (emDias(agora, dia(t.evento) - DIAS_BRIEFING * DIA) > 0)
-      out.push({ chave: 'briefing', texto: 'Call de Briefing pendente' })
-  }
-
-  return out
-}
-
+// alertas() vive em relogios.ts: a conta tem que ser a mesma que pinta o
+// quadro, e os relógios é que sabem disso.
 export function cliente(subject: string) {
   return subject.split(/\s+[-|]\s+/)[0].trim()
 }

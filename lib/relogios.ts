@@ -10,6 +10,7 @@
 
 import {
   AMARELO_ANTES,
+  type Alerta,
   DIAS_PARA_ASSINAR,
   avaliar,
   hojeEmDias,
@@ -584,6 +585,41 @@ export function avaliarEtapa(
   const s = pior(corDaEtapa(t, regra.label, hoje), briefingPendente(t, regra.label, hoje))
   if (s) return { ...base, cor: s.cor, texto: s.texto }
   return { ...base, texto: 'sem prazo nesta etapa' }
+}
+
+// Alertas de processo: o segundo eixo do painel. A cor diz se o ticket está
+// travado na etapa onde ele está; o alerta diz que um marco passou do prazo,
+// esteja o ticket na etapa que estiver — ticket verde em "Solicitar NF" com o
+// contrato nunca assinado é exatamente o caso que o alerta existe para pegar.
+//
+// Saíam de uma conta própria, escrita antes dos relógios: contavam 27
+// contratos pendentes enquanto os relógios acendiam em 233, e o briefing
+// usava "onboarding em branco" como proxy, acendendo em 1 ticket contra os 44
+// da regra que o CS acordou depois. Agora é o mesmo relógio, ou é bug.
+//
+// Cliente e palestrante são alertas separados de propósito: "Data de
+// assinatura (palestrante)" está preenchida em 6 dos 245 tickets que exigem a
+// minuta, contra 112 de 185 no lado do cliente. Somados, o número do cliente
+// sumiria dentro de uma lacuna de preenchimento.
+const DE_RELOGIO: { chave: string; texto: string; relogio: string }[] = [
+  { chave: 'contrato', texto: 'Contrato do cliente pendente', relogio: 'contrato-assinatura' },
+  { chave: 'minuta', texto: 'Contrato do palestrante pendente', relogio: 'palestrante-assinatura' },
+]
+
+export function alertas(t: TicketSim, hoje: number, sla: Record<string, Regra>): Alerta[] {
+  const out: Alerta[] = []
+
+  for (const a of DE_RELOGIO) {
+    const rel = RELOGIOS.find((x) => x.chave === a.relogio)
+    if (!rel) continue
+    const v = rel.ver(t, hoje)
+    if (v.estado === 'vermelho' || v.estado === 'amarelo') out.push({ chave: a.chave, texto: a.texto })
+  }
+
+  if (briefingPendente(t, sla[t.stage]?.label ?? '', hoje))
+    out.push({ chave: 'briefing', texto: 'Briefing pendente' })
+
+  return out
 }
 
 // Nome humano e campo do ticket para cada propriedade que um relógio lê. O

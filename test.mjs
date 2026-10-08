@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   avaliar,
-  alertas,
   diasNaEtapa,
   iso,
   tarefaMaisUrgente,
@@ -10,7 +9,7 @@ import {
   ENCERRADAS,
   QUADROS,
 } from './lib/sinaleira.ts'
-import { RELOGIOS, avaliarEtapa, diasUteis, explicar, EXIGE_MINUTA_PALESTRANTE } from './lib/relogios.ts'
+import { RELOGIOS, alertas, avaliarEtapa, diasUteis, explicar, EXIGE_MINUTA_PALESTRANTE } from './lib/relogios.ts'
 import { classificar, agrupar } from './lib/closer.ts'
 
 // A API v3 manda "2026-09-30", a camada de relatório manda epoch em ms.
@@ -125,34 +124,56 @@ assert.equal(tarefaMaisUrgente([], tarefas), '')
 
 console.log('ok — selecao de tarefa')
 
-// Alertas de processo — eixo separado da cor da etapa.
-const A = (o) => alertas(t(o), HOJE).map((x) => x.chave)
+// Alertas de processo — eixo separado da cor da etapa, mesma régua.
+// stage 1088360205 (Em andamento) não é etapa de contrato: serve para provar
+// que o alerta atravessa a etapa onde o ticket está.
+const A = (o) => alertas(t({ stage: '1088360205', ...o }), HOJE, QUADROS.cs.sla).map((x) => x.chave).sort()
 
-// Contrato: o prazo vem da mesma tabela do relogio da etapa — 20 dias para
-// empresa privada, 45 para orgao publico — e status_do_contrato manda. Com
-// numero proprio aqui, um orgao publico de 25 dias ficaria verde no quadro e
-// aceso no alerta.
-const PRIV = { formatoEmpresa: 'Empresa Privada' }
-const PUB = { formatoEmpresa: 'Órgão Público' }
+// Contrato do cliente: 20 dias para empresa privada, 45 para orgao publico,
+// contados do onboarding — a mesma conta do relogio da etapa.
+const PRIV = { formatoEmpresa: 'Empresa Privada', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }
+const PUB = { formatoEmpresa: 'Órgão Público', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }
 assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-01', statusContrato: 'Pendente' }), ['contrato'])
 assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-01', statusContrato: 'Assinado' }), [])
-assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-15', statusContrato: 'Pendente' }), [], 'dentro dos 20 dias')
-assert.deepEqual(A({ ...PRIV, onboarding: '', statusContrato: 'Pendente' }), [], 'sem onboarding nao ha prazo')
+assert.deepEqual(A({ ...PRIV, onboarding: '2026-07-01', dataAssinatura: '2026-07-10' }), [], 'assinado fecha o alerta')
+assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-15', statusContrato: 'Pendente' }), [], 'vence 05/10, faltam 6 dias')
+// A reta final amarela ja acende o alerta: o ponto e cobrar antes de estourar.
+assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-13', statusContrato: 'Pendente' }), ['contrato'], 'vence 03/10, faltam 4')
 
 // Orgao publico tem 45 dias: o mesmo onboarding que acende a privada nao
 // acende ele.
 assert.deepEqual(A({ ...PUB, onboarding: '2026-09-01', statusContrato: 'Pendente' }), [], 'dia 28 dos 45')
 assert.deepEqual(A({ ...PUB, onboarding: '2026-08-01', statusContrato: 'Pendente' }), ['contrato'], 'dia 59')
 
-// Formato sem prazo acordado, ou em branco, nao acende alerta nenhum.
-assert.deepEqual(A({ onboarding: '2026-01-01', statusContrato: 'Pendente' }), [], 'formato em branco')
-assert.deepEqual(A({ formatoEmpresa: 'Associação', onboarding: '2026-01-01', statusContrato: 'Pendente' }), [])
+// Sem onboarding o relogio ja conta como atraso, entao o alerta acende junto —
+// antes ficava calado, que era a divergencia com o quadro.
+assert.deepEqual(A({ ...PRIV, onboarding: '', statusContrato: 'Pendente' }), ['contrato'])
 
-// Briefing: cobra a partir de D-15, e valida pela data de onboarding.
-assert.deepEqual(A({ onboarding: '', evento: '2026-10-05' }), ['briefing'], 'D-6 sem onboarding')
-assert.deepEqual(A({ onboarding: '', evento: '2026-10-20' }), [], 'D-21 ainda da tempo')
-assert.deepEqual(A({ onboarding: '2026-09-28', evento: '2026-10-05' }), [], 'onboarding feito, sem alerta')
-assert.deepEqual(A({ onboarding: '', evento: '2026-09-01' }), [], 'evento passado nao cobra briefing')
+// Formato sem prazo acordado, ou em branco, nao acende: o painel nao inventa
+// prazo que o CS nao deu.
+assert.deepEqual(A({ formatoContrato: 'MC (Cliente x PSA x Palestrante)', onboarding: '2026-01-01' }), [])
+assert.deepEqual(
+  A({ formatoEmpresa: 'Associação', formatoContrato: 'MC (Cliente x PSA x Palestrante)', onboarding: '2026-01-01' }),
+  [],
+)
+
+// Contrato do palestrante e alerta proprio, nao somado ao do cliente.
+const COM_MINUTA = { formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não' }
+assert.deepEqual(A({ ...COM_MINUTA, ...PRIV, formatoContrato: COM_MINUTA.formatoContrato, onboarding: '2026-09-01' }), ['contrato', 'minuta'])
+assert.deepEqual(A({ ...COM_MINUTA, onboarding: '2026-09-01' }), ['minuta'], 'formato da empresa em branco so acende a minuta')
+assert.deepEqual(A({ ...COM_MINUTA, palestranteExclusivo: 'Sim', onboarding: '2026-09-01' }), [], 'exclusivo nao tem minuta')
+assert.deepEqual(
+  A({ ...COM_MINUTA, onboarding: '2026-09-01', dataAssinaturaPalestrante: '2026-09-10' }),
+  [],
+  'assinado fecha a minuta',
+)
+
+// Briefing: a mesma regra do quadro — D-15 amarelo, D-7 vermelho, e so para
+// quem nao passou por Realizar Briefing.
+assert.deepEqual(A({ evento: '2026-10-05' }), ['briefing'], 'D-6')
+assert.deepEqual(A({ evento: '2026-10-20' }), [], 'D-21 ainda da tempo')
+assert.deepEqual(A({ evento: '2026-10-05', entrouBriefing: '2026-09-20' }), [], 'ja passou pelo briefing')
+assert.deepEqual(A({ evento: '2026-09-01' }), [], 'evento passado nao cobra briefing')
 
 console.log('ok — alertas de processo')
 
