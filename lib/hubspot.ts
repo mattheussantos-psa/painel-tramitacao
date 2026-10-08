@@ -1,5 +1,6 @@
 import { QUADROS, completar, iso, tarefaMaisUrgente, type Quadro, type Tarefa, type Ticket } from './sinaleira'
 import { chamar } from './http'
+import { ETAPAS_LOGISTICA } from './relogios'
 import snapshot from '@/data/snapshot.json'
 import curadores from '@/data/curadores.json'
 
@@ -203,6 +204,77 @@ async function buscarTarefas(token: string, ticketIds: string[]) {
   return proxima
 }
 
+// A aquisição da logística corre a partir da PRIMEIRA entrada do negócio em
+// etapa de ganho. "Primeira" é o detalhe caro: hs_v2_date_entered_<etapa>
+// guarda só a última entrada, então o caminho é o histórico de dealstage, que
+// obriga a passar pela associação ticket→negócio.
+async function buscarGanho(token: string, ticketIds: string[]) {
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+
+  // Quais etapas são de ganho vem do próprio HubSpot: a conta tem 8 funis de
+  // negócio e o B2B sozinho tem duas etapas fechadas-ganhas.
+  await espera(PAUSA)
+  const funis = await chamar(
+    'https://api.hubapi.com/crm/v3/pipelines/deals',
+    { headers },
+    'pipelines/deals',
+  )
+  const ganho = new Set<string>()
+  for (const f of funis.results ?? [])
+    for (const e of f.stages ?? [])
+      if (e.metadata?.isClosed === 'true' && e.metadata?.probability === '1.0') ganho.add(String(e.id))
+
+  const porTicket = new Map<string, string[]>()
+  for (const lote of pedacos(ticketIds, 100)) {
+    await espera(PAUSA)
+    const r = await chamar(
+      'https://api.hubapi.com/crm/v4/associations/tickets/deals/batch/read',
+      { method: 'POST', headers, body: JSON.stringify({ inputs: lote.map((id) => ({ id })) }) },
+      'associations tickets→deals',
+    )
+    for (const res of r.results ?? []) {
+      const de = res.from?.id
+      const para = (res.to ?? []).map((d: { toObjectId?: string; id?: string }) => String(d.toObjectId ?? d.id))
+      if (de && para.length) porTicket.set(String(de), para)
+    }
+  }
+
+  // Com propertiesWithHistory o batch read cai para 50 por chamada.
+  const primeiro = new Map<string, string>()
+  for (const lote of pedacos([...new Set([...porTicket.values()].flat())], 50)) {
+    await espera(PAUSA)
+    const r = await chamar(
+      'https://api.hubapi.com/crm/v3/objects/deals/batch/read',
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          properties: ['dealstage'],
+          propertiesWithHistory: ['dealstage'],
+          inputs: lote.map((id) => ({ id })),
+        }),
+      },
+      'deals/batch/read',
+    )
+    for (const d of r.results ?? []) {
+      const quando = (d.propertiesWithHistory?.dealstage ?? [])
+        .filter((h: { value: string }) => ganho.has(String(h.value)))
+        .map((h: { timestamp: string }) => String(h.timestamp))
+        .sort()[0]
+      if (quando) primeiro.set(String(d.id), quando)
+    }
+  }
+
+  const out = new Map<string, string>()
+  for (const [ticket, negocios] of porTicket) {
+    // Ticket com mais de um negócio: vale o ganho mais antigo, que é quando o
+    // relógio da logística começou de fato a correr.
+    const datas = negocios.map((d) => primeiro.get(d)).filter(Boolean).sort() as string[]
+    if (datas.length) out.set(ticket, iso(datas[0]))
+  }
+  return out
+}
+
 // Os owners arquivados não vêm na listagem padrão, e são justamente os que
 // interessam: ticket parado com curador que saiu não tem quem atue.
 export async function buscarOwners(token: string): Promise<Owners> {
@@ -283,6 +355,24 @@ async function buscarTudo(q: Quadro): Promise<Fonte> {
     avisos.push(
       `Tarefas não carregaram; a coluna cai em hs_nextactivitydate, que ignora tarefa vencida. ${e instanceof Error ? e.message : String(e)}`,
     )
+  }
+
+  // Só a etapa de logística usa essa data, e cada ticket custa associação mais
+  // leitura de histórico. Buscar para a base inteira seriam 14 chamadas a mais
+  // por carregamento em vez de 4 — com o teto de 4 req/s da conta, isso pesa.
+  const naLogistica = tickets.filter((t) => ETAPAS_LOGISTICA.includes(q.sla[t.stage]?.label))
+  if (naLogistica.length) {
+    try {
+      const ganho = await buscarGanho(
+        token,
+        naLogistica.map((t) => t.id),
+      )
+      for (const t of naLogistica) t.ganhoNegocio = ganho.get(t.id) ?? ''
+    } catch (e) {
+      avisos.push(
+        `Data de ganho do negócio não carregou: a aquisição da logística fica sem prazo e cai em cinza. ${e instanceof Error ? e.message : String(e)}`,
+      )
+    }
   }
 
   if (ignorados > 0) {

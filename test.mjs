@@ -202,10 +202,20 @@ assert.equal(diasUteis('2026-09-28', Date.parse('2026-09-29T00:00:00Z')), 1)
 // Aquisicao vale para quem a PSA organiza, com custo dela ou com reembolso.
 assert.equal(R['log-aquisicao']({ logistica: 'Evento Online' }).estado, 'nao-aplica')
 assert.equal(R['log-aquisicao']({ logistica: 'Não' }).estado, 'nao-aplica')
-assert.equal(R['log-aquisicao']({ logistica: CUSTO_PSA }).estado, 'sem-dado', 'sem a data nao da para cobrar')
-assert.equal(R['log-aquisicao']({ logistica: CUSTO_PSA, prazoLogistica: '2026-10-05' }).estado, 'verde')
-assert.equal(R['log-aquisicao']({ logistica: REEMBOLSO, prazoLogistica: '2026-09-27' }).estado, 'amarelo')
-assert.equal(R['log-aquisicao']({ logistica: REEMBOLSO, prazoLogistica: '2026-09-20' }).estado, 'vermelho')
+assert.equal(R['log-aquisicao']({ logistica: CUSTO_PSA }).estado, 'sem-dado', 'sem negocio ganho nao da para cobrar')
+// O prazo sai do ganho do negocio, nao da propriedade: com a propriedade
+// preenchida e sem ganho o relogio continua sem poder cobrar.
+assert.equal(R['log-aquisicao']({ logistica: CUSTO_PSA, prazoLogistica: '2026-10-05' }).estado, 'sem-dado')
+// 26/09 + 5 = 01/10, ainda no prazo.
+assert.equal(R['log-aquisicao']({ logistica: CUSTO_PSA, ganhoNegocio: '2026-09-26' }).estado, 'verde')
+// 24/09 + 5 = 29/09, vence hoje: ainda verde.
+assert.equal(R['log-aquisicao']({ logistica: REEMBOLSO, ganhoNegocio: '2026-09-24' }).estado, 'verde')
+// 22/09 + 5 = 27/09, dois dias depois.
+assert.equal(R['log-aquisicao']({ logistica: REEMBOLSO, ganhoNegocio: '2026-09-22' }).estado, 'amarelo')
+assert.equal(R['log-aquisicao']({ logistica: REEMBOLSO, ganhoNegocio: '2026-09-15' }).estado, 'vermelho')
+// A data limite vai no veredito para o dialogo mostrar o prazo calculado, nao
+// a data do ganho — dizer "ganho 15/09 venceu ha 9 dias" esconde a conta.
+assert.equal(R['log-aquisicao']({ logistica: REEMBOLSO, ganhoNegocio: '2026-09-15' }).prazo, '2026-09-20')
 
 // Pagamento so corre quando o cliente reembolsa: com custo para a PSA nao ha
 // pagamento a cobrar do cliente.
@@ -274,18 +284,18 @@ const LOG = '1450325173', CTR = '1450325174', BRF = '1450325175'
 
 // Logistica anda por duas datas do proprio ticket, e o pior manda.
 const log = (over) => E({ stage: LOG, evento: '2026-10-20', logistica: REEMBOLSO, ...over })
-assert.equal(log({ prazoLogistica: '2026-10-05', pagamentoLogistica: '2026-10-05' }).cor, 'verde')
-assert.equal(log({ prazoLogistica: '2026-10-05', pagamentoLogistica: '2026-09-20' }).cor, 'vermelho', 'pagamento vencido puxa a etapa')
-assert.match(log({ prazoLogistica: '2026-10-05', pagamentoLogistica: '2026-09-20' }).texto, /^pagamento · /)
-assert.equal(log({ prazoLogistica: '2026-09-20', pagamentoLogistica: '2026-10-05' }).cor, 'vermelho', 'aquisicao vencida tambem')
+assert.equal(log({ ganhoNegocio: '2026-09-26', pagamentoLogistica: '2026-10-05' }).cor, 'verde')
+assert.equal(log({ ganhoNegocio: '2026-09-26', pagamentoLogistica: '2026-09-20' }).cor, 'vermelho', 'pagamento vencido puxa a etapa')
+assert.match(log({ ganhoNegocio: '2026-09-26', pagamentoLogistica: '2026-09-20' }).texto, /^pagamento · /)
+assert.equal(log({ ganhoNegocio: '2026-09-15', pagamentoLogistica: '2026-10-05' }).cor, 'vermelho', 'aquisicao vencida tambem')
 // Com custo para a PSA so corre a aquisicao.
-assert.equal(log({ logistica: CUSTO_PSA, prazoLogistica: '2026-09-20', pagamentoLogistica: '2026-09-20' }).cor, 'vermelho')
-assert.match(log({ logistica: CUSTO_PSA, prazoLogistica: '2026-09-20', pagamentoLogistica: '2026-09-20' }).texto, /^aquisição · /)
+assert.equal(log({ logistica: CUSTO_PSA, ganhoNegocio: '2026-09-15', pagamentoLogistica: '2026-09-20' }).cor, 'vermelho')
+assert.match(log({ logistica: CUSTO_PSA, ganhoNegocio: '2026-09-15', pagamentoLogistica: '2026-09-20' }).texto, /^aquisição · /)
 // Log externa e evento online seguem fora de qualquer prazo.
-assert.equal(log({ logistica: 'Não', prazoLogistica: '2026-09-20' }).cor, 'cinza')
-assert.equal(log({ logistica: 'Evento Online', prazoLogistica: '2026-09-20' }).cor, 'cinza')
+assert.equal(log({ logistica: 'Não', ganhoNegocio: '2026-09-15' }).cor, 'cinza')
+assert.equal(log({ logistica: 'Evento Online', ganhoNegocio: '2026-09-15' }).cor, 'cinza')
 // Sem as datas preenchidas o card nao vira verde por omissao.
-assert.equal(log({}).cor, 'cinza', 'sem prazo e sem pagamento')
+assert.equal(log({}).cor, 'cinza', 'sem ganho e sem pagamento')
 
 // Contrato: envio em 1 dia util e assinatura em 20 dias do onboarding, pior
 // manda.
@@ -416,18 +426,18 @@ console.log('ok — minuta do palestrante')
 // ---- a conta que o card abre ----
 // A explicacao sai da mesma regua que pinta o card: se divergirem, o farmer
 // cobra uma coisa e o quadro mostra outra.
-const tLog = T({ stage: LOG, logistica: REEMBOLSO, prazoLogistica: '2026-09-20', pagamentoLogistica: '2026-10-05', entrouEtapa: '2026-10-02', evento: '2026-11-20' })
+const tLog = T({ stage: LOG, logistica: REEMBOLSO, ganhoNegocio: '2026-09-15', pagamentoLogistica: '2026-10-05', entrouEtapa: '2026-10-02', evento: '2026-11-20' })
 const { datas, contas } = explicar(tLog, 'Contratar Logística', HOJE)
 
 // A tabela traz data com nome humano, nao nome de propriedade.
 assert.deepEqual(
   datas.map((d) => [d.rotulo, d.valor]),
-  [['Prazo de aquisição', '2026-09-20'], ['Pagamento previsto', '2026-10-05']],
+  [['Negócio ganho', '2026-09-15'], ['Pagamento previsto', '2026-10-05'], ['Prazo de aquisição', '2026-09-20']],
 )
 
 // Uma frase por relogio, com a data e a conta de dias.
 assert.equal(contas[0].estado, 'vermelho')
-assert.equal(contas[0].porque, 'Prazo de aquisição 20/09/2026 venceu há 9 dias.')
+assert.equal(contas[0].porque, 'O prazo era 20/09/2026 venceu há 9 dias.')
 assert.equal(contas[1].estado, 'verde')
 assert.equal(contas[1].porque, 'Pagamento previsto 05/10/2026 ainda não venceu: faltam 6 dias.')
 
@@ -438,7 +448,10 @@ assert.equal(contas[1].herdado, false, 'prazo do proprio ciclo nao leva aviso')
 // Sem data preenchida a frase pede o preenchimento em vez de inventar prazo.
 const semData = explicar(T({ stage: LOG, logistica: CUSTO_PSA, entrouEtapa: '2026-10-02' }), 'Contratar Logística', HOJE)
 assert.equal(semData.contas[0].estado, 'sem-dado')
-assert.equal(semData.contas[0].porque, 'Falta preencher Prazo de aquisição.')
+assert.equal(
+  semData.contas[0].porque,
+  'Sem negócio ganho associado ao ticket, não há de onde contar o prazo.',
+)
 
 // A cor da conta e a mesma do card, sempre.
 assert.equal(avaliarEtapa(tLog, HOJE, QUADROS.cs.sla).cor, 'vermelho')

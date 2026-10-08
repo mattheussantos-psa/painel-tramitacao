@@ -103,6 +103,13 @@ export type Relogio = {
   ver: (t: TicketSim, hoje: number) => Veredito
 }
 
+// A etapa tem nome diferente nos dois pipelines. A lista fica aqui porque a
+// busca de dados precisa saber quais tickets carregam a data de ganho.
+export const ETAPAS_LOGISTICA = ['Contratar Logística', 'Logística']
+
+// Dias entre o negócio ser ganho e a logística ter que estar adquirida.
+export const PRAZO_AQUISICAO = 5
+
 const LOG_REEMBOLSO = 'Sim, com reembolso do cliente'
 const LOG_CUSTO_PSA = 'Sim, com custo para PSA'
 
@@ -157,23 +164,35 @@ const contratoAssinado = (t: TicketSim) => t.statusContrato === 'Assinado' || te
 export const RELOGIOS: Relogio[] = [
   {
     chave: 'log-aquisicao',
-    etapa: ['Contratar Logística', 'Logística'],
+    etapa: ETAPAS_LOGISTICA,
     nome: 'Aquisição da logística',
     curto: 'aquisição',
-    regra: 'Até a data em "Prazo de aquisição da Logística" · amarelo 1 a 3 dias depois · vermelho 4+',
-    confianca: 'hipotese',
-    gatilho: 'adquirir_logistica',
+    regra: `${PRAZO_AQUISICAO} dias após a primeira entrada do negócio em etapa de ganho · amarelo 1 a 3 dias depois · vermelho 4+`,
+    confianca: 'fechado',
+    gatilho: 'ganho_negocio',
     marco: '— sair da etapa é o único sinal de que foi adquirida',
-    pendencia: 'Faixa de cor não foi acordada: aplica a mesma da assinatura de contrato, que o CS definiu para prazo em data.',
+    pendencia:
+      'O prazo é calculado do ganho do negócio. A propriedade "Prazo de aquisição da Logística", preenchida em 32 dos 55 tickets da etapa, deixou de decidir a cor e saiu do diálogo.',
     ver: (t, hoje) => {
       if (t.logistica !== LOG_REEMBOLSO && t.logistica !== LOG_CUSTO_PSA)
         return { estado: 'nao-aplica', dias: null, texto: t.logistica || 'sem resposta', cumpriu: null }
-      return contraPrazo(t.prazoLogistica, hoje, 'sem prazo de aquisição')
+      // Sem negócio ganho associado o prazo não tem de onde partir. Cinza, não
+      // vermelho: o CS definiu isso só para o contrato sem onboarding.
+      if (!tem(t.ganhoNegocio))
+        return {
+          estado: 'sem-dado',
+          dias: null,
+          texto: 'sem negócio ganho associado ao ticket, não há de onde contar o prazo',
+          cumpriu: null,
+          faltaDado: true,
+        }
+      const prazo = iso(dia(t.ganhoNegocio) + PRAZO_AQUISICAO * DIA)
+      return { ...contraPrazo(prazo, hoje, ''), prazo }
     },
   },
   {
     chave: 'log-pagamento',
-    etapa: ['Contratar Logística', 'Logística'],
+    etapa: ETAPAS_LOGISTICA,
     nome: 'Pagamento da logística',
     curto: 'pagamento',
     regra: 'Até a data em "Data prevista de pagamento Logística" · amarelo 1 a 3 dias depois · vermelho 4+',
@@ -525,6 +544,7 @@ export function avaliarEtapa(
 const PROP: Record<string, { rotulo: string; campo: keyof TicketSim }> = {
   data_de_realizacao_do_onboarding: { rotulo: 'Onboarding', campo: 'onboarding' },
   adquirir_logistica: { rotulo: 'Prazo de aquisição', campo: 'prazoLogistica' },
+  ganho_negocio: { rotulo: 'Negócio ganho', campo: 'ganhoNegocio' },
   data_prevista_de_pagamento_logistica: { rotulo: 'Pagamento previsto', campo: 'pagamentoLogistica' },
   data_de_envio_contrato_cliente: { rotulo: 'Envio ao cliente', campo: 'envioCliente' },
   assinar_contrato: { rotulo: 'Prazo de assinatura', campo: 'prazoAssinatura' },
@@ -618,9 +638,12 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
   }
 
   const contas: Conta[] = vereditos.map(({ rel, v }) => {
-    if (v.prazo && !vistos.has('Prazo de assinatura')) {
-      vistos.add('Prazo de assinatura')
-      datas.push({ rotulo: 'Prazo de assinatura', valor: v.prazo })
+    // Prazo calculado: entra na tabela com o nome do relógio, senão o da
+    // logística apareceria como "Prazo de assinatura".
+    const rotuloPrazo = `Prazo de ${rel.curto}`
+    if (v.prazo && !vistos.has(rotuloPrazo)) {
+      vistos.add(rotuloPrazo)
+      datas.push({ rotulo: rotuloPrazo, valor: v.prazo })
     }
     const g = dataDe(t, rel.gatilho)
     const prazo = dia(g?.valor ?? '')
