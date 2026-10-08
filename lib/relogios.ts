@@ -8,7 +8,15 @@
 //
 // Nada aqui é aplicado em produção: serve à simulação sobre dados reais do CS.
 
-import { DIAS_PARA_ASSINAR, avaliar, hojeEmDias, type Avaliacao, type Regra, type Ticket } from './sinaleira.ts'
+import {
+  AMARELO_ANTES,
+  DIAS_PARA_ASSINAR,
+  avaliar,
+  hojeEmDias,
+  type Avaliacao,
+  type Regra,
+  type Ticket,
+} from './sinaleira.ts'
 
 export type Cor = 'verde' | 'amarelo' | 'vermelho'
 
@@ -122,6 +130,12 @@ const LOG_CUSTO_PSA = 'Sim, com custo para PSA'
 // assinatura de contrato: verde ate a data, amarelo 1 a 3 dias depois,
 // vermelho do quarto em diante. Sem a data nao da para cobrar — cinza, nunca
 // verde por omissao.
+// Prazo contado até uma data-limite calculada. Amarelo na reta final: um prazo
+// que vence amanhã ainda dá para salvar, e ir de verde direto para vermelho
+// esconde justamente a janela em que cobrar adianta. Mesma antecedência da
+// régua de tempo na etapa.
+const faixaAteOPrazo = (d: number): Estado => (d > 0 ? 'vermelho' : d > -AMARELO_ANTES ? 'amarelo' : 'verde')
+
 function contraPrazo(prazo: string, hoje: number, semDado: string): Veredito {
   if (!tem(prazo)) return { estado: 'sem-dado', dias: null, texto: semDado, cumpriu: null }
   const d = emDias(hojeEmDias(hoje), dia(prazo))
@@ -240,7 +254,7 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do contrato pelo cliente',
     curto: 'assinatura',
-    regra: 'Do onboarding: 20 dias para Empresa Privada, 30 para Sistema S, 45 para Órgão Público · vermelho depois disso · sem onboarding também é vermelho',
+    regra: 'Do onboarding: 20 dias para Empresa Privada, 30 para Sistema S, 45 para Órgão Público · amarelo nos ${AMARELO_ANTES} dias antes · vermelho depois disso · sem onboarding também é vermelho',
     confianca: 'fechado',
     gatilho: 'data_de_realizacao_do_onboarding',
     marco: 'data_de_assinatura_do_contrato / status_do_contrato',
@@ -289,7 +303,7 @@ export const RELOGIOS: Relogio[] = [
 
       const d = emDias(hojeEmDias(hoje), limite)
       return {
-        estado: d > 0 ? 'vermelho' : 'verde',
+        estado: faixaAteOPrazo(d),
         dias: d,
         prazo,
         texto: d > 0 ? `${d}d depois do prazo` : `faltam ${-d}d para o prazo`,
@@ -322,7 +336,7 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do palestrante',
     curto: 'assinatura do palestrante',
-    regra: `${DIAS_ASSINATURA_PALESTRANTE} dias após o onboarding, quando o formato exige contrato com o palestrante · vermelho depois disso · sem onboarding também é vermelho`,
+    regra: `${DIAS_ASSINATURA_PALESTRANTE} dias após o onboarding, quando o formato exige contrato com o palestrante · amarelo nos ${AMARELO_ANTES} dias antes · vermelho depois disso · sem onboarding também é vermelho`,
     confianca: 'fechado',
     gatilho: 'data_de_realizacao_do_onboarding',
     marco: 'data_de_assinatura__palestrante_',
@@ -364,7 +378,7 @@ export const RELOGIOS: Relogio[] = [
       // vermelho depois.
       const d = emDias(hojeEmDias(hoje), limite)
       return {
-        estado: d > 0 ? 'vermelho' : 'verde',
+        estado: faixaAteOPrazo(d),
         dias: d,
         prazo,
         texto: d > 0 ? `${d}d depois do prazo` : `faltam ${-d}d para o prazo`,
@@ -680,7 +694,7 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
       datas.push({ rotulo: rotuloPrazo, valor: v.prazo })
     }
     const g = dataDe(t, rel.gatilho)
-    const prazo = dia(g?.valor ?? '')
+    const prazo = dia(v.prazo || g?.valor || '')
     return {
       chave: rel.chave,
       nome: rel.nome,

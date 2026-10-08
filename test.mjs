@@ -230,7 +230,11 @@ assert.equal(R['log-pagamento']({ logistica: REEMBOLSO, pagamentoLogistica: '202
 const assin = (over) => R['contrato-assinatura']({ formatoEmpresa: PRIVADA, ...over })
 assert.equal(assin({ onboarding: '2026-10-07' }).prazo, '2026-10-27', 'onboarding + 20 dias')
 assert.equal(assin({ onboarding: '2026-09-20' }).estado, 'verde', 'vence 10/10, ainda no prazo')
-assert.equal(assin({ onboarding: '2026-09-09' }).estado, 'verde', 'vence hoje 29/09')
+// A reta final e amarela: ir de verde direto para vermelho esconde a janela
+// em que cobrar ainda adianta. Amarelo cobre os 4 dias antes e o dia do prazo.
+assert.equal(assin({ onboarding: '2026-09-09' }).estado, 'amarelo', 'vence hoje 29/09')
+assert.equal(assin({ onboarding: '2026-09-13' }).estado, 'amarelo', 'vence 03/10, faltam 4 dias')
+assert.equal(assin({ onboarding: '2026-09-14' }).estado, 'verde', 'vence 04/10, faltam 5 dias')
 assert.equal(assin({ onboarding: '2026-09-08' }).estado, 'vermelho', 'venceu ontem')
 assert.equal(assin({ onboarding: '2026-09-08' }).dias, 1)
 assert.equal(assin({}).estado, 'vermelho', 'sem onboarding conta como atrasado')
@@ -333,11 +337,11 @@ assert.equal(
 // Formato da Empresa, o do palestrante nao.
 const palestrante100 = { formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não' }
 const assinaPal = (over) => R['palestrante-assinatura']({ ...palestrante100, ...over })
-// HOJE = 29/09. 10/09 + 25 = 05/10, ainda no prazo.
+// HOJE = 29/09. 10/09 + 25 = 05/10, faltam 6 dias: fora da reta final.
 assert.equal(assinaPal({ onboarding: '2026-09-10' }).estado, 'verde')
 assert.equal(assinaPal({ onboarding: '2026-09-10' }).prazo, '2026-10-05')
-// 04/09 + 25 = 29/09, vence hoje: ainda verde, igual ao contrato do cliente.
-assert.equal(assinaPal({ onboarding: '2026-09-04' }).estado, 'verde')
+// 04/09 + 25 = 29/09, vence hoje: amarelo, igual ao contrato do cliente.
+assert.equal(assinaPal({ onboarding: '2026-09-04' }).estado, 'amarelo')
 // 01/09 + 25 = 26/09, tres dias depois. Sem faixa de atencao: ja e vermelho.
 assert.equal(assinaPal({ onboarding: '2026-09-01' }).estado, 'vermelho')
 // Sem onboarding o prazo nem comeca a correr, e isso conta como atraso.
