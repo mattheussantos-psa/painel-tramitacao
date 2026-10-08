@@ -28,6 +28,85 @@ const CHAPEU: React.CSSProperties = {
   letterSpacing: '0.08em',
 }
 
+// Filtro de tempo próprio do card, por data de criação do negócio — os
+// mesmos presets do painel de origem. Aqui ele filtra no navegador em vez de
+// refazer a busca: o servidor já traz todos os negócios ativos, e o período
+// nunca muda o estado de um negócio, só quais entram na conta.
+type Preset = 'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_month' | '7d' | '30d'
+
+const PRESETS: { chave: Preset; rotulo: string }[] = [
+  { chave: 'all', rotulo: 'Todo o período' },
+  { chave: 'today', rotulo: 'Hoje' },
+  { chave: 'yesterday', rotulo: 'Ontem' },
+  { chave: 'this_week', rotulo: 'Esta semana' },
+  { chave: 'this_month', rotulo: 'Este mês' },
+  { chave: 'last_month', rotulo: 'Mês passado' },
+  { chave: '7d', rotulo: 'Últimos 7 dias' },
+  { chave: '30d', rotulo: 'Últimos 30 dias' },
+]
+
+// Janela em milissegundos, no fuso local de quem abre — igual ao original,
+// que monta as datas com o relógio do navegador.
+function janela(preset: Preset): { de: number; ate: number } | null {
+  if (preset === 'all') return null
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  const atras = (n: number) => {
+    const d = new Date(hoje)
+    d.setDate(d.getDate() - n)
+    return d
+  }
+  const fim = (d: Date) => d.getTime() + 86_400_000 - 1
+
+  switch (preset) {
+    case 'today':
+      return { de: hoje.getTime(), ate: fim(hoje) }
+    case 'yesterday':
+      return { de: atras(1).getTime(), ate: fim(atras(1)) }
+    case 'this_week': {
+      // Segunda como início da semana, como no original.
+      const dow = hoje.getDay()
+      return { de: atras(dow === 0 ? 6 : dow - 1).getTime(), ate: fim(hoje) }
+    }
+    case 'this_month':
+      return { de: new Date(hoje.getFullYear(), hoje.getMonth(), 1).getTime(), ate: fim(hoje) }
+    case 'last_month':
+      return {
+        de: new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1).getTime(),
+        ate: fim(new Date(hoje.getFullYear(), hoje.getMonth(), 0)),
+      }
+    case '7d':
+      return { de: atras(6).getTime(), ate: fim(hoje) }
+    case '30d':
+      return { de: atras(29).getTime(), ate: fim(hoje) }
+  }
+}
+
+// Reconta os totais de um closer depois do recorte. Aguardando fica fora do
+// denominador, igual ao original.
+function recontar(c: Closer, dentro: (n: Negocio) => boolean): Closer {
+  const sem = c.semReuniao.filter(dentro)
+  const com = c.comReuniao.filter(dentro)
+  const conta = (ns: Negocio[]) => ({
+    cumpriu: ns.filter((n) => n.estado === 'no_dia').length,
+    testavel: ns.filter((n) => n.estado !== 'aguardando').length,
+    aguardando: ns.filter((n) => n.estado === 'aguardando').length,
+  })
+  const s = conta(sem)
+  const m = conta(com)
+  return {
+    ...c,
+    semReuniao: sem,
+    comReuniao: com,
+    semCumpriu: s.cumpriu,
+    semTestavel: s.testavel,
+    semAguardando: s.aguardando,
+    comCumpriu: m.cumpriu,
+    comTestavel: m.testavel,
+    comAguardando: m.aguardando,
+  }
+}
+
 const CABECA_TABELA: React.CSSProperties = {
   fontSize: 10,
   fontWeight: 700,
@@ -246,13 +325,22 @@ function Lista({ negocios, titulo, balde }: { negocios: Negocio[]; titulo: strin
   )
 }
 
-function PropostaMesmoDia({ closers }: { closers: Closer[] }) {
+function PropostaMesmoDia({ closers: todos }: { closers: Closer[] }) {
   const [aberto, setAberto] = useState<string | null>(null)
+  const [preset, setPreset] = useState<Preset>('all')
   const razao: React.CSSProperties = { width: 112, textAlign: 'right', fontSize: 13, fontWeight: 600 }
+
+  const j = janela(preset)
+  const dentro = (n: Negocio) => !j || (n.criadoMs != null && n.criadoMs >= j.de && n.criadoMs <= j.ate)
+  const closers = (j ? todos.map((c) => recontar(c, dentro)) : todos).filter(
+    (c) => c.semReuniao.length + c.comReuniao.length > 0,
+  )
 
   return (
     <section style={{ ...CARTAO, overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px 12px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span aria-hidden style={{ width: 4, height: 16, borderRadius: 99, background: 'var(--link)' }} />
           <h2
@@ -274,6 +362,31 @@ function PropostaMesmoDia({ closers }: { closers: Closer[] }) {
           pelo dia da reunião — ou da qualificação, se a proposta saiu antes. Clique numa linha para
           ver os negócios.
         </p>
+          </div>
+
+          <select
+            value={preset}
+            onChange={(e) => setPreset(e.target.value as Preset)}
+            title="Período deste card, por data de criação do negócio"
+            style={{
+              flexShrink: 0,
+              height: 32,
+              borderRadius: 8,
+              border: '1px solid var(--line)',
+              background: 'var(--card)',
+              color: 'var(--text)',
+              font: 'inherit',
+              fontSize: 12,
+              padding: '0 8px',
+            }}
+          >
+            {PRESETS.map((p) => (
+              <option key={p.chave} value={p.chave}>
+                {p.rotulo}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginTop: 14 }}>
           <Painel rotulo="Sem reunião" balde="sem" r={resumir(closers, 'sem')} />
@@ -284,7 +397,7 @@ function PropostaMesmoDia({ closers }: { closers: Closer[] }) {
       <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {closers.length === 0 ? (
           <p style={{ textAlign: 'center', fontSize: 13, padding: '24px 0', margin: 0 }}>
-            Nenhum negócio ativo no funil B2B.
+            {preset === 'all' ? 'Nenhum negócio ativo no funil B2B.' : 'Nenhum negócio criado neste período.'}
           </p>
         ) : (
           <>
