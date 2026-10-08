@@ -187,6 +187,7 @@ const T = (over) => ({
   evento: '', logistica: '', tipoEmpresa: '', formatoEmpresa: 'Empresa Privada', formatoContrato: '',
   onboarding: '', prazoAssinatura: '', dataAssinatura: '', statusContrato: '',
   dataFaturamento: '', dataEmissao: '', prazoBriefing: '', callBriefing: '',
+  entrouBriefing: '', entrouEtapa: '2026-09-01', palestranteExclusivo: '',
   reunioes: [], ...over,
 })
 const R = Object.fromEntries(RELOGIOS.map((r) => [r.chave, (t) => r.ver(T(t), HOJE)]))
@@ -682,11 +683,54 @@ const noDiaDoEvento = T({
 assert.equal(avaliarEtapa(noDiaDoEvento, HOJE, QUADROS.cs.sla).cor, 'vermelho')
 assert.equal(avaliarEtapa(noDiaDoEvento, HOJE, QUADROS.cs.sla).texto, 'o evento é hoje e a etapa não fechou')
 
-// Amanha ainda da tempo: segue pela regua da etapa.
+// Amanha ainda da tempo para a etapa, mas o briefing ja devia ter acontecido.
 assert.equal(
   avaliarEtapa({ ...noDiaDoEvento, evento: '2026-09-30' }, HOJE, QUADROS.cs.sla).cor,
+  'vermelho',
+  'evento amanha sem ter passado por Realizar Briefing',
+)
+// Com o briefing feito, segue pela regua da etapa.
+assert.equal(
+  avaliarEtapa({ ...noDiaDoEvento, evento: '2026-09-30', entrouBriefing: '2026-09-15' }, HOJE, QUADROS.cs.sla).cor,
   'verde',
-  'evento amanha com tudo cumprido continua verde',
+  'evento amanha, briefing feito e tudo cumprido',
 )
 
 console.log('ok — evento hoje ja e atraso em etapa de trabalho')
+
+// ---- briefing pendente atravessa todas as etapas ----
+// Com o evento chegando, o ticket ja tinha que ter passado por Realizar
+// Briefing. Se nao passou, esta parado na etapa errada — e isso vale mesmo
+// que os prazos da etapa onde ele esta estejam em dia.
+const semBrief = (over) =>
+  avaliarEtapa(
+    T({ stage: CTR, formatoEmpresa: 'Empresa Privada', formatoContrato: 'MC (Cliente x PSA x Palestrante)',
+        onboarding: '2026-09-25', dataAssinatura: '2026-09-26', entrouEtapa: '2026-09-26', ...over }),
+    HOJE,
+    QUADROS.cs.sla,
+  )
+
+assert.equal(semBrief({ evento: '2026-10-20' }).cor, 'verde', 'D-21 ainda nao cobra briefing')
+assert.equal(semBrief({ evento: '2026-10-14' }).cor, 'amarelo', 'D-15')
+assert.equal(semBrief({ evento: '2026-10-07' }).cor, 'amarelo', 'D-8')
+assert.equal(semBrief({ evento: '2026-10-06' }).cor, 'vermelho', 'D-7')
+assert.equal(semBrief({ evento: '2026-09-30' }).cor, 'vermelho', 'D-1')
+assert.match(semBrief({ evento: '2026-10-06' }).texto, /briefing não aconteceu/)
+
+// Ja passou pela etapa: a regra nao se aplica, mesmo com o evento em cima.
+assert.equal(semBrief({ evento: '2026-10-06', entrouBriefing: '2026-09-20' }).cor, 'verde')
+// E quem esta NA etapa de briefing segue pelos relogios dela.
+assert.equal(
+  avaliarEtapa(T({ stage: BRF, evento: '2026-10-19' }), HOJE, QUADROS.cs.sla).cor,
+  'amarelo',
+  'na propria etapa manda o relogio de agendamento, D-20',
+)
+
+// A pior cor manda: etapa vermelha nao vira amarela por causa do briefing.
+assert.equal(
+  semBrief({ evento: '2026-10-14', onboarding: '2026-08-01', dataAssinatura: '' }).cor,
+  'vermelho',
+  'assinatura vencida pesa mais que o amarelo do briefing',
+)
+
+console.log('ok — briefing pendente atravessa as etapas')

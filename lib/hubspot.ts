@@ -23,6 +23,8 @@ const PROPS = [
   'data_de_assinatura_do_contrato',
   'data_para_realizacao_de_briefing',
   'data_e_hora_da_call_de_briefing',
+  // Entrada na etapa Realizar Briefing: diz se o ticket já passou por lá.
+  'hs_v2_date_entered_1450325175',
   'data_de_faturamento',
   'data_de_emissao',
   'adquirir_logistica',
@@ -121,6 +123,7 @@ async function buscarAoVivo(
         dataAssinatura: iso(p.data_de_assinatura_do_contrato),
         prazoBriefing: iso(p.data_para_realizacao_de_briefing),
         callBriefing: iso(p.data_e_hora_da_call_de_briefing),
+        entrouBriefing: iso(p.hs_v2_date_entered_1450325175),
         dataFaturamento: iso(p.data_de_faturamento),
         dataEmissao: iso(p.data_de_emissao),
         prazoLogistica: iso(p.adquirir_logistica),

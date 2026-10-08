@@ -34,7 +34,12 @@ export type Linha = {
   diasTarefa: number | null
   alertas: { chave: string; texto: string }[]
   entrouEtapa: string
-  conta: { datas: { rotulo: string; valor: string }[]; contas: Conta[]; eventoPassou: boolean }
+  conta: {
+    datas: { rotulo: string; valor: string }[]
+    contas: Conta[]
+    eventoPassou: boolean
+    briefing: { cor: Cor; texto: string } | null
+  }
   stage: string
   curador: string | null
   curadorInativo: boolean
@@ -853,6 +858,14 @@ export function Conta({ l, aoFechar }: { l: Linha; aoFechar: () => void }) {
             ))}
           </tbody>
         </table>
+
+        {l.conta.briefing && (
+          <p style={{ fontSize: 13, margin: '14px 0 0', lineHeight: 1.5 }}>
+            <Ponto cor={l.conta.briefing.cor} /> <b>Briefing pendente</b> — o ticket ainda não passou
+            por Realizar Briefing e o evento está chegando. Está na etapa errada, independente dos
+            prazos desta aqui.
+          </p>
+        )}
 
         {l.conta.eventoPassou && (
           <p style={{ fontSize: 13, margin: '14px 0 0', lineHeight: 1.5 }}>

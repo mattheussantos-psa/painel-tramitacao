@@ -394,6 +394,27 @@ export const RELOGIOS: Relogio[] = [
   },
 ]
 
+export const ETAPA_BRIEFING = 'Realizar Briefing'
+export const BRIEFING_ATENCAO = 15
+export const BRIEFING_ATRASO = 7
+
+// Regra que atravessa todas as etapas: com o evento chegando, o ticket já
+// tinha que ter passado por Realizar Briefing. Se não passou, ele está parado
+// na etapa errada — não importa se os prazos da etapa onde ele está estão em
+// dia. Vale independentemente de quando a etapa foi criada no HubSpot: se
+// estivesse tudo certo, o ticket já teria sido movido.
+export function briefingPendente(t: TicketSim, etapa: string, hoje: number): { cor: Cor; texto: string } | null {
+  if (etapa === ETAPA_BRIEFING || tem(t.entrouBriefing)) return null
+  if (!tem(t.evento)) return null
+  const d = emDias(dia(t.evento), hojeEmDias(hoje))
+  if (d < 0 || d > BRIEFING_ATENCAO) return null
+  const quando = d === 0 ? 'é hoje' : `em ${d}d`
+  return {
+    cor: d <= BRIEFING_ATRASO ? 'vermelho' : 'amarelo',
+    texto: `briefing não aconteceu e o evento ${quando}`,
+  }
+}
+
 export const ORGAO_PUBLICO = 'Órgão Público'
 
 // O prazo de assinatura sai de DIAS_PARA_ASSINAR: 20 dias para empresa
@@ -457,6 +478,14 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
   return null
 }
 
+// Entre a cor da etapa e a do briefing pendente, manda a pior — e cinza perde
+// de qualquer cor, porque cor é informação e cinza é ausência dela.
+const pior = (a: { cor: Cor; texto: string } | null, b: { cor: Cor; texto: string } | null) => {
+  if (!a) return b
+  if (!b) return a
+  return PESO[b.cor] > PESO[a.cor] ? b : a
+}
+
 // Porta única de avaliação do painel: etapa com prazo em dias segue pela régua
 // do CS, etapa com relógio passa pelos marcos da Tramitação. A régua pré/pós e
 // o tempo parado vêm de avaliar() nos dois casos, para não haver duas contas
@@ -485,7 +514,7 @@ export function avaliarEtapa(
           : `evento foi em ${br(t.evento)} e a etapa não fechou`,
     }
 
-  const s = corDaEtapa(t, regra.label, hoje)
+  const s = pior(corDaEtapa(t, regra.label, hoje), briefingPendente(t, regra.label, hoje))
   if (s) return { ...base, cor: s.cor, texto: s.texto }
   return { ...base, texto: 'sem prazo nesta etapa' }
 }
@@ -606,5 +635,5 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
     }
   })
 
-  return { datas, contas, eventoPassou: eventoPassou(t, hoje) }
+  return { datas, contas, eventoPassou: eventoPassou(t, hoje), briefing: briefingPendente(t, etapa, hoje) }
 }
