@@ -35,6 +35,7 @@ const t = (over) => ({
   curador: null,
   entrouEtapa: '2026-09-01',
   onboarding: '',
+  formatoEmpresa: '',
   statusContrato: '',
   proximaTarefa: '',
   ...over,
@@ -126,11 +127,25 @@ console.log('ok — selecao de tarefa')
 // Alertas de processo — eixo separado da cor da etapa.
 const A = (o) => alertas(t(o), HOJE).map((x) => x.chave)
 
-// Contrato: 20 dias apos o onboarding, e status_do_contrato manda.
-assert.deepEqual(A({ onboarding: '2026-09-01', statusContrato: 'Pendente' }), ['contrato'])
-assert.deepEqual(A({ onboarding: '2026-09-01', statusContrato: 'Assinado' }), [])
-assert.deepEqual(A({ onboarding: '2026-09-15', statusContrato: 'Pendente' }), [], 'ainda dentro dos 20 dias')
-assert.deepEqual(A({ onboarding: '', statusContrato: 'Pendente' }), [], 'sem onboarding nao ha prazo de assinatura')
+// Contrato: o prazo vem da mesma tabela do relogio da etapa — 20 dias para
+// empresa privada, 45 para orgao publico — e status_do_contrato manda. Com
+// numero proprio aqui, um orgao publico de 25 dias ficaria verde no quadro e
+// aceso no alerta.
+const PRIV = { formatoEmpresa: 'Empresa Privada' }
+const PUB = { formatoEmpresa: 'Órgão Público' }
+assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-01', statusContrato: 'Pendente' }), ['contrato'])
+assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-01', statusContrato: 'Assinado' }), [])
+assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-15', statusContrato: 'Pendente' }), [], 'dentro dos 20 dias')
+assert.deepEqual(A({ ...PRIV, onboarding: '', statusContrato: 'Pendente' }), [], 'sem onboarding nao ha prazo')
+
+// Orgao publico tem 45 dias: o mesmo onboarding que acende a privada nao
+// acende ele.
+assert.deepEqual(A({ ...PUB, onboarding: '2026-09-01', statusContrato: 'Pendente' }), [], 'dia 28 dos 45')
+assert.deepEqual(A({ ...PUB, onboarding: '2026-08-01', statusContrato: 'Pendente' }), ['contrato'], 'dia 59')
+
+// Formato sem prazo acordado, ou em branco, nao acende alerta nenhum.
+assert.deepEqual(A({ onboarding: '2026-01-01', statusContrato: 'Pendente' }), [], 'formato em branco')
+assert.deepEqual(A({ formatoEmpresa: 'Associação', onboarding: '2026-01-01', statusContrato: 'Pendente' }), [])
 
 // Briefing: cobra a partir de D-15, e valida pela data de onboarding.
 assert.deepEqual(A({ onboarding: '', evento: '2026-10-05' }), ['briefing'], 'D-6 sem onboarding')
@@ -448,17 +463,32 @@ console.log('ok — evento passado manda na cor')
 // O prazo de assinatura vale so para empresa privada: orgao publico, Sistema S
 // e associacao tem rito proprio, e formato em branco nao vira regra por
 // suposicao — sao 44 dos 118 da etapa.
-for (const f of ['Órgão Público', 'Sistema S (SEST/SENAT/SEBRAE/SESCOOP)', 'Associação', 'Agência', '']) {
+for (const f of ['Sistema S (SEST/SENAT/SEBRAE/SESCOOP)', 'Associação', 'Agência', '']) {
   const v = R['contrato-assinatura']({ formatoEmpresa: f, onboarding: '2026-01-01' })
-  assert.equal(v.estado, 'nao-aplica', `formato "${f}" nao devia correr o prazo`)
+  assert.equal(v.estado, 'nao-aplica', 'formato sem prazo acordado nao corre o relogio: ' + f)
 }
 assert.equal(R['contrato-assinatura']({ formatoEmpresa: PRIVADA, onboarding: '2026-01-01' }).estado, 'vermelho')
+
+// Orgao publico tem 45 dias em vez de 20: a mesma data que estoura a privada
+// ainda esta no prazo dele.
+const PUBLICO = 'Órgão Público'
+assert.equal(R['contrato-assinatura']({ formatoEmpresa: PUBLICO, onboarding: '2026-09-01' }).prazo, '2026-10-16')
+assert.equal(R['contrato-assinatura']({ formatoEmpresa: PUBLICO, onboarding: '2026-09-01' }).estado, 'verde')
+assert.equal(R['contrato-assinatura']({ formatoEmpresa: PRIVADA, onboarding: '2026-09-01' }).estado, 'vermelho')
+assert.equal(R['contrato-assinatura']({ formatoEmpresa: PUBLICO, onboarding: '2026-07-01' }).estado, 'vermelho')
+assert.equal(
+  R['contrato-assinatura']({ formatoEmpresa: PUBLICO }).estado,
+  'vermelho',
+  'sem onboarding vale para os dois formatos',
+)
 assert.match(R['contrato-assinatura']({ formatoEmpresa: '', onboarding: '' }).texto, /em branco/)
 
-// Na etapa, empresa nao privada sem onboarding fica cinza em vez de vermelha.
-assert.equal(E({ stage: CTR, evento: '2026-11-20', formatoEmpresa: 'Órgão Público' }).cor, 'cinza')
+// Na etapa, formato sem prazo acordado fica cinza mesmo sem onboarding.
+assert.equal(E({ stage: CTR, evento: '2026-11-20', formatoEmpresa: 'Associação' }).cor, 'cinza')
+// Orgao publico agora tem prazo, entao sem onboarding ele fica vermelho.
+assert.equal(E({ stage: CTR, evento: '2026-11-20', formatoEmpresa: 'Órgão Público' }).cor, 'vermelho')
 
-console.log('ok — assinatura so para empresa privada')
+console.log('ok — prazo de assinatura por formato da empresa')
 
 // Campo em branco para o relogio e cinza no card, mas tem que aparecer no
 // dialogo: isento e falta de preenchimento ficam iguais na cor, e so um dos
@@ -475,13 +505,13 @@ assert.match(branco[1].porque, /^Formato de Contrato está em branco/)
 
 // Isento de verdade nao leva a marca: nao ha o que preencher.
 const publico = explicar(
-  T({ stage: CTR, formatoEmpresa: 'Órgão Público', formatoContrato: 'MC (Cliente x PSA) = 100% PSA', evento: '2026-11-20' }),
+  T({ stage: CTR, formatoEmpresa: 'Associação', formatoContrato: 'MC (Cliente x PSA) = 100% PSA', evento: '2026-11-20' }),
   'Assinar Contrato',
   HOJE,
 )
 const assinatura = publico.contas.find((c) => c.chave === 'contrato-assinatura')
 assert.equal(assinatura.estado, 'nao-aplica')
 assert.equal(assinatura.faltaDado, false)
-assert.match(assinatura.porque, /Órgão Público/)
+assert.match(assinatura.porque, /Associação/)
 
 console.log('ok — campo em branco aparece no dialogo')

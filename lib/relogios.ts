@@ -8,7 +8,7 @@
 //
 // Nada aqui é aplicado em produção: serve à simulação sobre dados reais do CS.
 
-import { DIAS_ASSINATURA, avaliar, hojeEmDias, type Avaliacao, type Regra, type Ticket } from './sinaleira.ts'
+import { DIAS_PARA_ASSINAR, avaliar, hojeEmDias, type Avaliacao, type Regra, type Ticket } from './sinaleira.ts'
 
 export type Cor = 'verde' | 'amarelo' | 'vermelho'
 
@@ -203,23 +203,24 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do contrato pelo cliente',
     curto: 'assinatura',
-    regra: 'Só para Empresa Privada · 20 dias a partir do onboarding · vermelho depois disso · sem onboarding também é vermelho',
+    regra: '20 dias do onboarding para Empresa Privada e 45 para Órgão Público · vermelho depois disso · sem onboarding também é vermelho',
     confianca: 'fechado',
     gatilho: 'data_de_realizacao_do_onboarding',
     marco: 'data_de_assinatura_do_contrato / status_do_contrato',
     pendencia:
-      'Vale só para Formato da Empresa = Empresa Privada, e 44 dos 118 tickets da etapa estão com esse campo em branco — nesses o relógio não corre. Não há faixa de atenção: o CS definiu verde até o prazo e vermelho depois.',
+      'Sistema S, associação e agência não têm prazo acordado, e 44 dos 118 tickets da etapa estão com Formato da Empresa em branco — nesses o relógio não corre. Não há faixa de atenção: o CS definiu verde até o prazo e vermelho depois.',
     ver: (t, hoje) => {
       if (!usaCliente(t.formatoContrato)) return foraDoFormato('contrato é entre cliente e palestrante')
-      if (t.formatoEmpresa !== EMPRESA_PRIVADA)
+      const dias = DIAS_PARA_ASSINAR[t.formatoEmpresa]
+      if (!dias)
         return t.formatoEmpresa
-          ? foraDoFormato(`a empresa é ${t.formatoEmpresa}, e o prazo de 20 dias vale só para Empresa Privada`)
+          ? foraDoFormato(`não há prazo de assinatura acordado para ${t.formatoEmpresa}`)
           : foraDoFormato(
-              'Formato da Empresa está em branco, então o prazo de 20 dias não corre — preencha para o painel cobrar',
+              'Formato da Empresa está em branco, então o prazo de assinatura não corre — preencha para o painel cobrar',
               true,
             )
 
-      const limite = dia(t.onboarding) + DIAS_ASSINATURA * DIA
+      const limite = dia(t.onboarding) + dias * DIA
       const prazo = Number.isFinite(limite) ? iso(limite) : undefined
 
       // Único relógio com as duas pontas: dá para dizer se cumpriu de verdade.
@@ -380,13 +381,11 @@ export const RELOGIOS: Relogio[] = [
 
 export const ORGAO_PUBLICO = 'Órgão Público'
 
-// O prazo de 20 dias para assinar vale só para empresa privada. Órgão
-// público, Sistema S e associação têm rito próprio de contratação, e cobrar
-// o mesmo prazo deles daria vermelho que ninguém pode resolver.
-// Formato em branco não entra: aplicar regra de empresa privada a uma empresa
-// que ninguém classificou seria supor. São 44 dos 118 da etapa — a conversa é
-// preencher o campo, não afrouxar a régua.
-export const EMPRESA_PRIVADA = 'Empresa Privada'
+// O prazo de assinatura sai de DIAS_PARA_ASSINAR: 20 dias para empresa
+// privada, 45 para órgão público. Sistema S, associação e agência não têm
+// prazo acordado, e formato em branco não entra — aplicar prazo de um tipo de
+// empresa a uma que ninguém classificou seria supor. São 44 dos 118 da etapa,
+// e a conversa ali é preencher o campo, não afrouxar a régua.
 
 // Formatos em que a PSA contrata o palestrante por minuta própria. Com
 // interveniente (Cliente x PSA x Palestrante) a minuta individual cai.

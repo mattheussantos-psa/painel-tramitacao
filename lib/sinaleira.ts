@@ -234,8 +234,14 @@ export function avaliar(
 // passou do prazo. Um ticket pode estar verde na etapa e ter alerta.
 export type Alerta = { chave: string; texto: string }
 
-// Prazo de assinatura: 20 dias após a realização do onboarding.
-export const DIAS_ASSINATURA = 20
+// Prazo para assinar o contrato, contado da realização do onboarding, por
+// Formato da Empresa. Órgão público tem rito de contratação mais longo, por
+// isso 45. Formato fora desta tabela — associação, agência, ou em branco —
+// não tem prazo acordado, e o painel não inventa um.
+export const DIAS_PARA_ASSINAR: Record<string, number> = {
+  'Empresa Privada': 20,
+  'Órgão Público': 45,
+}
 // Briefing: cobrado a partir de D-15 do evento.
 export const DIAS_BRIEFING = 15
 
@@ -245,8 +251,11 @@ export function alertas(t: Ticket, hoje: number = Date.now()): Alerta[] {
 
   // status_do_contrato está em 99% dos tickets das etapas do farmer e distingue
   // Assinado de Pendente — é o sinal mais confiável que existe hoje.
-  if (t.onboarding && t.statusContrato !== 'Assinado') {
-    if (emDias(agora, dia(t.onboarding) + DIAS_ASSINATURA * DIA) > 0)
+  // Mesma tabela do relógio da etapa. Com número próprio aqui, um órgão
+  // público com 25 dias ficaria verde no quadro e aceso no alerta.
+  const prazo = DIAS_PARA_ASSINAR[t.formatoEmpresa]
+  if (prazo && t.onboarding && t.statusContrato !== 'Assinado') {
+    if (emDias(agora, dia(t.onboarding) + prazo * DIA) > 0)
       out.push({ chave: 'contrato', texto: 'Contrato pendente de assinatura' })
   }
 
