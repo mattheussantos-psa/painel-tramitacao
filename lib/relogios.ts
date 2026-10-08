@@ -420,9 +420,19 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
   let cor: Cor | null = null
   let texto = ''
   let fechado = false
+  // Cumprido é verde, não cinza. Cinza é só para o que não dá para medir:
+  // falta data, ou falta regra. Um contrato enviado e assinado dentro do prazo
+  // caía em cinza porque nenhum relógio "produzia cor", e ficava indistinguível
+  // de um ticket sem dado nenhum.
+  let cumprido: { curto: string; texto: string } | null = null
+  let faltaData = false
+
   for (const rel of RELOGIOS) {
     if (!rel.etapa.includes(etapa)) continue
     const v = rel.ver(t, hoje)
+    if (v.estado === 'sem-dado') faltaData = true
+    // O último concluído ganha a frase: é o passo mais adiantado da etapa.
+    if (v.estado === 'concluido') cumprido = { curto: rel.curto, texto: v.texto }
     if (!PESO[v.estado]) continue
     // Empate de cor: ganha o relógio que tem marco de conclusão. Com os dois
     // vermelhos o card dizia "envio do contrato", que é o relógio incapaz de
@@ -437,7 +447,11 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
       texto = `${rel.curto} · ${v.texto}`
     }
   }
-  return cor ? { cor, texto } : null
+  if (cor) return { cor, texto }
+  // Sem nenhum relógio aceso: verde quando algo foi cumprido e nada ficou sem
+  // data. Com data faltando continua cinza, e o diálogo diz qual campo é.
+  if (cumprido && !faltaData) return { cor: 'verde' as Cor, texto: `${cumprido.curto} · ${cumprido.texto}` }
+  return null
 }
 
 // Porta única de avaliação do painel: etapa com prazo em dias segue pela régua

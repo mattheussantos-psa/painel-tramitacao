@@ -299,10 +299,21 @@ assert.equal(ctr({}).cor, 'vermelho', 'sem onboarding a assinatura ja conta como
 // 25/09 e sexta: ate 29/09 sao 2 dias uteis, nao 4. O envio fica amarelo e a
 // assinatura verde, entao a etapa sai amarela.
 assert.equal(ctr({ onboarding: '2026-09-25' }).cor, 'amarelo', 'fim de semana nao conta')
+// Cumprido e verde: cinza so quando falta dado ou falta regra.
 assert.equal(
-  ctr({ onboarding: '2026-01-05', dataAssinatura: '2026-01-08' }).cor,
+  ctr({ onboarding: '2026-01-05', dataAssinatura: '2026-01-08', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }).cor,
+  'verde',
+  'assinado fecha os dois relogios da etapa, e cumprido e verde',
+)
+assert.match(
+  ctr({ onboarding: '2026-01-05', dataAssinatura: '2026-01-08', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }).texto,
+  /^assinatura · assinado/,
+)
+// Mas se sobrou campo sem preencher, continua cinza — e o dialogo diz qual.
+assert.equal(
+  ctr({ onboarding: '2026-01-05', dataAssinatura: '2026-01-08', formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não' }).cor,
   'cinza',
-  'assinado fecha os dois relogios da etapa',
+  'falta o prazo de assinatura do palestrante',
 )
 
 // Briefing: so a data do evento manda.
@@ -359,8 +370,8 @@ assert.equal(fat({ dataAssinatura: '2026-09-24' }).cor, 'amarelo', '5 dias')
 assert.equal(fat({ dataAssinatura: '2026-09-20' }).cor, 'vermelho', '9 dias')
 assert.equal(
   fat({ dataAssinatura: '2026-09-20', dataFaturamento: '2026-09-22' }).cor,
-  'cinza',
-  'despachado ao financeiro fecha o relogio',
+  'verde',
+  'despachado ao financeiro fecha o relogio, e cumprido e verde',
 )
 assert.match(fat({ dataAssinatura: '2026-09-20' }).texto, /^emissão · /)
 
