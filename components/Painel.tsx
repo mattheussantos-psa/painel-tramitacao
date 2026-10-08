@@ -793,11 +793,12 @@ export function Conta({ l, aoFechar }: { l: Linha; aoFechar: () => void }) {
 
   // Nao-se-aplica some do dialogo, menos quando a razao e campo em branco:
   // ai e a unica forma de alguem saber por que o relogio nao corre.
-  const contas = l.conta.contas
+  const correndo = l.conta.contas
     .filter((c) => c.estado !== 'nao-aplica' || c.faltaDado)
     // Os dois relogios do palestrante param pelo mesmo campo em branco e
     // diriam a mesma frase duas vezes.
     .filter((c, i, todas) => !c.faltaDado || todas.findIndex((x) => x.porque === c.porque) === i)
+  const contas = correndo.length ? correndo : l.conta.contas
 
   return (
     <dialog

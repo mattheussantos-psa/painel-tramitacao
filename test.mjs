@@ -747,3 +747,23 @@ assert.equal(
 )
 
 console.log('ok — briefing pendente atravessa as etapas')
+
+// ---- etapa com relogio que nao corre neste ticket ----
+// Grupo Mascarello (48990612847): em Contratar Logistica com "Logistica sera
+// organizada pela PSA? = Nao". O dialogo dizia "esta etapa nao tem relogio",
+// que e falso: a etapa tem dois, eles e que nao se aplicam a este ticket.
+const semLog = explicar(T({ stage: LOG, logistica: 'Não', entrouEtapa: '2026-10-05' }), 'Contratar Logística', HOJE)
+assert.equal(semLog.contas.length, 2, 'os relogios continuam na conta, so nao correm')
+assert.equal(semLog.contas[0].estado, 'nao-aplica')
+assert.equal(
+  semLog.contas[0].porque,
+  'Não se aplica: a PSA não organiza a logística deste evento ("Não").',
+)
+assert.equal(
+  semLog.contas[1].porque,
+  'Não se aplica: não há reembolso de logística a cobrar do cliente ("Não").',
+)
+// Campo em branco continua sendo falta de dado, nao "nao se aplica" calado.
+assert.equal(explicar(T({ stage: LOG, logistica: '' }), 'Contratar Logística', HOJE).contas[0].faltaDado, true)
+
+console.log('ok — relogio que nao corre diz por que')

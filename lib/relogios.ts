@@ -175,7 +175,9 @@ export const RELOGIOS: Relogio[] = [
       'O prazo é calculado do ganho do negócio. A propriedade "Prazo de aquisição da Logística", preenchida em 32 dos 55 tickets da etapa, deixou de decidir a cor e saiu do diálogo.',
     ver: (t, hoje) => {
       if (t.logistica !== LOG_REEMBOLSO && t.logistica !== LOG_CUSTO_PSA)
-        return { estado: 'nao-aplica', dias: null, texto: t.logistica || 'sem resposta', cumpriu: null }
+        return t.logistica
+          ? foraDoFormato(`a PSA não organiza a logística deste evento ("${t.logistica}")`)
+          : foraDoFormato('"Logística será organizada pela PSA?" está em branco', true)
       // Sem negócio ganho associado o prazo não tem de onde partir. Cinza, não
       // vermelho: o CS definiu isso só para o contrato sem onboarding.
       if (!tem(t.ganhoNegocio))
@@ -202,7 +204,9 @@ export const RELOGIOS: Relogio[] = [
     pendencia: 'Só vale para logística com reembolso do cliente, conforme a regra do CS.',
     ver: (t, hoje) => {
       if (t.logistica !== LOG_REEMBOLSO)
-        return { estado: 'nao-aplica', dias: null, texto: t.logistica || 'sem resposta', cumpriu: null }
+        return t.logistica
+          ? foraDoFormato(`não há reembolso de logística a cobrar do cliente ("${t.logistica}")`)
+          : foraDoFormato('"Logística será organizada pela PSA?" está em branco', true)
       return contraPrazo(t.pagamentoLogistica, hoje, 'sem data prevista de pagamento')
     },
   },
