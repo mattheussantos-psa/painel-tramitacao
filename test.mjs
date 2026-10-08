@@ -579,3 +579,35 @@ assert.equal(grupo[0].semTestavel, 2, 'o aguardando nao entra no denominador')
 assert.equal(grupo[0].semAguardando, 1)
 
 console.log('ok — proposta no mesmo dia')
+
+// ---- formato com interveniente nao pede nada do palestrante ----
+// MC (Cliente x PSA x Palestrante): a PSA e parte, o palestrante entra como
+// interveniente no mesmo contrato, entao nao ha minuta propria para cobrar.
+const INTERV2 = 'MC (Cliente x PSA x Palestrante)'
+const interv = explicar(
+  T({ stage: CTR, formatoEmpresa: 'Empresa Privada', formatoContrato: INTERV2,
+      onboarding: '2026-09-20', evento: '2026-11-20' }),
+  'Assinar Contrato',
+  HOJE,
+)
+assert.deepEqual(
+  interv.datas.map((d) => d.rotulo),
+  ['Onboarding', 'Envio ao cliente', 'Prazo de assinatura'],
+  'a tabela nao lista data de palestrante num formato que nao tem minuta',
+)
+assert.deepEqual(
+  interv.contas.filter((c) => c.estado !== 'nao-aplica').map((c) => c.chave),
+  ['contrato-envio', 'contrato-assinatura'],
+  'so os dois relogios do cliente correm',
+)
+
+// Em 100% PSA, que exige minuta, as datas do palestrante voltam.
+const psa100 = explicar(
+  T({ stage: CTR, formatoEmpresa: 'Empresa Privada', formatoContrato: 'MC (Cliente x PSA) = 100% PSA',
+      onboarding: '2026-09-20', evento: '2026-11-20' }),
+  'Assinar Contrato',
+  HOJE,
+)
+assert.ok(psa100.datas.some((d) => /palestrante/i.test(d.rotulo)), '100% PSA pede minuta')
+
+console.log('ok — interveniente nao cobra minuta do palestrante')

@@ -535,16 +535,25 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
 
   const datas: { rotulo: string; valor: string }[] = []
   const vistos = new Set<string>()
-  for (const rel of meus)
+
+  // A tabela só traz data de relógio que corre neste ticket. Antes vinham as
+  // dos quatro relógios da etapa, e num contrato com interveniente — formato
+  // MC (Cliente x PSA x Palestrante), que não pede minuta do palestrante — a
+  // tabela listava "Envio ao palestrante" e "Prazo de assinatura do
+  // palestrante" como vazio, parecendo campo faltando.
+  const vereditos = meus.map((rel) => ({ rel, v: rel.ver(t, hoje) }))
+
+  for (const { rel, v } of vereditos) {
+    if (v.estado === 'nao-aplica') continue
     for (const prop of [rel.gatilho, rel.marco]) {
       const d = dataDe(t, prop)
       if (!d || vistos.has(d.rotulo)) continue
       vistos.add(d.rotulo)
       datas.push(d)
     }
+  }
 
-  const contas: Conta[] = meus.map((rel) => {
-    const v = rel.ver(t, hoje)
+  const contas: Conta[] = vereditos.map(({ rel, v }) => {
     if (v.prazo && !vistos.has('Prazo de assinatura')) {
       vistos.add('Prazo de assinatura')
       datas.push({ rotulo: 'Prazo de assinatura', valor: v.prazo })
