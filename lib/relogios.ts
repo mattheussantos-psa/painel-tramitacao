@@ -635,5 +635,17 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
     }
   })
 
-  return { datas, contas, eventoPassou: eventoPassou(t, hoje), briefing: briefingPendente(t, etapa, hoje) }
+  return {
+    datas,
+    contas,
+    eventoPassou: eventoPassou(t, hoje),
+    briefing: briefingPendente(t, etapa, hoje),
+    // O que governa quais relógios correm. Sem isso na tela, duas etapas com
+    // a mesma cor e motivos diferentes ficam indistinguíveis.
+    ficha: {
+      formatoContrato: t.formatoContrato,
+      exclusivo: t.palestranteExclusivo,
+      palestrante: t.palestrantePrincipal,
+    },
+  }
 }

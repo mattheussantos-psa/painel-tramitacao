@@ -39,6 +39,7 @@ export type Linha = {
     contas: Conta[]
     eventoPassou: boolean
     briefing: { cor: Cor; texto: string } | null
+    ficha: { formatoContrato: string; exclusivo: string; palestrante: string }
   }
   stage: string
   curador: string | null
@@ -840,6 +841,25 @@ export function Conta({ l, aoFechar }: { l: Linha; aoFechar: () => void }) {
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, margin: '16px 0 0' }}>
           <tbody>
+            {[
+              { rotulo: 'Palestrante principal', valor: l.conta.ficha.palestrante },
+              { rotulo: 'Modelo do contrato', valor: l.conta.ficha.formatoContrato },
+              { rotulo: 'Palestrante é exclusivo?', valor: l.conta.ficha.exclusivo },
+            ].map((f) => (
+              <tr key={f.rotulo}>
+                <td style={{ padding: '6px 0', borderBottom: '1px solid var(--line)' }}>{f.rotulo}</td>
+                <td
+                  style={{
+                    padding: '6px 0',
+                    borderBottom: '1px solid var(--line)',
+                    textAlign: 'right',
+                    fontWeight: f.valor ? 600 : 400,
+                  }}
+                >
+                  {f.valor || 'vazio'}
+                </td>
+              </tr>
+            ))}
             {datas.map((d) => (
               <tr key={d.rotulo}>
                 <td style={{ padding: '6px 0', borderBottom: '1px solid var(--line)' }}>{d.rotulo}</td>
