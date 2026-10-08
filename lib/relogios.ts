@@ -129,9 +129,18 @@ function contraPrazo(prazo: string, hoje: number, semDado: string): Veredito {
 // mudar sem regra seria inventar.
 const SO_PALESTRANTE = ['MC (Cliente x Palestrante)']
 const COM_PALESTRANTE = ['MC (Cliente x PSA) = 100% PSA', 'MC (Cliente x Palestrante)']
+const SEM_MINUTA = 'palestrante é exclusivo, não há minuta por evento'
 
 const usaCliente = (formato: string) => !SO_PALESTRANTE.includes(formato)
-const usaPalestrante = (formato: string) => COM_PALESTRANTE.includes(formato)
+// Em 100% PSA a minuta do palestrante só é exigida quando ele NÃO é
+// exclusivo: palestrante exclusivo já tem contrato com a PSA, e não se assina
+// um por evento. Em branco conta como não exclusivo, que é o lado seguro — e
+// hoje são 87 dos 87 tickets 100% PSA da etapa com esse campo vazio.
+const usaPalestrante = (t: TicketSim) =>
+  COM_PALESTRANTE.includes(t.formatoContrato) &&
+  !(t.formatoContrato === PSA_100 && t.palestranteExclusivo === 'Sim')
+
+const PSA_100 = 'MC (Cliente x PSA) = 100% PSA'
 
 const foraDoFormato = (texto: string, faltaDado = false): Veredito => ({
   estado: 'nao-aplica',
@@ -271,8 +280,11 @@ export const RELOGIOS: Relogio[] = [
     marco: 'data_de_envio_contrato_palestrante',
     pendencia: 'O CS escreveu "após a assinatura de contrato com o cliente (definir gap)" e o número nunca veio. Sem ele a minuta não ganha cor: só diz se saiu.',
     ver: (t) => {
-      if (!usaPalestrante(t.formatoContrato))
-        return foraDoFormato(t.formatoContrato || 'Formato de Contrato está em branco', !t.formatoContrato)
+      if (!usaPalestrante(t))
+        return foraDoFormato(
+          t.palestranteExclusivo === 'Sim' ? SEM_MINUTA : t.formatoContrato || 'Formato de Contrato está em branco',
+          !t.formatoContrato && t.palestranteExclusivo !== 'Sim',
+        )
       if (tem(t.envioPalestrante)) return { estado: 'concluido', dias: null, texto: 'minuta enviada', cumpriu: null }
       return { estado: 'bloqueado', dias: null, texto: 'falta o prazo de envio da minuta', cumpriu: null }
     },
@@ -288,8 +300,11 @@ export const RELOGIOS: Relogio[] = [
     marco: 'data_de_assinatura__palestrante_',
     pendencia: 'Faixa de cor não foi passada para o palestrante: aplica a mesma do contrato do cliente.',
     ver: (t, hoje) => {
-      if (!usaPalestrante(t.formatoContrato))
-        return foraDoFormato(t.formatoContrato || 'Formato de Contrato está em branco', !t.formatoContrato)
+      if (!usaPalestrante(t))
+        return foraDoFormato(
+          t.palestranteExclusivo === 'Sim' ? SEM_MINUTA : t.formatoContrato || 'Formato de Contrato está em branco',
+          !t.formatoContrato && t.palestranteExclusivo !== 'Sim',
+        )
       if (tem(t.dataAssinaturaPalestrante)) {
         if (!tem(t.prazoAssinaturaPalestrante))
           return { estado: 'concluido', dias: null, texto: 'assinado pelo palestrante', cumpriu: null }

@@ -611,3 +611,50 @@ const psa100 = explicar(
 assert.ok(psa100.datas.some((d) => /palestrante/i.test(d.rotulo)), '100% PSA pede minuta')
 
 console.log('ok — interveniente nao cobra minuta do palestrante')
+
+// ---- palestrante exclusivo nao tem minuta por evento ----
+// Em 100% PSA a minuta do palestrante so e exigida quando ele NAO e exclusivo:
+// exclusivo ja tem contrato com a PSA. Em branco conta como nao exclusivo.
+const CEM_PSA = 'MC (Cliente x PSA) = 100% PSA'
+const semMinuta = explicar(
+  T({ stage: CTR, formatoEmpresa: 'Empresa Privada', formatoContrato: CEM_PSA,
+      palestranteExclusivo: 'Sim', onboarding: '2026-09-20', evento: '2026-11-20' }),
+  'Assinar Contrato',
+  HOJE,
+)
+assert.deepEqual(
+  semMinuta.contas.filter((c) => c.estado !== 'nao-aplica').map((c) => c.chave),
+  ['contrato-envio', 'contrato-assinatura'],
+  'exclusivo roda so os dois relogios do cliente',
+)
+assert.ok(!semMinuta.datas.some((d) => /palestrante/i.test(d.rotulo)), 'e some da tabela de datas')
+assert.ok(
+  semMinuta.contas.every((c) => !c.faltaDado),
+  'exclusivo nao e campo faltando: nao ha o que preencher',
+)
+
+// Nao exclusivo, e em branco, seguem exigindo a minuta.
+for (const v of ['Não', '']) {
+  const comMinuta = explicar(
+    T({ stage: CTR, formatoEmpresa: 'Empresa Privada', formatoContrato: CEM_PSA,
+        palestranteExclusivo: v, onboarding: '2026-09-20', evento: '2026-11-20' }),
+    'Assinar Contrato',
+    HOJE,
+  )
+  assert.ok(
+    comMinuta.datas.some((d) => /palestrante/i.test(d.rotulo)),
+    `"${v || 'em branco'}" ainda pede minuta`,
+  )
+}
+
+// Exclusivo nao muda nada no formato Cliente x Palestrante: ali a minuta e o
+// contrato inteiro, nao um acessorio.
+const cliPal = explicar(
+  T({ stage: CTR, formatoEmpresa: 'Empresa Privada', formatoContrato: 'MC (Cliente x Palestrante)',
+      palestranteExclusivo: 'Sim', evento: '2026-11-20' }),
+  'Assinar Contrato',
+  HOJE,
+)
+assert.ok(cliPal.contas.some((c) => c.chave === 'palestrante-assinatura' && c.estado !== 'nao-aplica'))
+
+console.log('ok — palestrante exclusivo dispensa a minuta')
