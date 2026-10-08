@@ -463,7 +463,7 @@ console.log('ok — evento passado manda na cor')
 // O prazo de assinatura vale so para empresa privada: orgao publico, Sistema S
 // e associacao tem rito proprio, e formato em branco nao vira regra por
 // suposicao — sao 44 dos 118 da etapa.
-for (const f of ['Sistema S (SEST/SENAT/SEBRAE/SESCOOP)', 'Associação', 'Agência', '']) {
+for (const f of ['Associação', 'Agência', '']) {
   const v = R['contrato-assinatura']({ formatoEmpresa: f, onboarding: '2026-01-01' })
   assert.equal(v.estado, 'nao-aplica', 'formato sem prazo acordado nao corre o relogio: ' + f)
 }
@@ -472,6 +472,14 @@ assert.equal(R['contrato-assinatura']({ formatoEmpresa: PRIVADA, onboarding: '20
 // Orgao publico tem 45 dias em vez de 20: a mesma data que estoura a privada
 // ainda esta no prazo dele.
 const PUBLICO = 'Órgão Público'
+const SISTEMA_S = 'Sistema S (SEST/SENAT/SEBRAE/SESCOOP)'
+
+// Sistema S fica no meio: 30 dias. O mesmo onboarding que ja estourou a
+// privada ainda esta no prazo dele, e o dele estoura antes do orgao publico.
+assert.equal(R['contrato-assinatura']({ formatoEmpresa: SISTEMA_S, onboarding: '2026-09-01' }).prazo, '2026-10-01')
+assert.equal(R['contrato-assinatura']({ formatoEmpresa: SISTEMA_S, onboarding: '2026-09-05' }).estado, 'verde')
+assert.equal(R['contrato-assinatura']({ formatoEmpresa: SISTEMA_S, onboarding: '2026-08-25' }).estado, 'vermelho')
+assert.equal(R['contrato-assinatura']({ formatoEmpresa: PUBLICO, onboarding: '2026-08-25' }).estado, 'verde', 'os 45 dias ainda seguram')
 assert.equal(R['contrato-assinatura']({ formatoEmpresa: PUBLICO, onboarding: '2026-09-01' }).prazo, '2026-10-16')
 assert.equal(R['contrato-assinatura']({ formatoEmpresa: PUBLICO, onboarding: '2026-09-01' }).estado, 'verde')
 assert.equal(R['contrato-assinatura']({ formatoEmpresa: PRIVADA, onboarding: '2026-09-01' }).estado, 'vermelho')

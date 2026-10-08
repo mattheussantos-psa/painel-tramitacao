@@ -235,11 +235,13 @@ export function avaliar(
 export type Alerta = { chave: string; texto: string }
 
 // Prazo para assinar o contrato, contado da realização do onboarding, por
-// Formato da Empresa. Órgão público tem rito de contratação mais longo, por
-// isso 45. Formato fora desta tabela — associação, agência, ou em branco —
-// não tem prazo acordado, e o painel não inventa um.
+// Formato da Empresa. Quanto mais formal a contratação, mais longo: empresa
+// privada 20, Sistema S 30, órgão público 45. Formato fora desta tabela —
+// associação, agência, ou em branco — não tem prazo acordado, e o painel não
+// inventa um. A chave é o valor gravado no HubSpot, com a sigla e tudo.
 export const DIAS_PARA_ASSINAR: Record<string, number> = {
   'Empresa Privada': 20,
+  'Sistema S (SEST/SENAT/SEBRAE/SESCOOP)': 30,
   'Órgão Público': 45,
 }
 // Briefing: cobrado a partir de D-15 do evento.

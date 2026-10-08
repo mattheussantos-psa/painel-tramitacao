@@ -203,12 +203,12 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do contrato pelo cliente',
     curto: 'assinatura',
-    regra: '20 dias do onboarding para Empresa Privada e 45 para Órgão Público · vermelho depois disso · sem onboarding também é vermelho',
+    regra: 'Do onboarding: 20 dias para Empresa Privada, 30 para Sistema S, 45 para Órgão Público · vermelho depois disso · sem onboarding também é vermelho',
     confianca: 'fechado',
     gatilho: 'data_de_realizacao_do_onboarding',
     marco: 'data_de_assinatura_do_contrato / status_do_contrato',
     pendencia:
-      'Sistema S, associação e agência não têm prazo acordado, e 44 dos 118 tickets da etapa estão com Formato da Empresa em branco — nesses o relógio não corre. Não há faixa de atenção: o CS definiu verde até o prazo e vermelho depois.',
+      'Associação e agência não têm prazo acordado, e 44 dos 118 tickets da etapa estão com Formato da Empresa em branco — nesses o relógio não corre. Não há faixa de atenção: o CS definiu verde até o prazo e vermelho depois.',
     ver: (t, hoje) => {
       if (!usaCliente(t.formatoContrato)) return foraDoFormato('contrato é entre cliente e palestrante')
       const dias = DIAS_PARA_ASSINAR[t.formatoEmpresa]
@@ -382,7 +382,7 @@ export const RELOGIOS: Relogio[] = [
 export const ORGAO_PUBLICO = 'Órgão Público'
 
 // O prazo de assinatura sai de DIAS_PARA_ASSINAR: 20 dias para empresa
-// privada, 45 para órgão público. Sistema S, associação e agência não têm
+// privada, 30 para Sistema S e 45 para órgão público. Associação e agência não têm
 // prazo acordado, e formato em branco não entra — aplicar prazo de um tipo de
 // empresa a uma que ninguém classificou seria supor. São 44 dos 118 da etapa,
 // e a conversa ali é preencher o campo, não afrouxar a régua.
