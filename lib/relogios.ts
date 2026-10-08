@@ -110,6 +110,11 @@ export const ETAPAS_LOGISTICA = ['Contratar Logística', 'Logística']
 // Dias entre o negócio ser ganho e a logística ter que estar adquirida.
 export const PRAZO_AQUISICAO = 5
 
+// Dias entre o onboarding e a assinatura do palestrante. Mesmo marco do
+// contrato do cliente, número único: o prazo do cliente varia por Formato da
+// Empresa, o do palestrante não.
+export const DIAS_ASSINATURA_PALESTRANTE = 25
+
 const LOG_REEMBOLSO = 'Sim, com reembolso do cliente'
 const LOG_CUSTO_PSA = 'Sim, com custo para PSA'
 
@@ -317,29 +322,54 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do palestrante',
     curto: 'assinatura do palestrante',
-    regra: 'Até a data em "Prazo de Assinatura Contrato Palestrante" · amarelo 1 a 3 dias depois · vermelho 4+',
+    regra: `${DIAS_ASSINATURA_PALESTRANTE} dias após o onboarding, quando o formato exige contrato com o palestrante · vermelho depois disso · sem onboarding também é vermelho`,
     confianca: 'fechado',
-    gatilho: 'prazo_de_assinatura__contrato_palestrante',
+    gatilho: 'data_de_realizacao_do_onboarding',
     marco: 'data_de_assinatura__palestrante_',
-    pendencia: 'Faixa de cor não foi passada para o palestrante: aplica a mesma do contrato do cliente.',
+    pendencia:
+      'A propriedade "Prazo de Assinatura Contrato Palestrante", em branco em 29 tickets, deixou de decidir a cor — era a causa dos cinzas nesta etapa.',
     ver: (t, hoje) => {
       if (!usaPalestrante(t))
         return foraDoFormato(
           t.palestranteExclusivo === 'Sim' ? SEM_MINUTA : t.formatoContrato || 'Formato de Contrato está em branco',
           !t.formatoContrato && t.palestranteExclusivo !== 'Sim',
         )
+      const limite = dia(t.onboarding) + DIAS_ASSINATURA_PALESTRANTE * DIA
+      const prazo = Number.isFinite(limite) ? iso(limite) : undefined
+
       if (tem(t.dataAssinaturaPalestrante)) {
-        if (!tem(t.prazoAssinaturaPalestrante))
+        if (!prazo)
           return { estado: 'concluido', dias: null, texto: 'assinado pelo palestrante', cumpriu: null }
-        const atraso = emDias(dia(t.dataAssinaturaPalestrante), dia(t.prazoAssinaturaPalestrante))
+        const atraso = emDias(dia(t.dataAssinaturaPalestrante), limite)
         return {
           estado: 'concluido',
           dias: atraso,
+          prazo,
           texto: atraso <= 0 ? `assinado ${-atraso}d antes do prazo` : `assinado ${atraso}d depois do prazo`,
           cumpriu: atraso <= 0,
         }
       }
-      return contraPrazo(t.prazoAssinaturaPalestrante, hoje, 'sem prazo de assinatura do palestrante')
+
+      // Mesmo marco do contrato do cliente, mesmo tratamento: sem onboarding o
+      // prazo nem começa a correr, e o CS decidiu que isso conta como atraso.
+      if (!prazo)
+        return {
+          estado: 'vermelho',
+          dias: null,
+          texto: 'sem data de onboarding, não há prazo para cobrar',
+          cumpriu: null,
+        }
+
+      // Sem faixa de atenção, igual ao contrato do cliente: verde até o prazo,
+      // vermelho depois.
+      const d = emDias(hojeEmDias(hoje), limite)
+      return {
+        estado: d > 0 ? 'vermelho' : 'verde',
+        dias: d,
+        prazo,
+        texto: d > 0 ? `${d}d depois do prazo` : `faltam ${-d}d para o prazo`,
+        cumpriu: null,
+      }
     },
   },
   {

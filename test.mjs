@@ -320,12 +320,39 @@ assert.match(
   ctr({ onboarding: '2026-01-05', dataAssinatura: '2026-01-08', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }).texto,
   /^assinatura · assinado/,
 )
-// Mas se sobrou campo sem preencher, continua cinza — e o dialogo diz qual.
+// O prazo do palestrante tambem sai do onboarding: 05/01 + 25 = 30/01, que ja
+// venceu. O cliente assinou, o palestrante nao — e isso e vermelho, nao cinza.
 assert.equal(
   ctr({ onboarding: '2026-01-05', dataAssinatura: '2026-01-08', formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não' }).cor,
-  'cinza',
-  'falta o prazo de assinatura do palestrante',
+  'vermelho',
+  'palestrante nao assinou e os 25 dias venceram',
 )
+
+// ---- 25 dias do onboarding para o palestrante assinar ----
+// Mesmo marco do contrato do cliente, numero unico: o do cliente varia por
+// Formato da Empresa, o do palestrante nao.
+const palestrante100 = { formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não' }
+const assinaPal = (over) => R['palestrante-assinatura']({ ...palestrante100, ...over })
+// HOJE = 29/09. 10/09 + 25 = 05/10, ainda no prazo.
+assert.equal(assinaPal({ onboarding: '2026-09-10' }).estado, 'verde')
+assert.equal(assinaPal({ onboarding: '2026-09-10' }).prazo, '2026-10-05')
+// 04/09 + 25 = 29/09, vence hoje: ainda verde, igual ao contrato do cliente.
+assert.equal(assinaPal({ onboarding: '2026-09-04' }).estado, 'verde')
+// 01/09 + 25 = 26/09, tres dias depois. Sem faixa de atencao: ja e vermelho.
+assert.equal(assinaPal({ onboarding: '2026-09-01' }).estado, 'vermelho')
+// Sem onboarding o prazo nem comeca a correr, e isso conta como atraso.
+assert.equal(assinaPal({}).estado, 'vermelho')
+// Assinado mede contra o prazo calculado, nao contra a propriedade.
+assert.equal(assinaPal({ onboarding: '2026-09-01', dataAssinaturaPalestrante: '2026-09-20' }).cumpriu, true)
+assert.equal(assinaPal({ onboarding: '2026-09-01', dataAssinaturaPalestrante: '2026-09-30' }).cumpriu, false)
+// Formato que nao exige minuta do palestrante segue fora de qualquer prazo.
+assert.equal(R['palestrante-assinatura']({ formatoContrato: 'MC (Cliente x PSA x Palestrante)' }).estado, 'nao-aplica')
+assert.equal(
+  R['palestrante-assinatura']({ formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Sim' }).estado,
+  'nao-aplica',
+)
+
+console.log('ok — 25 dias do onboarding para o palestrante')
 
 // Briefing: so a data do evento manda.
 assert.equal(E({ stage: BRF, evento: '2026-10-27' }).cor, 'verde', 'D-28')
@@ -345,8 +372,12 @@ assert.equal(E({ stage: '1088361911', entrouEtapa: '2026-03-01', evento: '2026-1
 // do contrato do cliente nao correm.
 assert.equal(
   ctr({ onboarding: '2026-01-05', prazoAssinatura: '2026-01-10', formatoContrato: 'MC (Cliente x Palestrante)' }).cor,
-  'cinza',
-  'sem a PSA no contrato nao ha prazo de envio nem de assinatura do cliente',
+  'vermelho',
+  'sem a PSA os relogios do cliente nao correm, mas o do palestrante sim: 05/01 + 25 venceu',
+)
+assert.match(
+  ctr({ onboarding: '2026-01-05', prazoAssinatura: '2026-01-10', formatoContrato: 'MC (Cliente x Palestrante)' }).texto,
+  /^assinatura do palestrante · /,
 )
 assert.equal(
   ctr({ onboarding: '2026-01-05', prazoAssinatura: '2026-01-10', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }).cor,
@@ -397,12 +428,10 @@ const CLIPAL = 'MC (Cliente x Palestrante)'
 const pal = (chave, over) => RELOGIOS.find((r) => r.chave === chave).ver(T(over), HOJE)
 
 assert.equal(pal('palestrante-assinatura', { formatoContrato: INTERV }).estado, 'nao-aplica', 'interveniente nao tem minuta propria')
-assert.equal(pal('palestrante-assinatura', { formatoContrato: PSA100 }).estado, 'sem-dado', 'sem prazo preenchido')
-assert.equal(pal('palestrante-assinatura', { formatoContrato: PSA100, prazoAssinaturaPalestrante: '2026-10-05' }).estado, 'verde')
-assert.equal(pal('palestrante-assinatura', { formatoContrato: CLIPAL, prazoAssinaturaPalestrante: '2026-09-20' }).estado, 'vermelho')
-const palOk = pal('palestrante-assinatura', { formatoContrato: PSA100, prazoAssinaturaPalestrante: '2026-09-20', dataAssinaturaPalestrante: '2026-09-18' })
+assert.equal(pal('palestrante-assinatura', { formatoContrato: CLIPAL, onboarding: '2026-08-20' }).estado, 'vermelho')
+const palOk = pal('palestrante-assinatura', { formatoContrato: PSA100, onboarding: '2026-09-01', dataAssinaturaPalestrante: '2026-09-18' })
 assert.equal(palOk.estado, 'concluido')
-assert.equal(palOk.cumpriu, true)
+assert.equal(palOk.cumpriu, true, '18/09 veio antes de 26/09')
 
 // Envio da minuta so sabe dizer se saiu: o gap depois da assinatura do cliente
 // nunca foi definido, entao nao ganha cor em vez de ganhar uma inventada.
@@ -414,12 +443,16 @@ assert.equal(pal('palestrante-envio', { formatoContrato: INTERV }).estado, 'nao-
 assert.equal(pal('contrato-envio', { formatoContrato: PSA100, onboarding: '2026-01-05', envioCliente: '2026-01-06' }).estado, 'concluido')
 assert.equal(pal('contrato-envio', { formatoContrato: CLIPAL }).estado, 'nao-aplica')
 
-// Na etapa, a minuta vencida puxa a cor mesmo com o contrato do cliente em dia.
-assert.equal(
-  E({ stage: CTR, evento: '2026-11-20', formatoContrato: PSA100, onboarding: '2026-09-28',
-      prazoAssinatura: '2026-10-20', envioCliente: '2026-09-29', prazoAssinaturaPalestrante: '2026-09-20' }).cor,
-  'vermelho',
-)
+// Com o contrato do cliente fechado, quem sobra na etapa e a minuta do
+// palestrante — 01/09 + 25 = 26/09, vencido.
+const soMinuta = {
+  stage: CTR, evento: '2026-11-20', formatoContrato: PSA100, palestranteExclusivo: 'Não',
+  onboarding: '2026-09-01', envioCliente: '2026-09-02', dataAssinatura: '2026-09-10',
+}
+assert.equal(E(soMinuta).cor, 'vermelho')
+assert.match(E(soMinuta).texto, /^assinatura do palestrante · /)
+// Palestrante exclusivo nao tem minuta por evento: a mesma etapa fica verde.
+assert.equal(E({ ...soMinuta, palestranteExclusivo: 'Sim' }).cor, 'verde')
 
 console.log('ok — minuta do palestrante')
 
