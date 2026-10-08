@@ -669,3 +669,24 @@ const cliPal = explicar(
 assert.ok(cliPal.contas.some((c) => c.chave === 'palestrante-assinatura' && c.estado !== 'nao-aplica'))
 
 console.log('ok — palestrante exclusivo dispensa a minuta')
+
+// Evento HOJE numa etapa com relogio ja e atraso: o trabalho dela tem que
+// estar pronto ANTES do evento. Caso real: Thermo Fisher, evento 08/10,
+// contrato assinado e palestrante exclusivo, parado em Assinar Contrato —
+// ficava verde porque a regra so pegava evento estritamente passado.
+const noDiaDoEvento = T({
+  stage: CTR, formatoEmpresa: 'Empresa Privada', formatoContrato: 'MC (Cliente x PSA) = 100% PSA',
+  palestranteExclusivo: 'Sim', onboarding: '2026-09-01', dataAssinatura: '2026-09-10',
+  evento: '2026-09-29', entrouEtapa: '2026-09-20',
+})
+assert.equal(avaliarEtapa(noDiaDoEvento, HOJE, QUADROS.cs.sla).cor, 'vermelho')
+assert.equal(avaliarEtapa(noDiaDoEvento, HOJE, QUADROS.cs.sla).texto, 'o evento é hoje e a etapa não fechou')
+
+// Amanha ainda da tempo: segue pela regua da etapa.
+assert.equal(
+  avaliarEtapa({ ...noDiaDoEvento, evento: '2026-09-30' }, HOJE, QUADROS.cs.sla).cor,
+  'verde',
+  'evento amanha com tudo cumprido continua verde',
+)
+
+console.log('ok — evento hoje ja e atraso em etapa de trabalho')

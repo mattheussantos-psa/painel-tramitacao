@@ -413,8 +413,11 @@ const PESO: Record<string, number> = { vermelho: 3, amarelo: 2, verde: 1 }
 // pior. O texto diz qual deles, senão o número não significa nada.
 // Relógio bloqueado não vira verde por omissão — devolve null, que o painel
 // pinta de cinza.
+// Etapa com relógio é trabalho que tem que estar pronto ANTES do evento, não
+// no dia dele: no dia já é tarde. Por isso <= 0 e não < 0 — com < 0, um ticket
+// com o evento HOJE e o contrato assinado ficava verde em Assinar Contrato.
 export const eventoPassou = (t: TicketSim, hoje: number) =>
-  tem(t.evento) && emDias(dia(t.evento), hojeEmDias(hoje)) < 0
+  tem(t.evento) && emDias(dia(t.evento), hojeEmDias(hoje)) <= 0
 
 export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
   let cor: Cor | null = null
@@ -476,7 +479,10 @@ export function avaliarEtapa(
     return {
       ...base,
       cor: 'vermelho',
-      texto: `evento foi em ${br(t.evento)} e a etapa não fechou`,
+      texto:
+        emDias(dia(t.evento), hojeEmDias(hoje)) === 0
+          ? 'o evento é hoje e a etapa não fechou'
+          : `evento foi em ${br(t.evento)} e a etapa não fechou`,
     }
 
   const s = corDaEtapa(t, regra.label, hoje)
