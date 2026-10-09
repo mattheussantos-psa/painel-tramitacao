@@ -316,9 +316,13 @@ assert.equal(log({ ganhoNegocio: '2026-09-15', pagamentoLogistica: '2026-10-05' 
 // Com custo para a PSA so corre a aquisicao.
 assert.equal(log({ logistica: CUSTO_PSA, ganhoNegocio: '2026-09-15', pagamentoLogistica: '2026-09-20' }).cor, 'vermelho')
 assert.match(log({ logistica: CUSTO_PSA, ganhoNegocio: '2026-09-15', pagamentoLogistica: '2026-09-20' }).texto, /^aquisição · /)
-// Log externa e evento online seguem fora de qualquer prazo.
-assert.equal(log({ logistica: 'Não', ganhoNegocio: '2026-09-15' }).cor, 'cinza')
-assert.equal(log({ logistica: 'Evento Online', ganhoNegocio: '2026-09-15' }).cor, 'cinza')
+// Log externa e evento online nao tem prazo a cobrar — e isso e estar em dia,
+// nao e falta de dado. A resposta esta preenchida: o painel sabe medir.
+assert.equal(log({ logistica: 'Não', ganhoNegocio: '2026-09-15' }).cor, 'verde')
+assert.match(log({ logistica: 'Não', ganhoNegocio: '2026-09-15' }).texto, /não organiza a logística/)
+assert.equal(log({ logistica: 'Evento Online', ganhoNegocio: '2026-09-15' }).cor, 'verde')
+// Mas com o campo em branco continua cinza: ai e falta de dado de verdade.
+assert.equal(log({ logistica: '', ganhoNegocio: '2026-09-15' }).cor, 'cinza', 'sem resposta')
 // Sem as datas preenchidas o card nao vira verde por omissao.
 assert.equal(log({}).cor, 'cinza', 'sem ganho e sem pagamento')
 
@@ -878,3 +882,21 @@ assert.equal(avaliarEtapa(T({ stage: BRF, evento: '2026-10-19' }), HOJE, QUADROS
 assert.equal(avaliarEtapa(T({ stage: BRF, evento: '' }), HOJE, QUADROS.cs.sla).cor, 'cinza', 'sem data de evento')
 
 console.log('ok — prazo que ainda nao abriu e verde')
+
+// ---- relogio fora de cena por resposta preenchida e verde ----
+// Grupo Mascarello (48990612847): Contratar Logistica com "Logistica sera
+// organizada pela PSA? = Nao". Nenhum relogio corre, nada ha a cobrar — e o
+// card ficava cinza, que e a cor de "nao sei medir".
+const foraPorResposta = T({ stage: LOG, logistica: 'Não', entrouEtapa: '2026-10-05', evento: '2027-01-27' })
+assert.equal(avaliarEtapa(foraPorResposta, HOJE, QUADROS.cs.sla).cor, 'verde')
+assert.match(avaliarEtapa(foraPorResposta, HOJE, QUADROS.cs.sla).texto, /^aquisição · a PSA não organiza/)
+// Campo em branco continua cinza: resposta ausente nao e resposta.
+assert.equal(avaliarEtapa(T({ stage: LOG, logistica: '', entrouEtapa: '2026-10-05' }), HOJE, QUADROS.cs.sla).cor, 'cinza')
+// Contrato entre cliente e palestrante: o relogio do cliente nao se aplica,
+// mas o do palestrante corre — resposta preenchida nao pode apagar prazo vivo.
+assert.equal(
+  avaliarEtapa(T({ stage: CTR, formatoContrato: 'MC (Cliente x Palestrante)', onboarding: '2026-01-05', evento: '2026-11-20' }), HOJE, QUADROS.cs.sla).cor,
+  'vermelho',
+)
+
+console.log('ok — fora de cena por resposta preenchida e verde')

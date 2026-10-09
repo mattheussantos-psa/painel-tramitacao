@@ -536,12 +536,19 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
   // Briefing com o evento a D-34, dizendo "sem prazo nesta etapa" — a etapa
   // tem prazo, ele abre em D-30.
   let porComecar: { curto: string; texto: string; dias: number } | null = null
+  // Relógio que não vale para este ticket por causa de uma resposta que está
+  // preenchida — "Logística será organizada pela PSA? = Não". Grupo Mascarello
+  // (48990612847) ficava cinza com isso, e cinza quer dizer "não sei medir".
+  // Aqui sabe-se: não há o que cobrar.
+  let naoAplica: { curto: string; texto: string } | null = null
   let faltaData = false
 
   for (const rel of RELOGIOS) {
     if (!rel.etapa.includes(etapa)) continue
     const v = rel.ver(t, hoje)
-    if (v.estado === 'sem-dado') faltaData = true
+    if (v.estado === 'sem-dado' || v.faltaDado) faltaData = true
+    if (v.estado === 'nao-aplica' && !v.faltaDado && !naoAplica)
+      naoAplica = { curto: rel.curto, texto: v.texto }
     // O último concluído ganha a frase: é o passo mais adiantado da etapa.
     if (v.estado === 'concluido') cumprido = { curto: rel.curto, texto: v.texto }
     // O primeiro a abrir é o que vale dizer: é o próximo prazo a correr.
@@ -569,6 +576,9 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
   // dia. Cinza aqui diria "não sei medir", e sabe-se — só não é hora ainda.
   if (porComecar && !faltaData)
     return { cor: 'verde' as Cor, texto: `${porComecar.curto} · ${porComecar.texto}` }
+  // Todos os relógios fora de cena por resposta preenchida: não há prazo a
+  // cobrar neste ticket, e isso é estar em dia.
+  if (naoAplica && !faltaData) return { cor: 'verde' as Cor, texto: `${naoAplica.curto} · ${naoAplica.texto}` }
   return null
 }
 
