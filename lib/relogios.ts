@@ -531,6 +531,11 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
   // caía em cinza porque nenhum relógio "produzia cor", e ficava indistinguível
   // de um ticket sem dado nenhum.
   let cumprido: { curto: string; texto: string } | null = null
+  // Relógio cuja janela ainda não abriu. Não é falta de dado: é prazo que
+  // começa depois. Positiva Eventos (43679094830) ficava cinza em Realizar
+  // Briefing com o evento a D-34, dizendo "sem prazo nesta etapa" — a etapa
+  // tem prazo, ele abre em D-30.
+  let porComecar: { curto: string; texto: string; dias: number } | null = null
   let faltaData = false
 
   for (const rel of RELOGIOS) {
@@ -539,6 +544,9 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
     if (v.estado === 'sem-dado') faltaData = true
     // O último concluído ganha a frase: é o passo mais adiantado da etapa.
     if (v.estado === 'concluido') cumprido = { curto: rel.curto, texto: v.texto }
+    // O primeiro a abrir é o que vale dizer: é o próximo prazo a correr.
+    if (v.estado === 'nao-iniciado' && (!porComecar || (v.dias ?? 0) < (porComecar.dias ?? 0)))
+      porComecar = { curto: rel.curto, texto: v.texto, dias: v.dias ?? 0 }
     if (!PESO[v.estado]) continue
     // Empate de cor: ganha o relógio que tem marco de conclusão. Com os dois
     // vermelhos o card dizia "envio do contrato", que é o relógio incapaz de
@@ -557,6 +565,10 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
   // Sem nenhum relógio aceso: verde quando algo foi cumprido e nada ficou sem
   // data. Com data faltando continua cinza, e o diálogo diz qual campo é.
   if (cumprido && !faltaData) return { cor: 'verde' as Cor, texto: `${cumprido.curto} · ${cumprido.texto}` }
+  // Nada aceso, nada cumprido, mas há prazo esperando a janela abrir: está em
+  // dia. Cinza aqui diria "não sei medir", e sabe-se — só não é hora ainda.
+  if (porComecar && !faltaData)
+    return { cor: 'verde' as Cor, texto: `${porComecar.curto} · ${porComecar.texto}` }
   return null
 }
 

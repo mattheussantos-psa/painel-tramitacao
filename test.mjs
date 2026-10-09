@@ -863,3 +863,18 @@ assert.equal(avaliarEtapa(semRelogio, HOJE, QUADROS.cs.sla).cor, 'cinza')
 assert.equal(explicar(T({ stage: LOG, evento: '2026-09-24', logistica: REEMBOLSO }), 'Contratar Logística', HOJE).eventoPassou, true)
 
 console.log('ok — evento passado so fala onde manda')
+
+// ---- prazo que ainda nao abriu e verde, nao cinza ----
+// Positiva Eventos (43679094830): em Realizar Briefing com o evento a D-34.
+// A janela do agendamento abre em D-30, entao nada esta atrasado — mas o card
+// dizia "sem prazo nesta etapa" e ficava cinza, que e a cor de "nao sei medir".
+const aindaNaoAbriu = T({ stage: BRF, evento: '2026-11-02', entrouEtapa: '2026-09-28' })
+assert.equal(avaliarEtapa(aindaNaoAbriu, HOJE, QUADROS.cs.sla).cor, 'verde', 'D-34')
+assert.match(avaliarEtapa(aindaNaoAbriu, HOJE, QUADROS.cs.sla).texto, /^agendamento · evento a D-34/)
+// Dentro da janela a regra volta a mandar.
+assert.equal(avaliarEtapa(T({ stage: BRF, evento: '2026-10-27' }), HOJE, QUADROS.cs.sla).cor, 'verde', 'D-28')
+assert.equal(avaliarEtapa(T({ stage: BRF, evento: '2026-10-19' }), HOJE, QUADROS.cs.sla).cor, 'amarelo', 'D-20')
+// Falta de dado continua cinza: isso o painel nao sabe medir mesmo.
+assert.equal(avaliarEtapa(T({ stage: BRF, evento: '' }), HOJE, QUADROS.cs.sla).cor, 'cinza', 'sem data de evento')
+
+console.log('ok — prazo que ainda nao abriu e verde')
