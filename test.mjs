@@ -825,3 +825,41 @@ assert.equal(
 assert.equal(explicar(T({ stage: LOG, logistica: '' }), 'Contratar Logística', HOJE).contas[0].faltaDado, true)
 
 console.log('ok — relogio que nao corre diz por que')
+
+// ---- anexo do contrato conta como prova ----
+// Suzano - Mariana Ferrao (45637669421): contrato do palestrante anexado ao
+// ticket, sem data de assinatura. O painel cobrava um contrato que esta la.
+// 127 dos 245 tickets que exigem minuta tem anexo, contra 6 com data.
+const anexado = { formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não', onboarding: '2026-06-09' }
+assert.equal(R['palestrante-assinatura'](anexado).estado, 'vermelho', 'sem anexo e sem data, 09/06 + 25 venceu')
+assert.equal(R['palestrante-assinatura']({ ...anexado, anexoPalestrante: '12345' }).estado, 'concluido')
+assert.equal(R['palestrante-assinatura']({ ...anexado, anexoPalestrante: '12345' }).texto, 'contrato anexado ao ticket')
+// A data continua mandando quando existe: ela diz se cumpriu o prazo, o anexo nao.
+assert.equal(
+  R['palestrante-assinatura']({ ...anexado, anexoPalestrante: '12345', dataAssinaturaPalestrante: '2026-06-20' }).cumpriu,
+  true,
+)
+// Mesmo tratamento do lado do cliente.
+assert.equal(R['contrato-assinatura']({ formatoEmpresa: 'Empresa Privada', onboarding: '2026-06-09' }).estado, 'vermelho')
+assert.equal(
+  R['contrato-assinatura']({ formatoEmpresa: 'Empresa Privada', onboarding: '2026-06-09', anexoCliente: '9' }).estado,
+  'concluido',
+)
+// E o envio passa a estar provado pelo anexo: nao se anexa o que nao existe.
+assert.equal(
+  R['contrato-envio']({ formatoEmpresa: 'Empresa Privada', onboarding: '2026-06-09', anexoCliente: '9' }).estado,
+  'concluido',
+)
+
+console.log('ok — anexo do contrato conta como prova')
+
+// Etapa sem relogio nao deve dizer que o evento passado manda na cor: em
+// Confirmar PGTO Pre palestra (1452885000) a cor e cinza, e avaliarEtapa nem
+// olha o evento. O dialogo afirmava o contrario.
+const semRelogio = T({ stage: '1452885000', evento: '2026-09-24', entrouEtapa: '2026-10-08' })
+assert.equal(explicar(semRelogio, 'Confirmar PGTO Pré palestra', HOJE).eventoPassou, false)
+assert.equal(avaliarEtapa(semRelogio, HOJE, QUADROS.cs.sla).cor, 'cinza')
+// Em etapa com relogio continua mandando.
+assert.equal(explicar(T({ stage: LOG, evento: '2026-09-24', logistica: REEMBOLSO }), 'Contratar Logística', HOJE).eventoPassou, true)
+
+console.log('ok — evento passado so fala onde manda')

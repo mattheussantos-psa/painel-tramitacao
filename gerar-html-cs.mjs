@@ -47,6 +47,8 @@ const PROPS = [
   'data_de_envio_contrato_palestrante',
   'prazo_de_assinatura__contrato_palestrante',
   'data_de_assinatura__palestrante_',
+  'contrato',
+  'contrato_palestrante',
 ]
 
 function token() {
@@ -166,6 +168,8 @@ const tickets = brutos.map((r) => {
     envioPalestrante: iso(p.data_de_envio_contrato_palestrante),
     prazoAssinaturaPalestrante: iso(p.prazo_de_assinatura__contrato_palestrante),
     dataAssinaturaPalestrante: iso(p.data_de_assinatura__palestrante_),
+    anexoCliente: p.contrato ?? '',
+    anexoPalestrante: p.contrato_palestrante ?? '',
   })
 })
 

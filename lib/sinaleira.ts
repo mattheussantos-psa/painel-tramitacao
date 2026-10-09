@@ -34,6 +34,11 @@ export type Ticket = {
   envioPalestrante: string
   prazoAssinaturaPalestrante: string
   dataAssinaturaPalestrante: string
+  // Arquivo do contrato anexado ao ticket. É o sinal que o time realmente
+  // preenche: 127 dos 245 tickets que exigem minuta do palestrante têm anexo,
+  // contra 6 com data de assinatura.
+  anexoCliente: string
+  anexoPalestrante: string
   reunioes: { titulo: string; inicio: string; desfecho: string }[]
 }
 
@@ -47,6 +52,7 @@ export const completar = (t: Partial<Ticket>): Ticket => ({
   dataAssinatura: '', prazoBriefing: '', callBriefing: '', entrouBriefing: '', dataFaturamento: '',
   dataEmissao: '', prazoLogistica: '', ganhoNegocio: '', pagamentoLogistica: '', envioCliente: '',
   envioPalestrante: '', prazoAssinaturaPalestrante: '', dataAssinaturaPalestrante: '',
+  anexoCliente: '', anexoPalestrante: '',
   reunioes: [],
   ...t,
 })

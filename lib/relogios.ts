@@ -65,6 +65,8 @@ export type Veredito = {
 const DIA = 86400000
 const dia = (d: string | undefined) => Date.parse(String(d ?? '').slice(0, 10) + 'T00:00:00Z')
 const tem = (d: string | undefined) => !!d && Number.isFinite(dia(d))
+// Anexo não é data: tem() rejeitaria o id do arquivo.
+const anexado = (v: string | undefined) => !!v && v.trim() !== ''
 const emDias = (a: number, b: number) => Math.round((a - b) / DIA)
 
 // Dias úteis entre duas datas, só seg-sex. Feriado nacional não entra: exigiria
@@ -178,8 +180,14 @@ const foraDoFormato = (texto: string, faltaDado = false): Veredito => ({
 })
 
 // Assinatura do cliente serve de prova indireta de envio: não dá para assinar
-// um contrato que não foi enviado.
-const contratoAssinado = (t: TicketSim) => t.statusContrato === 'Assinado' || tem(t.dataAssinatura)
+// um contrato que não foi enviado. O anexo conta junto: o arquivo está no
+// ticket, então o contrato existe e não há o que cobrar.
+//
+// O painel não distingue minuta anexada de contrato assinado — o nome do
+// arquivo não diz, e o token não lê a API de Files. Se o time anexar antes de
+// assinar, o relógio fecha cedo.
+const contratoAssinado = (t: TicketSim) =>
+  t.statusContrato === 'Assinado' || tem(t.dataAssinatura) || anexado(t.anexoCliente)
 
 export const RELOGIOS: Relogio[] = [
   {
@@ -276,6 +284,9 @@ export const RELOGIOS: Relogio[] = [
       const prazo = Number.isFinite(limite) ? iso(limite) : undefined
 
       // Único relógio com as duas pontas: dá para dizer se cumpriu de verdade.
+      if (anexado(t.anexoCliente) && !tem(t.dataAssinatura) && t.statusContrato !== 'Assinado')
+        return { estado: 'concluido', dias: null, prazo, texto: 'contrato anexado ao ticket', cumpriu: null }
+
       if (tem(t.dataAssinatura)) {
         if (!prazo)
           return { estado: 'concluido', dias: null, texto: 'assinado', cumpriu: null }
@@ -351,6 +362,9 @@ export const RELOGIOS: Relogio[] = [
         )
       const limite = dia(t.onboarding) + DIAS_ASSINATURA_PALESTRANTE * DIA
       const prazo = Number.isFinite(limite) ? iso(limite) : undefined
+
+      if (anexado(t.anexoPalestrante) && !tem(t.dataAssinaturaPalestrante))
+        return { estado: 'concluido', dias: null, prazo, texto: 'contrato anexado ao ticket', cumpriu: null }
 
       if (tem(t.dataAssinaturaPalestrante)) {
         if (!prazo)
@@ -745,7 +759,7 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
   return {
     datas,
     contas,
-    eventoPassou: eventoPassou(t, hoje),
+    eventoPassou: meus.length > 0 && eventoPassou(t, hoje),
     briefing: briefingPendente(t, etapa, hoje),
     // O que governa quais relógios correm. Sem isso na tela, duas etapas com
     // a mesma cor e motivos diferentes ficam indistinguíveis.
