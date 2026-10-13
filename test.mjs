@@ -900,3 +900,24 @@ assert.equal(
 )
 
 console.log('ok — fora de cena por resposta preenchida e verde')
+
+// ---- cinza diz qual campo falta ----
+// Santa Casa (47323751329): Assinar Contrato com Formato da Empresa e Formato
+// de Contrato os dois em branco. O card dizia "sem prazo nesta etapa" numa
+// etapa que tem quatro relogios — a frase escondia a unica acao possivel.
+const faltaFormatoEmpresa = T({ stage: CTR, evento: '2026-11-13', onboarding: '2026-08-03', formatoEmpresa: '', formatoContrato: '', envioCliente: '2026-08-07' })
+const vFormato = avaliarEtapa(faltaFormatoEmpresa, HOJE, QUADROS.cs.sla)
+assert.equal(vFormato.cor, 'cinza')
+assert.equal(vFormato.texto, 'falta Formato da Empresa')
+// Logistica sem resposta diz o campo dela.
+assert.equal(
+  avaliarEtapa(T({ stage: LOG, logistica: '', entrouEtapa: '2026-10-05' }), HOJE, QUADROS.cs.sla).texto,
+  'falta Logística será organizada pela PSA?',
+)
+// Falta de data sem campo nomeado cai na frase do proprio relogio.
+assert.match(
+  avaliarEtapa(T({ stage: LOG, logistica: CUSTO_PSA, entrouEtapa: '2026-10-05' }), HOJE, QUADROS.cs.sla).texto,
+  /^aquisição · sem negócio ganho/,
+)
+
+console.log('ok — cinza diz qual campo falta')

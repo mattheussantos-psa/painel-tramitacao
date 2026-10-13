@@ -57,6 +57,9 @@ export type Veredito = {
   // é isento. O card fica cinza nos dois, mas só este é acionável — e some do
   // diálogo se não for marcado, porque não-se-aplica não é mostrado.
   faltaDado?: boolean
+  // Qual propriedade está em branco, em nome curto. O card só tem uma linha:
+  // "falta Formato da Empresa" cabe, a frase inteira do relógio não.
+  campoFaltando?: string
   // Quando o marco existe, diz se foi cumprido dentro do prazo. null quando
   // não dá para saber.
   cumpriu: boolean | null
@@ -171,12 +174,13 @@ const usaPalestrante = (t: TicketSim) =>
 
 const PSA_100 = 'MC (Cliente x PSA) = 100% PSA'
 
-const foraDoFormato = (texto: string, faltaDado = false): Veredito => ({
+const foraDoFormato = (texto: string, faltaDado = false, campoFaltando?: string): Veredito => ({
   estado: 'nao-aplica',
   dias: null,
   texto,
   cumpriu: null,
   faltaDado,
+  campoFaltando,
 })
 
 // Assinatura do cliente serve de prova indireta de envio: não dá para assinar
@@ -205,7 +209,11 @@ export const RELOGIOS: Relogio[] = [
       if (t.logistica !== LOG_REEMBOLSO && t.logistica !== LOG_CUSTO_PSA)
         return t.logistica
           ? foraDoFormato(`a PSA não organiza a logística deste evento ("${t.logistica}")`)
-          : foraDoFormato('"Logística será organizada pela PSA?" está em branco', true)
+          : foraDoFormato(
+              '"Logística será organizada pela PSA?" está em branco',
+              true,
+              'Logística será organizada pela PSA?',
+            )
       // Sem negócio ganho associado o prazo não tem de onde partir. Cinza, não
       // vermelho: o CS definiu isso só para o contrato sem onboarding.
       if (!tem(t.ganhoNegocio))
@@ -234,7 +242,11 @@ export const RELOGIOS: Relogio[] = [
       if (t.logistica !== LOG_REEMBOLSO)
         return t.logistica
           ? foraDoFormato(`não há reembolso de logística a cobrar do cliente ("${t.logistica}")`)
-          : foraDoFormato('"Logística será organizada pela PSA?" está em branco', true)
+          : foraDoFormato(
+              '"Logística será organizada pela PSA?" está em branco',
+              true,
+              'Logística será organizada pela PSA?',
+            )
       return contraPrazo(t.pagamentoLogistica, hoje, 'sem data prevista de pagamento')
     },
   },
@@ -278,6 +290,7 @@ export const RELOGIOS: Relogio[] = [
           : foraDoFormato(
               'Formato da Empresa está em branco, então o prazo de assinatura não corre — preencha para o painel cobrar',
               true,
+              'Formato da Empresa',
             )
 
       const limite = dia(t.onboarding) + dias * DIA
@@ -338,6 +351,7 @@ export const RELOGIOS: Relogio[] = [
         return foraDoFormato(
           t.palestranteExclusivo === 'Sim' ? SEM_MINUTA : t.formatoContrato || 'Formato de Contrato está em branco',
           !t.formatoContrato && t.palestranteExclusivo !== 'Sim',
+          'Formato de Contrato',
         )
       if (tem(t.envioPalestrante)) return { estado: 'concluido', dias: null, texto: 'minuta enviada', cumpriu: null }
       return { estado: 'bloqueado', dias: null, texto: 'falta o prazo de envio da minuta', cumpriu: null }
@@ -359,6 +373,7 @@ export const RELOGIOS: Relogio[] = [
         return foraDoFormato(
           t.palestranteExclusivo === 'Sim' ? SEM_MINUTA : t.formatoContrato || 'Formato de Contrato está em branco',
           !t.formatoContrato && t.palestranteExclusivo !== 'Sim',
+          'Formato de Contrato',
         )
       const limite = dia(t.onboarding) + DIAS_ASSINATURA_PALESTRANTE * DIA
       const prazo = Number.isFinite(limite) ? iso(limite) : undefined
@@ -620,6 +635,16 @@ export function avaliarEtapa(
 
   const s = pior(corDaEtapa(t, regra.label, hoje), briefingPendente(t, regra.label, hoje))
   if (s) return { ...base, cor: s.cor, texto: s.texto }
+
+  // Cinza nesta altura é sempre falta de dado — cumprido, prazo por abrir e
+  // isenção por resposta preenchida já viraram verde em corDaEtapa. Então diz
+  // qual campo, que é a única ação possível.
+  for (const rel of RELOGIOS) {
+    if (!rel.etapa.includes(regra.label)) continue
+    const v = rel.ver(t, hoje)
+    if (v.campoFaltando) return { ...base, texto: `falta ${v.campoFaltando}` }
+    if (v.estado === 'sem-dado') return { ...base, texto: `${rel.curto} · ${v.texto}` }
+  }
   return { ...base, texto: 'sem prazo nesta etapa' }
 }
 
