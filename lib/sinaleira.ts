@@ -97,7 +97,7 @@ export const SLA: Record<string, Regra> = {
   // relogio, e inventar aqui seria supor.
   '1452885000': { label: 'Confirmar PGTO Pré palestra', ordem: 5, tipo: 'sem-prazo' },
   '1448673032': { label: 'Aguardando Evento', ordem: 6, tipo: 'evento' },
-  '1451268423': { label: 'Coletar NPS e Fotos', ordem: 7, tipo: 'sem-prazo' },
+  '1451268423': { label: 'Coletar NPS e Fotos', ordem: 7, tipo: 'relogio' },
   '1088361911': { label: 'Confirmar PGTO Pós palestra', ordem: 8, tipo: 'dias', dias: 20 },
   '1333136740': { label: 'Solicitar NF Palestrante', ordem: 9, tipo: 'dias', dias: 20 },
   // O HubSpot jogou "Em andamento" para o fim do board e ela está com zero
@@ -130,6 +130,7 @@ const REGRA_EM_TEXTO: Record<string, string> = {
     'envio 1 dia útil após o onboarding · assinatura na data do prazo · minuta do palestrante conforme o formato',
   'Realizar Briefing': 'agendar entre D-30 e D-25 · realizar entre D-15 e D-10',
   'Faturar': 'emissão em até 3 dias após a assinatura',
+  'Coletar NPS e Fotos': 'até 5 dias após a realização do evento',
 }
 
 // As outras 4 etapas do CS têm closed_date preenchido — ticket encerrado, sai

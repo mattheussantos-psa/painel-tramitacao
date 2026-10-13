@@ -124,6 +124,14 @@ export const ETAPAS_LOGISTICA = ['Contratar Logística', 'Logística']
 // Dias entre o negócio ser ganho e a logística ter que estar adquirida.
 export const PRAZO_AQUISICAO = 5
 
+// Dias entre a realização do evento e a coleta de NPS e fotos.
+export const PRAZO_NPS = 5
+
+// Etapas de trabalho DEPOIS do evento. Nelas o evento ter passado é a
+// condição para o prazo começar, não um atraso — sem esta lista, a regra de
+// eventoPassou pintaria de vermelho todo ticket que chega em Coletar NPS.
+export const ETAPAS_POS_EVENTO = ['Coletar NPS e Fotos']
+
 // Dias entre o onboarding e a assinatura do palestrante. Mesmo marco do
 // contrato do cliente, número único: o prazo do cliente varia por Formato da
 // Empresa, o do palestrante não.
@@ -489,7 +497,27 @@ export const RELOGIOS: Relogio[] = [
       return { estado: D >= 11 ? 'verde' : D >= 8 ? 'amarelo' : 'vermelho', dias: D, texto: `evento a D-${D}`, cumpriu: null }
     },
   },
-]
+  {
+    chave: 'nps-coleta',
+    etapa: ['Coletar NPS e Fotos'],
+    nome: 'Coleta de NPS e fotos',
+    curto: 'coleta',
+    regra: `Até ${PRAZO_NPS} dias após a realização do evento · amarelo 1 a 3 dias depois · vermelho 4+`,
+    confianca: 'fechado',
+    gatilho: 'data_do_evento__ganho_',
+    marco: '— sair da etapa é o único sinal de que foi coletado',
+    pendencia:
+      'Faixa de cor não foi acordada: aplica a mesma que o CS definiu para prazo em data. Não há campo que marque a coleta, então o relógio corre enquanto o ticket estiver na etapa.',
+    ver: (t, hoje) => {
+      if (!tem(t.evento))
+        return { estado: 'sem-dado', dias: null, texto: 'sem data de evento', cumpriu: null }
+      // Antes do evento não há o que coletar: o prazo nem abriu.
+      const D = emDias(dia(t.evento), hojeEmDias(hoje))
+      if (D > 0) return { estado: 'nao-iniciado', dias: D, texto: `evento a D-${D}`, cumpriu: null }
+      const prazo = iso(dia(t.evento) + PRAZO_NPS * DIA)
+      return { ...contraPrazo(prazo, hoje, ''), prazo }
+    },
+  },]
 
 export const ETAPA_BRIEFING = 'Realizar Briefing'
 export const BRIEFING_ATENCAO = 15
@@ -623,7 +651,7 @@ export function avaliarEtapa(
   // e isso vale mais que qualquer data de propriedade. Sem esta regra, um
   // ticket com o evento três dias atrás ficava verde porque o pagamento da
   // logística estava marcado para dali a um mês.
-  if (eventoPassou(t, hoje))
+  if (!ETAPAS_POS_EVENTO.includes(regra.label) && eventoPassou(t, hoje))
     return {
       ...base,
       cor: 'vermelho',

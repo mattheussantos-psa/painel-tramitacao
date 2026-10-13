@@ -74,11 +74,10 @@ for (const id of Object.keys(ENCERRADAS))
   assert.ok(!(id in SLA), `etapa encerrada ${id} nao devia ter prazo`)
 assert.equal(Object.keys(SLA).length, 10)
 
-// Etapas sem regra acordada ficam cinza mostrando o tempo parado, nunca verde.
-for (const id of ['1452885000', '1451268423']) {
-  assert.equal(SLA[id].tipo, 'sem-prazo', 'etapa sem regra do CS')
-  assert.equal(avaliar(t({ stage: id, entrouEtapa: '2026-09-01' }), HOJE).cor, 'cinza')
-}
+// Confirmar PGTO Pre palestra segue sem regra do CS: cinza mostrando o tempo
+// parado, nunca verde. Coletar NPS saiu desta lista quando ganhou prazo.
+assert.equal(SLA['1452885000'].tipo, 'sem-prazo', 'etapa sem regra do CS')
+assert.equal(avaliar(t({ stage: '1452885000', entrouEtapa: '2026-09-01' }), HOJE).cor, 'cinza')
 
 // Logistica, Contrato e Briefing entraram no CS em 02/10/2026 e levaram os
 // tickets de "Em andamento". Sem elas na tabela o painel perdia 152 tickets.
@@ -921,3 +920,29 @@ assert.match(
 )
 
 console.log('ok — cinza diz qual campo falta')
+
+// ---- Coletar NPS e Fotos: 5 dias apos o evento ----
+// Etapa de trabalho DEPOIS do evento, entao eventoPassou nao pode pinta-la de
+// vermelho: o evento ter acontecido e a condicao para o prazo comecar.
+const NPS = '1451268423'
+const nps = (over) => avaliarEtapa(T({ stage: NPS, entrouEtapa: '2026-09-20', ...over }), HOJE, QUADROS.cs.sla)
+
+// HOJE = 29/09. Evento em 26/09 + 5 = 01/10, ainda no prazo.
+assert.equal(nps({ evento: '2026-09-26' }).cor, 'verde')
+assert.match(nps({ evento: '2026-09-26' }).texto, /^coleta · faltam 2d/)
+// Evento em 24/09 + 5 = 29/09: vence hoje, ainda verde.
+assert.equal(nps({ evento: '2026-09-24' }).cor, 'verde')
+// 22/09 + 5 = 27/09, dois dias depois.
+assert.equal(nps({ evento: '2026-09-22' }).cor, 'amarelo')
+// 20/09 + 5 = 25/09, quatro dias depois.
+assert.equal(nps({ evento: '2026-09-20' }).cor, 'vermelho')
+// Evento ainda por vir: o prazo nem abriu, e isso e estar em dia.
+assert.equal(nps({ evento: '2026-10-20' }).cor, 'verde')
+assert.match(nps({ evento: '2026-10-20' }).texto, /^coleta · evento a D-21/)
+// Sem data de evento nao da para contar: cinza dizendo o que falta.
+assert.equal(nps({ evento: '' }).cor, 'cinza')
+assert.match(nps({ evento: '' }).texto, /sem data de evento/)
+// A regra do briefing nao atravessa para ca: o evento ja passou.
+assert.ok(!alertas(T({ stage: NPS, evento: '2026-09-26' }), HOJE, QUADROS.cs.sla).some((a) => a.chave === 'briefing'))
+
+console.log('ok — coleta de NPS em 5 dias do evento')
