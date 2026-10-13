@@ -68,6 +68,13 @@ export type Veredito = {
 const DIA = 86400000
 const dia = (d: string | undefined) => Date.parse(String(d ?? '').slice(0, 10) + 'T00:00:00Z')
 const tem = (d: string | undefined) => !!d && Number.isFinite(dia(d))
+// Marco que o campo diz ter acontecido, mas só se a data já chegou. Os campos
+// de envio são usados como data PLANEJADA: 14 dos 32 "Envio contrato
+// palestrante" preenchidos estão no futuro, e 8 dos 37 do cliente. O relógio
+// dava "minuta enviada" para um envio marcado para daqui a nove dias.
+const aconteceu = (d: string | undefined, hoje: number) =>
+  tem(d) && dia(d as string) <= hojeEmDias(hoje)
+
 // Anexo não é data: tem() rejeitaria o id do arquivo.
 const anexado = (v: string | undefined) => !!v && v.trim() !== ''
 const emDias = (a: number, b: number) => Math.round((a - b) / DIA)
@@ -269,7 +276,8 @@ export const RELOGIOS: Relogio[] = [
     marco: 'data_de_envio_contrato_cliente',
     ver: (t, hoje) => {
       if (!usaCliente(t.formatoContrato)) return foraDoFormato('contrato é entre cliente e palestrante')
-      if (tem(t.envioCliente)) return { estado: 'concluido', dias: null, texto: 'contrato enviado', cumpriu: null }
+      if (aconteceu(t.envioCliente, hoje))
+        return { estado: 'concluido', dias: null, texto: 'contrato enviado', cumpriu: null }
       if (contratoAssinado(t))
         return { estado: 'concluido', dias: null, texto: 'assinado, logo foi enviado', cumpriu: null }
       if (!tem(t.onboarding))
@@ -354,14 +362,22 @@ export const RELOGIOS: Relogio[] = [
     gatilho: '— falta o gap acordado',
     marco: 'data_de_envio_contrato_palestrante',
     pendencia: 'O CS escreveu "após a assinatura de contrato com o cliente (definir gap)" e o número nunca veio. Sem ele a minuta não ganha cor: só diz se saiu.',
-    ver: (t) => {
+    ver: (t, hoje) => {
       if (!usaPalestrante(t))
         return foraDoFormato(
           t.palestranteExclusivo === 'Sim' ? SEM_MINUTA : t.formatoContrato || 'Formato de Contrato está em branco',
           !t.formatoContrato && t.palestranteExclusivo !== 'Sim',
           'Formato de Contrato',
         )
-      if (tem(t.envioPalestrante)) return { estado: 'concluido', dias: null, texto: 'minuta enviada', cumpriu: null }
+      if (aconteceu(t.envioPalestrante, hoje))
+        return { estado: 'concluido', dias: null, texto: 'minuta enviada', cumpriu: null }
+      if (tem(t.envioPalestrante))
+        return {
+          estado: 'bloqueado',
+          dias: null,
+          texto: `envio marcado para ${br(t.envioPalestrante)}, ainda não aconteceu`,
+          cumpriu: null,
+        }
       return { estado: 'bloqueado', dias: null, texto: 'falta o prazo de envio da minuta', cumpriu: null }
     },
   },
