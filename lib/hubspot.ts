@@ -1,5 +1,6 @@
 import { QUADROS, completar, iso, tarefaMaisUrgente, type Quadro, type Tarefa, type Ticket } from './sinaleira'
 import { chamar } from './http'
+import { squadDoEmail } from './squads'
 import { ETAPAS_LOGISTICA } from './relogios'
 import snapshot from '@/data/snapshot.json'
 import curadores from '@/data/curadores.json'
@@ -39,7 +40,9 @@ const PROPS = [
   'contrato_palestrante',
 ]
 
-export type Owner = { nome: string; inativo: boolean }
+// O e-mail vem junto porque é por ele que a squad é resolvida — ver
+// lib/squads.ts. O nome não serve: muda, duplica e não é chave.
+export type Owner = { nome: string; inativo: boolean; email: string }
 export type Owners = Record<string, Owner>
 export type Fonte = {
   tickets: Ticket[]
@@ -296,7 +299,11 @@ export async function buscarOwners(token: string): Promise<Owners> {
       const pagina = await chamar(url, { headers: { Authorization: `Bearer ${token}` } }, 'owners')
       for (const o of pagina.results ?? []) {
         const nome = [o.firstName, o.lastName].filter(Boolean).join(' ').trim()
-        owners[String(o.id)] = { nome: nome || o.email || `#${o.id}`, inativo: arquivados }
+        owners[String(o.id)] = {
+          nome: nome || o.email || `#${o.id}`,
+          inativo: arquivados,
+          email: o.email ?? '',
+        }
       }
       after = pagina.paging?.next?.after
     } while (after)
@@ -308,7 +315,9 @@ export async function buscarOwners(token: string): Promise<Owners> {
 function ownersDoSnapshot(): Owners {
   const out: Owners = {}
   for (const [id, nome] of Object.entries(curadores.nomes)) {
-    out[id] = { nome, inativo: curadores.inativos.includes(id) }
+    // O snapshot não guarda e-mail: sem token, o recorte por squad não
+    // existe. É o modo de emergência, não o de trabalho.
+    out[id] = { nome, inativo: curadores.inativos.includes(id), email: '' }
   }
   return out
 }
@@ -416,6 +425,10 @@ export function nomeCurador(owners: Owners, id: string | null) {
 // precisa dizer isso, senão fica esperando ação de quem não existe mais.
 export function curadorInativo(owners: Owners, id: string | null) {
   return !!id && !!owners[id]?.inativo
+}
+
+export function squadDe(owners: Owners, id: string | null) {
+  return id ? squadDoEmail(owners[id]?.email) : null
 }
 
 // Cache em memória, por instância. O teto do search é por segundo e vale pra

@@ -11,6 +11,7 @@ import {
   type Regra,
   type Regua,
 } from '@/lib/sinaleira'
+import { FORA_DAS_SQUADS, NOMES_SQUADS } from '@/lib/squads'
 import { RELOGIOS, type Conta } from '@/lib/relogios'
 
 // O quadro vem do servidor porque a tabela de prazos e por pipeline. Com ela
@@ -46,6 +47,7 @@ export type Linha = {
   curadorInativo: boolean
   proprietario: string | null
   proprietarioInativo: boolean
+  squad: string | null
   cor: Cor
   regua: Regua
   dias: number
@@ -1396,6 +1398,7 @@ export default function Painel({
   aviso?: string
 }) {
   const [cor, setCor] = useState<Cor | null>(null)
+  const [squad, setSquad] = useState('')
   const [curador, setCurador] = useState('')
   const [proprietario, setProprietario] = useState('')
   const [semDono, setSemDono] = useState(false)
@@ -1410,10 +1413,11 @@ export default function Painel({
     () =>
       linhas.filter(
         (l) =>
+          (!squad || (squad === FORA_DAS_SQUADS ? !l.squad : l.squad === squad)) &&
           (!curador || l.curador === curador) &&
           (!proprietario || l.proprietario === proprietario),
       ),
-    [linhas, curador, proprietario],
+    [linhas, squad, curador, proprietario],
   )
 
   // Ninguém ativo no ticket: nem curador, nem proprietário. Não adianta cobrar
@@ -1495,11 +1499,19 @@ export default function Painel({
       a.localeCompare(b, 'pt-BR'),
     )
 
+  // Só entram as squads que têm ticket, e "Fora das squads" só aparece
+  // quando existe ticket de fora — senão é opção que não filtra nada.
+  const squads = useMemo(() => {
+    const existentes = NOMES_SQUADS.filter((s) => linhas.some((l) => l.squad === s))
+    return linhas.some((l) => !l.squad) ? [...existentes, FORA_DAS_SQUADS] : existentes
+  }, [linhas])
+
   const curadores = useMemo(() => nomes('curador'), [linhas])
   const proprietarios = useMemo(() => nomes('proprietario'), [linhas])
 
   const limpar = () => {
     setCor(null)
+    setSquad('')
     setCurador('')
     setProprietario('')
     setSemDono(false)
@@ -1507,7 +1519,7 @@ export default function Painel({
     setAlerta('')
   }
 
-  const filtrando = !!(cor || curador || proprietario || semDono || comTarefa || alerta)
+  const filtrando = !!(cor || squad || curador || proprietario || semDono || comTarefa || alerta)
   const visiveisCores = CORES.filter(({ cor: c }) => c !== 'cinza' || contagem[c] > 0)
 
   return (
@@ -1548,6 +1560,11 @@ export default function Painel({
         }}
       >
         {/* Etapa nao entra aqui: no kanban a coluna ja e o filtro de etapa. */}
+        {/* A squad vem primeiro: e o recorte que a gestora abre antes de
+            olhar qualquer outra coisa. */}
+        {squads.length > 0 && (
+          <Filtro vazio="Squad" valor={squad} opcoes={squads} aoMudar={setSquad} />
+        )}
         {curadores.length > 0 && (
           <Filtro vazio="Curador" valor={curador} opcoes={curadores} aoMudar={setCurador} />
         )}

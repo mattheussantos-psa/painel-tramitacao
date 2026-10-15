@@ -1,4 +1,4 @@
-import { carregar, nomeCurador, curadorInativo, linkTicket, type Fonte } from '@/lib/hubspot'
+import { squadDe, carregar, nomeCurador, curadorInativo, linkTicket, type Fonte } from '@/lib/hubspot'
 import { alertas, avaliarEtapa, explicar } from '@/lib/relogios'
 import {
   cliente,
@@ -66,6 +66,9 @@ export function linhasDe(fonte: Fonte, quadro: Quadro, hoje: number) {
         curadorInativo: curadorInativo(owners, t.curador),
         proprietario: nomeCurador(owners, t.proprietario),
         proprietarioInativo: curadorInativo(owners, t.proprietario),
+        // Pelo proprietário: nenhum ticket ativo tem gente de squad como
+        // curador, e 230 têm como proprietário.
+        squad: squadDe(owners, t.proprietario),
         ...a,
       }
     })
