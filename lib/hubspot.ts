@@ -23,6 +23,8 @@ const PROPS = [
   'palestrante_e_exclusivo',
   'palestrante_principal',
   'assinar_contrato',
+  // Duplicata de "Prazo de Assinatura de Contrato": 285 na antiga, 4 na nova.
+  'prazo_para_assinatura_de_contrato',
   'data_de_assinatura_do_contrato',
   'data_para_realizacao_de_briefing',
   'data_e_hora_da_call_de_briefing',
@@ -31,6 +33,13 @@ const PROPS = [
   'data_de_faturamento',
   'data_de_emissao',
   'adquirir_logistica',
+  // Mesmo campo em três propriedades, criadas em momentos diferentes. Medido
+  // em 15/10/2026: adquirir_logistica 162, prazo_de_aquisicao_de_logistica 51
+  // (30 tickets SÓ nela), prazo_para_aquisicao_da_logistica 1. Lê todas e usa
+  // a primeira preenchida, na ordem de uso — a mais antiga manda, que é o que
+  // o CS decidiu quando a duplicata apareceu.
+  'prazo_de_aquisicao_de_logistica',
+  'prazo_para_aquisicao_da_logistica',
   'data_prevista_de_pagamento_logistica',
   'data_de_envio_contrato_cliente',
   'data_de_envio_contrato_palestrante',
@@ -55,6 +64,17 @@ export type Fonte = {
 
 
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+// Propriedade duplicada no HubSpot: o mesmo dado mora em dois ou três campos,
+// e cada ticket tem um deles preenchido. Pega o primeiro que tiver valor, na
+// ordem dada — sem isso o painel enxerga vazio onde há data.
+const primeira = (...vs: (string | number | null | undefined)[]) => {
+  for (const v of vs) {
+    const s = iso(v)
+    if (s) return s
+  }
+  return ''
+}
 
 // O search do HubSpot tem teto por segundo (policy SECONDLY, 4 req/s). Paginar
 // os 436 tickets em sequência já estoura sozinho, e o teto é da conta inteira:
@@ -127,14 +147,18 @@ async function buscarAoVivo(
         formatoContrato: p.formato_de_contrato__ganho_ ?? '',
         palestranteExclusivo: p.palestrante_e_exclusivo ?? '',
         palestrantePrincipal: p.palestrante_principal ?? '',
-        prazoAssinatura: iso(p.assinar_contrato),
+        prazoAssinatura: primeira(p.assinar_contrato, p.prazo_para_assinatura_de_contrato),
         dataAssinatura: iso(p.data_de_assinatura_do_contrato),
         prazoBriefing: iso(p.data_para_realizacao_de_briefing),
         callBriefing: iso(p.data_e_hora_da_call_de_briefing),
         entrouBriefing: iso(p.hs_v2_date_entered_1450325175),
         dataFaturamento: iso(p.data_de_faturamento),
         dataEmissao: iso(p.data_de_emissao),
-        prazoLogistica: iso(p.adquirir_logistica),
+        prazoLogistica: primeira(
+          p.adquirir_logistica,
+          p.prazo_de_aquisicao_de_logistica,
+          p.prazo_para_aquisicao_da_logistica,
+        ),
         pagamentoLogistica: iso(p.data_prevista_de_pagamento_logistica),
         envioCliente: iso(p.data_de_envio_contrato_cliente),
         envioPalestrante: iso(p.data_de_envio_contrato_palestrante),

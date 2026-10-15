@@ -35,6 +35,7 @@ const PROPS = [
   'palestrante_e_exclusivo',
   'palestrante_principal',
   'assinar_contrato',
+  'prazo_para_assinatura_de_contrato',
   'data_de_assinatura_do_contrato',
   'data_para_realizacao_de_briefing',
   'data_e_hora_da_call_de_briefing',
@@ -42,6 +43,8 @@ const PROPS = [
   'data_de_faturamento',
   'data_de_emissao',
   'adquirir_logistica',
+  'prazo_de_aquisicao_de_logistica',
+  'prazo_para_aquisicao_da_logistica',
   'data_prevista_de_pagamento_logistica',
   'data_de_envio_contrato_cliente',
   'data_de_envio_contrato_palestrante',
@@ -66,6 +69,16 @@ function token() {
 }
 
 const H = { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' }
+
+// Mesma regra de lib/hubspot.ts: propriedade duplicada, vale a primeira com
+// valor na ordem de uso.
+const primeira = (...vs) => {
+  for (const v of vs) {
+    const s = iso(v)
+    if (s) return s
+  }
+  return ''
+}
 const espera = (ms) => new Promise((r) => setTimeout(r, ms))
 
 async function chamar(url, init, onde) {
@@ -155,14 +168,18 @@ const tickets = brutos.map((r) => {
     formatoContrato: p.formato_de_contrato__ganho_ ?? '',
     palestranteExclusivo: p.palestrante_e_exclusivo ?? '',
     palestrantePrincipal: p.palestrante_principal ?? '',
-    prazoAssinatura: iso(p.assinar_contrato),
+    prazoAssinatura: primeira(p.assinar_contrato, p.prazo_para_assinatura_de_contrato),
     dataAssinatura: iso(p.data_de_assinatura_do_contrato),
     prazoBriefing: iso(p.data_para_realizacao_de_briefing),
     callBriefing: iso(p.data_e_hora_da_call_de_briefing),
     entrouBriefing: iso(p.hs_v2_date_entered_1450325175),
     dataFaturamento: iso(p.data_de_faturamento),
     dataEmissao: iso(p.data_de_emissao),
-    prazoLogistica: iso(p.adquirir_logistica),
+    prazoLogistica: primeira(
+      p.adquirir_logistica,
+      p.prazo_de_aquisicao_de_logistica,
+      p.prazo_para_aquisicao_da_logistica,
+    ),
     pagamentoLogistica: iso(p.data_prevista_de_pagamento_logistica),
     envioCliente: iso(p.data_de_envio_contrato_cliente),
     envioPalestrante: iso(p.data_de_envio_contrato_palestrante),
