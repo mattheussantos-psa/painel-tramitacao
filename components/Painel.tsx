@@ -1355,7 +1355,7 @@ function Escolha({
   )
 }
 
-function Filtro({
+export function Filtro({
   vazio,
   valor,
   opcoes,

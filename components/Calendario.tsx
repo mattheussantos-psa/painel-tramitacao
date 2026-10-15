@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import Cabecalho from './Cabecalho'
-import { Conta, type Linha } from './Painel'
+import { Conta, Filtro, type Linha } from './Painel'
 import type { Cor } from '@/lib/sinaleira'
+import { FORA_DAS_SQUADS, NOMES_SQUADS } from '@/lib/squads'
 
 const DIA = 86400000
 const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']
@@ -26,7 +27,7 @@ const chave = (d: Date) => d.toISOString().slice(0, 10)
 const doIso = (iso: string) => new Date(iso.slice(0, 10) + 'T00:00:00Z')
 
 export default function Calendario({
-  linhas,
+  linhas: todas,
   hoje,
   aoVivo,
   atualizadoEm,
@@ -38,6 +39,23 @@ export default function Calendario({
   atualizadoEm: string
   capturadoEm: string
 }) {
+  const [squad, setSquad] = useState('')
+
+  // O recorte da gestora vem antes de tudo: contagem do mês, cores e a linha
+  // de "sem data de evento" têm que falar da equipe dela, não da base inteira.
+  const linhas = useMemo(
+    () =>
+      squad
+        ? todas.filter((l) => (squad === FORA_DAS_SQUADS ? !l.squad : l.squad === squad))
+        : todas,
+    [todas, squad],
+  )
+
+  const squads = useMemo(() => {
+    const existentes = NOMES_SQUADS.filter((s) => todas.some((l) => l.squad === s))
+    return todas.some((l) => !l.squad) ? [...existentes, FORA_DAS_SQUADS] : existentes
+  }, [todas])
+
   const inicio = doIso(hoje)
   const [mes, setMes] = useState(() => new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1)))
   const [cor, setCor] = useState<Cor | null>(null)
@@ -126,6 +144,9 @@ export default function Calendario({
           >
             Hoje
           </button>
+          {squads.length > 0 && (
+            <Filtro vazio="Squad" valor={squad} opcoes={squads} aoMudar={setSquad} />
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
