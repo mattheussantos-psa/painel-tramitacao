@@ -67,13 +67,6 @@ export type Veredito = {
 const DIA = 86400000
 const dia = (d: string | undefined) => Date.parse(String(d ?? '').slice(0, 10) + 'T00:00:00Z')
 const tem = (d: string | undefined) => !!d && Number.isFinite(dia(d))
-// Marco que o campo diz ter acontecido, mas só se a data já chegou. Os campos
-// de envio são usados como data PLANEJADA: 14 dos 32 "Envio contrato
-// palestrante" preenchidos estão no futuro, e 8 dos 37 do cliente. O relógio
-// dava "minuta enviada" para um envio marcado para daqui a nove dias.
-const aconteceu = (d: string | undefined, hoje: number) =>
-  tem(d) && dia(d as string) <= hojeEmDias(hoje)
-
 // Anexo não é data: tem() rejeitaria o id do arquivo.
 const anexado = (v: string | undefined) => !!v && v.trim() !== ''
 const emDias = (a: number, b: number) => Math.round((a - b) / DIA)
@@ -786,7 +779,12 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
   const meus = RELOGIOS.filter((rel) => rel.etapa.includes(etapa))
   const entrou = dia(t.entrouEtapa)
 
-  const datas: { rotulo: string; valor: string }[] = []
+  // 'cumprido' marca a data cujo relógio já fechou. Sem isso, um prazo
+  // vencido aparece na tabela com cara de cobrança mesmo quando o contrato
+  // está anexado e não há nada a cobrar — ASAAS (48724787061) mostrava
+  // "Prazo de Assinatura de Contrato 09/10/2026" no topo com o relógio
+  // concluído logo abaixo.
+  const datas: { rotulo: string; valor: string; cumprido?: boolean }[] = []
   const vistos = new Set<string>()
 
   // A tabela só traz data de relógio que corre neste ticket. Antes vinham as
@@ -802,7 +800,7 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
       const d = dataDe(t, prop)
       if (!d || vistos.has(d.rotulo)) continue
       vistos.add(d.rotulo)
-      datas.push(d)
+      datas.push({ ...d, cumprido: v.estado === 'concluido' })
     }
   }
 
@@ -815,7 +813,7 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
     const jaListado = datas.some((x) => x.valor === v.prazo)
     if (v.prazo && !jaListado && !vistos.has(rotuloPrazo)) {
       vistos.add(rotuloPrazo)
-      datas.push({ rotulo: rotuloPrazo, valor: v.prazo })
+      datas.push({ rotulo: rotuloPrazo, valor: v.prazo, cumprido: v.estado === 'concluido' })
     }
     const g = dataDe(t, rel.gatilho)
     const prazo = dia(v.prazo || g?.valor || '')

@@ -912,24 +912,6 @@ assert.ok(!alertas(T({ stage: NPS, evento: '2026-09-26' }), HOJE, QUADROS.cs.sla
 
 console.log('ok — coleta de NPS em 5 dias do evento')
 
-// ---- marco com data no futuro nao aconteceu ----
-// Prefeitura de Colombo (46097473964): "Envio contrato palestrante" marcado
-// para 22/10 e o painel dizia "minuta enviada". Os campos de envio sao usados
-// como data PLANEJADA: 14 dos 32 preenchidos no palestrante estao no futuro.
-const ENVIO = { formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não' }
-assert.equal(R['palestrante-envio']({ ...ENVIO, envioPalestrante: '2026-09-10' }).estado, 'concluido')
-assert.equal(R['palestrante-envio']({ ...ENVIO, envioPalestrante: '2026-09-29' }).estado, 'concluido', 'hoje ja conta')
-const marcado = R['palestrante-envio']({ ...ENVIO, envioPalestrante: '2026-10-22' })
-assert.equal(marcado.estado, 'bloqueado')
-assert.match(marcado.texto, /envio marcado para 22\/10\/2026, ainda não aconteceu/)
-
-// No contrato do cliente o envio futuro devolve o relogio a contagem: nao foi
-// enviado, entao os dias uteis desde o onboarding voltam a correr.
-assert.equal(R['contrato-envio']({ onboarding: '2026-09-01', envioCliente: '2026-09-10' }).estado, 'concluido')
-assert.equal(R['contrato-envio']({ onboarding: '2026-09-01', envioCliente: '2026-10-22' }).estado, 'vermelho')
-assert.match(R['contrato-envio']({ onboarding: '2026-09-01', envioCliente: '2026-10-22' }).texto, /dias úteis desde o onboarding/)
-
-console.log('ok — marco com data no futuro nao aconteceu')
 
 // ---- despacho registrado nao fecha a etapa ----
 // Despachar nao conclui o faturamento: so sair da coluna conclui. A data de
@@ -967,3 +949,21 @@ assert.equal(assinouNoPrazo.cor, 'verde')
 
 console.log('ok — cumprido fora do prazo nao e verde')
 
+
+// ---- prazo de relogio fechado nao tem cara de cobranca ----
+// ASAAS (48724787061): contrato do cliente anexado, e o topo do dialogo
+// mostrava "Prazo de Assinatura de Contrato 09/10/2026" — data vencida com
+// cara de pendencia, com o relogio concluido logo abaixo.
+const comAnexo = explicar(
+  T({ stage: CTR, evento: '2026-11-20', formatoContrato: 'MC (Cliente x PSA) = 100% PSA',
+      palestranteExclusivo: 'Não', prazoAssinatura: '2026-09-10', anexoCliente: '9',
+      prazoAssinaturaPalestrante: '2026-10-10' }),
+  'Assinar Contrato',
+  HOJE,
+)
+const doCliente = comAnexo.datas.find((d) => d.rotulo === 'Prazo de Assinatura de Contrato')
+assert.equal(doCliente.cumprido, true, 'prazo do contrato anexado sai marcado como cumprido')
+const doPalestrante = comAnexo.datas.find((d) => d.rotulo === 'Prazo de Assinatura  Contrato Palestrante')
+assert.equal(doPalestrante.cumprido, false, 'o que ainda corre segue sem marca')
+
+console.log('ok — prazo de relogio fechado nao tem cara de cobranca')

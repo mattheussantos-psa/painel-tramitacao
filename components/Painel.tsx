@@ -36,7 +36,7 @@ export type Linha = {
   alertas: { chave: string; texto: string }[]
   entrouEtapa: string
   conta: {
-    datas: { rotulo: string; valor: string }[]
+    datas: { rotulo: string; valor: string; cumprido?: boolean }[]
     contas: Conta[]
     eventoPassou: boolean
     briefing: { cor: Cor; texto: string } | null
@@ -875,7 +875,19 @@ export function Conta({ l, aoFechar }: { l: Linha; aoFechar: () => void }) {
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  {d.valor ? dataBr(d.valor) : 'vazio'}
+                  {/* Prazo de relógio já fechado não é cobrança: a data vencida
+                      fica riscada e com o ✓, senão ela lidera o diálogo
+                      parecendo a pendência do ticket. */}
+                  {d.cumprido && d.valor ? (
+                    <>
+                      <span style={{ color: 'var(--verde)' }}>✓</span>{' '}
+                      <span style={{ textDecoration: 'line-through', opacity: 0.55 }}>
+                        {dataBr(d.valor)}
+                      </span>
+                    </>
+                  ) : (
+                    <>{d.valor ? dataBr(d.valor) : 'vazio'}</>
+                  )}
                 </td>
               </tr>
             ))}
