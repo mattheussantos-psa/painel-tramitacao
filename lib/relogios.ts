@@ -445,7 +445,7 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Faturar', 'Faturamento'],
     nome: 'Emissão do faturamento',
     curto: 'emissão',
-    regra: 'Até a data em "Prazo para Despachar (Faturamento ao Financeiro)" quando houver; senão 3 dias após a assinatura · amarelo 1 a 2 dias depois · vermelho 3+',
+    regra: `Com "Prazo para Despachar (Faturamento ao Financeiro)": até essa data, amarelo nos ${AMARELO_ANTES} dias antes, vermelho depois · sem ela: 3 dias após a assinatura, amarelo 1 a 2 depois, vermelho 3+`,
     confianca: 'hipotese',
     gatilho: 'data_de_assinatura_do_contrato',
     marco: 'data_de_emissao e data_emissao_nf existem e estão zeradas — uso "Enviado ao Faturamento" como proxy',
@@ -455,7 +455,8 @@ export const RELOGIOS: Relogio[] = [
       // esse prazo, e a distância dele até a assinatura vai de -142 a +414
       // dias — não é "assinatura + N" disfarçado, é prazo próprio, e o CS o
       // escolhe caso a caso. Em Faturar são 10 dos 13.
-      const limite = tem(t.prazoDespacho) ? dia(t.prazoDespacho) : dia(t.dataAssinatura) + 3 * DIA
+      const proprio = tem(t.prazoDespacho)
+      const limite = proprio ? dia(t.prazoDespacho) : dia(t.dataAssinatura) + 3 * DIA
       const prazo = Number.isFinite(limite) ? iso(limite) : undefined
 
       if (!Number.isFinite(limite))
@@ -473,9 +474,13 @@ export const RELOGIOS: Relogio[] = [
           cumpriu: d <= 0,
         }
       }
+      // Reta final amarela só quando o prazo é o do ticket. Na regra de
+      // "assinatura + 3" a janela inteira é menor que os AMARELO_ANTES dias
+      // da reta final, então ela nasceria amarela e nunca ficaria verde — a
+      // cor pararia de informar. Lá vale a tolerância de 2 dias depois.
       const d = emDias(hojeEmDias(hoje), limite)
       return {
-        estado: d <= 0 ? 'verde' : faixa(d, 0, 2),
+        estado: proprio ? faixaAteOPrazo(d) : d <= 0 ? 'verde' : faixa(d, 0, 2),
         dias: d,
         prazo,
         texto: d <= 0 ? `faltam ${-d}d para o prazo` : `${d}d depois do prazo`,

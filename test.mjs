@@ -980,8 +980,22 @@ assert.equal(desp({ dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05' })
 assert.match(desp({ dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05' }).texto, /^emissão · faltam 6d/)
 // E o prazo proprio tambem pode apertar: 25/09 ja venceu ha 4 dias.
 assert.equal(desp({ dataAssinatura: '2026-09-28', prazoDespacho: '2026-09-25' }).cor, 'vermelho')
-// Vence hoje ainda e verde, igual aos outros relogios de prazo em data.
-assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-09-29' }).cor, 'verde')
+// Reta final: prazo proprio a 3 dias e amarelo, nao verde. Com a janela
+// aberta (6 dias) segue verde.
+assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-10-02' }).cor, 'amarelo', 'faltam 3')
+assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-10-03' }).cor, 'amarelo', 'faltam 4')
+assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-10-04' }).cor, 'verde', 'faltam 5 ja esta fora da reta')
+// Vence hoje tambem e amarelo: e o ultimo dia para despachar.
+assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-09-29' }).cor, 'amarelo')
+// Um dia depois ja e vermelho — o prazo proprio nao tem tolerancia.
+assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-09-28' }).cor, 'vermelho')
+// Sem prazo proprio, a janela de "assinatura + 3" e menor que a reta final:
+// com ela a coluna nasceria amarela e nunca ficaria verde. La vale a
+// tolerancia de 2 dias depois.
+assert.equal(desp({ dataAssinatura: '2026-09-28' }).cor, 'verde', 'assinado ontem')
+assert.equal(desp({ dataAssinatura: '2026-09-26' }).cor, 'verde', 'vence hoje')
+assert.equal(desp({ dataAssinatura: '2026-09-25' }).cor, 'amarelo', '1 dia depois')
+assert.equal(desp({ dataAssinatura: '2026-09-23' }).cor, 'vermelho', '3 dias depois')
 // Despachado mede contra o prazo proprio, nao contra a assinatura.
 const cumpriuDesp = R['faturamento']({ dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05', dataFaturamento: '2026-10-01' })
 assert.equal(cumpriuDesp.estado, 'concluido')
