@@ -1012,3 +1012,21 @@ assert.equal(desp({}).cor, 'cinza')
 assert.equal(desp({ prazoDespacho: '2026-09-20' }).cor, 'vermelho')
 
 console.log('ok — prazo próprio do faturamento')
+
+// ---- cumprido fora do prazo nao e verde ----
+// Alvarez & Marsal (48344186331): faturamento despachado 1 dia depois do
+// prazo e o card dizia "em dia". Outro estava verde com o contrato assinado
+// 197 dias depois do prazo. Cumprido no prazo segue verde.
+const despachouNoPrazo = E({ stage: FAT, evento: '2026-11-20', dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05', dataFaturamento: '2026-10-01' })
+assert.equal(despachouNoPrazo.cor, 'verde')
+const foraDoPrazo = E({ stage: FAT, evento: '2026-11-20', dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05', dataFaturamento: '2026-10-06' })
+assert.equal(foraDoPrazo.cor, 'amarelo')
+assert.match(foraDoPrazo.texto, /despachado 1d depois do prazo/)
+// Vale para a assinatura do cliente tambem.
+const assinouTarde = E({ stage: CTR, evento: '2026-11-20', formatoEmpresa: 'Empresa Privada',
+  formatoContrato: 'MC (Cliente x PSA x Palestrante)', onboarding: '2026-01-05',
+  envioCliente: '2026-01-06', dataAssinatura: '2026-06-01' })
+assert.equal(assinouTarde.cor, 'amarelo')
+assert.match(assinouTarde.texto, /assinado \d+d depois do prazo/)
+
+console.log('ok — cumprido fora do prazo nao e verde')

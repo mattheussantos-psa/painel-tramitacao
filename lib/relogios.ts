@@ -621,7 +621,7 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
   // falta data, ou falta regra. Um contrato enviado e assinado dentro do prazo
   // caía em cinza porque nenhum relógio "produzia cor", e ficava indistinguível
   // de um ticket sem dado nenhum.
-  let cumprido: { curto: string; texto: string } | null = null
+  let cumprido: { curto: string; texto: string; cumpriu: boolean | null } | null = null
   // Relógio cuja janela ainda não abriu. Não é falta de dado: é prazo que
   // começa depois. Positiva Eventos (43679094830) ficava cinza em Realizar
   // Briefing com o evento a D-34, dizendo "sem prazo nesta etapa" — a etapa
@@ -641,7 +641,10 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
     if (v.estado === 'nao-aplica' && !v.faltaDado && !naoAplica)
       naoAplica = { curto: rel.curto, texto: v.texto }
     // O último concluído ganha a frase: é o passo mais adiantado da etapa.
-    if (v.estado === 'concluido') cumprido = { curto: rel.curto, texto: v.texto }
+    // Cumprido fora do prazo nao cede a vez: com dois concluidos na etapa, o
+    // que estourou o prazo e o que importa dizer — e o que tira o verde.
+    if (v.estado === 'concluido' && cumprido?.cumpriu !== false)
+      cumprido = { curto: rel.curto, texto: v.texto, cumpriu: v.cumpriu }
     // O primeiro a abrir é o que vale dizer: é o próximo prazo a correr.
     if (v.estado === 'nao-iniciado' && (!porComecar || (v.dias ?? 0) < (porComecar.dias ?? 0)))
       porComecar = { curto: rel.curto, texto: v.texto, dias: v.dias ?? 0 }
@@ -662,7 +665,16 @@ export function corDaEtapa(t: TicketSim, etapa: string, hoje: number) {
   if (cor) return { cor, texto }
   // Sem nenhum relógio aceso: verde quando algo foi cumprido e nada ficou sem
   // data. Com data faltando continua cinza, e o diálogo diz qual campo é.
-  if (cumprido && !faltaData) return { cor: 'verde' as Cor, texto: `${cumprido.curto} · ${cumprido.texto}` }
+  // Cumprido FORA do prazo não é verde. Alvarez & Marsal (48344186331) tinha
+  // o faturamento despachado um dia depois do prazo e o card dizia "em dia";
+  // outro estava verde com o contrato assinado 197 dias depois. Amarelo e não
+  // vermelho porque o marco aconteceu — não há o que cobrar, há o que
+  // registrar.
+  if (cumprido && !faltaData)
+    return {
+      cor: (cumprido.cumpriu === false ? 'amarelo' : 'verde') as Cor,
+      texto: `${cumprido.curto} · ${cumprido.texto}`,
+    }
   // Nada aceso, nada cumprido, mas há prazo esperando a janela abrir: está em
   // dia. Cinza aqui diria "não sei medir", e sabe-se — só não é hora ainda.
   if (porComecar && !faltaData)
