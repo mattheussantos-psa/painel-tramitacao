@@ -301,29 +301,21 @@ assert.equal(log({ logistica: '', ganhoNegocio: '2026-09-15' }).cor, 'cinza', 's
 // Sem as datas preenchidas o card nao vira verde por omissao.
 assert.equal(log({}).cor, 'cinza', 'sem ganho e sem pagamento')
 
-// Contrato: o envio corre 1 dia util do onboarding, a assinatura corre ate a
-// data em "Prazo de Assinatura de Contrato". Pior manda.
+// Contrato: a etapa corre pelas duas assinaturas, cada uma ate a data da sua
+// propriedade. Os relogios de envio sairam em 17/10/2026 — o CS nao tem como
+// metrificar "Data de Envio contrato Cliente/Palestrante" hoje.
 const ctr = (over) => E({ stage: CTR, evento: '2026-11-20', ...over })
-// Enviado ontem e prazo la na frente: verde nos dois.
-assert.equal(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-10-20' }).cor, 'verde')
-// Prazo de assinatura vencido com envio em dia: a assinatura manda.
-assert.equal(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-09-10' }).cor, 'vermelho')
-assert.match(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-09-10' }).texto, /^assinatura · /)
-// Os dois vermelhos: manda quem trava primeiro, que e o envio.
-assert.match(ctr({ onboarding: '2026-08-20', prazoAssinatura: '2026-09-10' }).texto, /^envio · /)
-// Com o envio registrado sobra a assinatura, que e a que o farmer cobra.
-assert.match(
-  ctr({ onboarding: '2026-08-20', prazoAssinatura: '2026-09-10', envioCliente: '2026-08-21' }).texto,
-  /^assinatura · /,
-)
+const SO_CLIENTE = { formatoContrato: 'MC (Cliente x PSA x Palestrante)' }
+assert.equal(ctr({ ...SO_CLIENTE, prazoAssinatura: '2026-10-20' }).cor, 'verde')
+assert.equal(ctr({ ...SO_CLIENTE, prazoAssinatura: '2026-09-10' }).cor, 'vermelho')
+assert.match(ctr({ ...SO_CLIENTE, prazoAssinatura: '2026-09-10' }).texto, /^assinatura · /)
+// Onboarding nao pinta mais nada nesta etapa.
+assert.equal(ctr({ ...SO_CLIENTE, onboarding: '2026-01-05', prazoAssinatura: '2026-10-20' }).cor, 'verde')
 // Sem prazo preenchido a assinatura ja conta como atrasada.
-assert.equal(ctr({ onboarding: '2026-09-28' }).cor, 'vermelho', 'sem prazo de assinatura')
-// 25/09 e sexta: ate 29/09 sao 2 dias uteis, nao 4. O envio fica amarelo e a
-// assinatura verde, entao a etapa sai amarela.
-assert.equal(ctr({ onboarding: '2026-09-25', prazoAssinatura: '2026-10-20' }).cor, 'amarelo', 'fim de semana nao conta')
+assert.equal(ctr(SO_CLIENTE).cor, 'vermelho', 'sem prazo de assinatura')
 // Cumprido e verde: cinza so quando falta dado ou falta regra.
-const fechado = { onboarding: '2026-01-05', prazoAssinatura: '2026-01-20', dataAssinatura: '2026-01-08', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }
-assert.equal(ctr(fechado).cor, 'verde', 'assinado fecha os dois relogios da etapa')
+const fechado = { ...SO_CLIENTE, prazoAssinatura: '2026-01-20', dataAssinatura: '2026-01-08' }
+assert.equal(ctr(fechado).cor, 'verde', 'assinado fecha o relogio do cliente')
 assert.match(ctr(fechado).texto, /^assinatura · assinado/)
 // Com minuta do palestrante exigida e sem prazo dela, a etapa fica vermelha
 // mesmo com o cliente fechado.
@@ -398,19 +390,22 @@ assert.equal(
 
 console.log('ok — etapas por relogio no CS')
 
-// Empate de cor entre envio e assinatura: manda quem trava primeiro. Os dois
-// tem marco proprio — data de envio ao cliente e data de assinatura — entao
-// contrato sem registro de envio e cobrado como envio, e so depois que a data
-// de envio aparece a assinatura assume o card.
-const empate = { stage: CTR, evento: '2026-11-20', onboarding: '2026-08-01', prazoAssinatura: '2026-08-20' }
-assert.match(E(empate).texto, /^envio · /, 'nao enviado: o envio trava a assinatura')
+// Empate de cor entre as duas assinaturas: manda quem trava primeiro, e o
+// relogio com marco de conclusao ganha o desempate. Os dois sao 'fechado'.
+const empate = {
+  stage: CTR, evento: '2026-11-20',
+  formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não',
+  prazoAssinatura: '2026-08-20', prazoAssinaturaPalestrante: '2026-09-20',
+}
+assert.equal(E(empate).cor, 'vermelho')
+assert.match(E(empate).texto, /^assinatura · /, 'os dois vermelhos: o do cliente vem primeiro na lista')
 assert.match(
-  E({ ...empate, envioCliente: '2026-08-02' }).texto,
-  /^assinatura · /,
-  'enviado e nao assinado: cobra a assinatura, que antes ficava escondida atras do envio',
+  E({ ...empate, dataAssinatura: '2026-08-10' }).texto,
+  /^assinatura do palestrante · /,
+  'cliente fechado: sobra a minuta do palestrante',
 )
 
-console.log('ok — empate cobra quem trava primeiro')
+console.log('ok — empate entre as duas assinaturas')
 
 // Faturamento corre contra "Prazo para Despachar (Faturamento ao
 // Financeiro)" e so contra ele. Prazo em branco e vermelho, igual ao
@@ -446,21 +441,10 @@ const palOk = pal('palestrante-assinatura', { formatoContrato: PSA100, prazoAssi
 assert.equal(palOk.estado, 'concluido')
 assert.equal(palOk.cumpriu, true, '18/09 veio antes de 26/09')
 
-// Envio da minuta so sabe dizer se saiu: o gap depois da assinatura do cliente
-// nunca foi definido, entao nao ganha cor em vez de ganhar uma inventada.
-assert.equal(pal('palestrante-envio', { formatoContrato: PSA100 }).estado, 'bloqueado')
-assert.equal(pal('palestrante-envio', { formatoContrato: PSA100, envioPalestrante: '2026-09-10' }).estado, 'concluido')
-assert.equal(pal('palestrante-envio', { formatoContrato: INTERV }).estado, 'nao-aplica')
-
-// A data de envio ao cliente agora e marco de verdade, sem depender da assinatura.
-assert.equal(pal('contrato-envio', { formatoContrato: PSA100, onboarding: '2026-01-05', envioCliente: '2026-01-06' }).estado, 'concluido')
-assert.equal(pal('contrato-envio', { formatoContrato: CLIPAL }).estado, 'nao-aplica')
-
 // Com o contrato do cliente fechado, quem sobra na etapa e a minuta do
 // palestrante — prazo dela em 20/09, vencido.
 const soMinuta = {
   stage: CTR, evento: '2026-11-20', formatoContrato: PSA100, palestranteExclusivo: 'Não',
-  onboarding: '2026-09-01', envioCliente: '2026-09-02',
   prazoAssinatura: '2026-09-15', dataAssinatura: '2026-09-10',
   prazoAssinaturaPalestrante: '2026-09-20',
 }
@@ -576,7 +560,7 @@ const semFormato = explicar(
   HOJE,
 )
 const branco = semFormato.contas.filter((c) => c.faltaDado)
-assert.equal(branco.length, 2, 'os dois relogios do palestrante param pelo Formato de Contrato')
+assert.equal(branco.length, 1, 'so o relogio de assinatura do palestrante para pelo Formato de Contrato')
 assert.match(branco[0].porque, /^Formato de Contrato está em branco/)
 
 // Isento de verdade nao leva a marca: nao ha o que preencher. O unico isento
@@ -660,13 +644,13 @@ const interv = explicar(
 )
 assert.deepEqual(
   interv.datas.map((d) => d.rotulo),
-  ['Data de realização do Onboarding', 'Data de Envio contrato Cliente', 'Prazo de Assinatura de Contrato'],
+  ['Prazo de Assinatura de Contrato'],
   'a tabela nao lista data de palestrante num formato que nao tem minuta',
 )
 assert.deepEqual(
   interv.contas.filter((c) => c.estado !== 'nao-aplica').map((c) => c.chave),
-  ['contrato-envio', 'contrato-assinatura'],
-  'so os dois relogios do cliente correm',
+  ['contrato-assinatura'],
+  'so o relogio de assinatura do cliente corre',
 )
 
 // Em 100% PSA, que exige minuta, as datas do palestrante voltam.
@@ -692,8 +676,8 @@ const semMinuta = explicar(
 )
 assert.deepEqual(
   semMinuta.contas.filter((c) => c.estado !== 'nao-aplica').map((c) => c.chave),
-  ['contrato-envio', 'contrato-assinatura'],
-  'exclusivo roda so os dois relogios do cliente',
+  ['contrato-assinatura'],
+  'exclusivo roda so o relogio de assinatura do cliente',
 )
 assert.ok(!semMinuta.datas.some((d) => /palestrante/i.test(d.rotulo)), 'e some da tabela de datas')
 assert.ok(
@@ -831,8 +815,6 @@ assert.equal(
 // Mesmo tratamento do lado do cliente.
 assert.equal(R['contrato-assinatura']({ prazoAssinatura: '2026-06-20' }).estado, 'vermelho')
 assert.equal(R['contrato-assinatura']({ prazoAssinatura: '2026-06-20', anexoCliente: '9' }).estado, 'concluido')
-// E o envio passa a estar provado pelo anexo: nao se anexa o que nao existe.
-assert.equal(R['contrato-envio']({ onboarding: '2026-06-09', anexoCliente: '9' }).estado, 'concluido')
 
 console.log('ok — anexo do contrato conta como prova')
 

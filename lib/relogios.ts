@@ -192,15 +192,14 @@ const foraDoFormato = (texto: string, faltaDado = false, campoFaltando?: string)
   campoFaltando,
 })
 
-// Assinatura do cliente serve de prova indireta de envio: não dá para assinar
-// um contrato que não foi enviado. O anexo conta junto: o arquivo está no
-// ticket, então o contrato existe e não há o que cobrar.
-//
 // O painel não distingue minuta anexada de contrato assinado — o nome do
 // arquivo não diz, e o token não lê a API de Files. Se o time anexar antes de
 // assinar, o relógio fecha cedo.
-const contratoAssinado = (t: TicketSim) =>
-  t.statusContrato === 'Assinado' || tem(t.dataAssinatura) || anexado(t.anexoCliente)
+//
+// "Data de Envio contrato Cliente" e "Data de Envio contrato Palestrante"
+// saíram da sinaleira em 17/10/2026: o CS não tem como metrificá-las hoje —
+// 23 e 21 preenchidas de 62 na etapa, e 14 das 32 do palestrante com data no
+// futuro. Relógio sem prazo cobrável só pinta cor sem ação possível.
 
 export const RELOGIOS: Relogio[] = [
   {
@@ -260,27 +259,6 @@ export const RELOGIOS: Relogio[] = [
     },
   },
   {
-    chave: 'contrato-envio',
-    etapa: ['Assinar Contrato', 'Contrato'],
-    nome: 'Envio do contrato ao cliente',
-    curto: 'envio',
-    regra: '1 dia útil após o onboarding · amarelo 2 a 3 dias · vermelho 4+',
-    confianca: 'fechado',
-    gatilho: 'data_de_realizacao_do_onboarding',
-    marco: 'data_de_envio_contrato_cliente',
-    ver: (t, hoje) => {
-      if (!usaCliente(t.formatoContrato)) return foraDoFormato('contrato é entre cliente e palestrante')
-      if (aconteceu(t.envioCliente, hoje))
-        return { estado: 'concluido', dias: null, texto: 'contrato enviado', cumpriu: null }
-      if (contratoAssinado(t))
-        return { estado: 'concluido', dias: null, texto: 'assinado, logo foi enviado', cumpriu: null }
-      if (!tem(t.onboarding))
-        return { estado: 'sem-dado', dias: null, texto: 'sem data de onboarding', cumpriu: null }
-      const d = diasUteis(t.onboarding, hojeEmDias(hoje))
-      return { estado: faixa(d, 1, 3), dias: d, texto: `${d} dias úteis desde o onboarding`, cumpriu: null }
-    },
-  },
-  {
     chave: 'contrato-assinatura',
     etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do contrato pelo cliente',
@@ -332,35 +310,6 @@ export const RELOGIOS: Relogio[] = [
         texto: d > 0 ? `${d}d depois do prazo` : `faltam ${-d}d para o prazo`,
         cumpriu: null,
       }
-    },
-  },
-  {
-    chave: 'palestrante-envio',
-    etapa: ['Assinar Contrato', 'Contrato'],
-    nome: 'Envio da minuta ao palestrante',
-    curto: 'minuta',
-    regra: 'Após a assinatura do cliente — gap ainda não definido pelo CS',
-    confianca: 'bloqueado',
-    gatilho: '— falta o gap acordado',
-    marco: 'data_de_envio_contrato_palestrante',
-    pendencia: 'O CS escreveu "após a assinatura de contrato com o cliente (definir gap)" e o número nunca veio. Sem ele a minuta não ganha cor: só diz se saiu.',
-    ver: (t, hoje) => {
-      if (!usaPalestrante(t))
-        return foraDoFormato(
-          t.palestranteExclusivo === 'Sim' ? SEM_MINUTA : t.formatoContrato || 'Formato de Contrato está em branco',
-          !t.formatoContrato && t.palestranteExclusivo !== 'Sim',
-          'Formato de Contrato',
-        )
-      if (aconteceu(t.envioPalestrante, hoje))
-        return { estado: 'concluido', dias: null, texto: 'minuta enviada', cumpriu: null }
-      if (tem(t.envioPalestrante))
-        return {
-          estado: 'bloqueado',
-          dias: null,
-          texto: `envio marcado para ${br(t.envioPalestrante)}, ainda não aconteceu`,
-          cumpriu: null,
-        }
-      return { estado: 'bloqueado', dias: null, texto: 'falta o prazo de envio da minuta', cumpriu: null }
     },
   },
   {
@@ -764,14 +713,12 @@ const PROP: Record<string, { rotulo: string; campo: keyof TicketSim }> = {
   // associado, então não há nome de campo para mandar preencher.
   ganho_negocio: { rotulo: 'Negócio ganho', campo: 'ganhoNegocio' },
   data_prevista_de_pagamento_logistica: { rotulo: 'Data prevista de pagamento Logistica', campo: 'pagamentoLogistica' },
-  data_de_envio_contrato_cliente: { rotulo: 'Data de Envio contrato Cliente', campo: 'envioCliente' },
   assinar_contrato: { rotulo: 'Prazo de Assinatura de Contrato', campo: 'prazoAssinatura' },
   data_de_assinatura_do_contrato: { rotulo: 'Data de assinatura do contrato', campo: 'dataAssinatura' },
   prazo_para_despachar_faturamento_ao_financeiro: {
     rotulo: 'Prazo para Despachar (Faturamento ao Financeiro)',
     campo: 'prazoDespacho',
   },
-  data_de_envio_contrato_palestrante: { rotulo: 'Data de Envio contrato Palestrante', campo: 'envioPalestrante' },
   prazo_de_assinatura__contrato_palestrante: {
     rotulo: 'Prazo de Assinatura  Contrato Palestrante',
     campo: 'prazoAssinaturaPalestrante',
