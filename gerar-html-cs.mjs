@@ -42,6 +42,8 @@ const PROPS = [
   'hs_v2_date_entered_1450325175',
   'data_de_faturamento',
   'data_de_emissao',
+  'prazo_para_despachar_faturamento_ao_financeiro',
+  'despachar_faturamento_ao_financeiro',
   'adquirir_logistica',
   'prazo_de_aquisicao_de_logistica',
   'prazo_para_aquisicao_da_logistica',
@@ -175,6 +177,10 @@ const tickets = brutos.map((r) => {
     entrouBriefing: iso(p.hs_v2_date_entered_1450325175),
     dataFaturamento: iso(p.data_de_faturamento),
     dataEmissao: iso(p.data_de_emissao),
+    prazoDespacho: primeira(
+      p.prazo_para_despachar_faturamento_ao_financeiro,
+      p.despachar_faturamento_ao_financeiro,
+    ),
     prazoLogistica: primeira(
       p.adquirir_logistica,
       p.prazo_de_aquisicao_de_logistica,

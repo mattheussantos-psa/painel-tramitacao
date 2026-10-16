@@ -965,3 +965,31 @@ assert.equal(R['contrato-envio']({ onboarding: '2026-09-01', envioCliente: '2026
 assert.match(R['contrato-envio']({ onboarding: '2026-09-01', envioCliente: '2026-10-22' }).texto, /dias úteis desde o onboarding/)
 
 console.log('ok — marco com data no futuro nao aconteceu')
+
+// ---- prazo próprio do faturamento ----
+// APASSUL (47970226845): "Prazo para Despachar (Faturamento ao Financeiro)"
+// em 19/10, assinatura em 22/09. Pela regra dos 3 dias ja estava vermelho ha
+// semanas; pelo prazo do ticket ainda nem venceu. Medido: 277 tickets tem esse
+// prazo, e a distancia ate a assinatura vai de -142 a +414 dias — e prazo
+// proprio, nao "assinatura + N".
+const desp = (over) => E({ stage: FAT, evento: '2026-11-20', ...over })
+// HOJE = 29/09. Assinatura 20/09 sozinha = 9 dias, vermelho.
+assert.equal(desp({ dataAssinatura: '2026-09-20' }).cor, 'vermelho')
+// Com prazo proprio em 05/10, o mesmo ticket esta em dia.
+assert.equal(desp({ dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05' }).cor, 'verde')
+assert.match(desp({ dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05' }).texto, /^emissão · faltam 6d/)
+// E o prazo proprio tambem pode apertar: 25/09 ja venceu ha 4 dias.
+assert.equal(desp({ dataAssinatura: '2026-09-28', prazoDespacho: '2026-09-25' }).cor, 'vermelho')
+// Vence hoje ainda e verde, igual aos outros relogios de prazo em data.
+assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-09-29' }).cor, 'verde')
+// Despachado mede contra o prazo proprio, nao contra a assinatura.
+const cumpriuDesp = R['faturamento']({ dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05', dataFaturamento: '2026-10-01' })
+assert.equal(cumpriuDesp.estado, 'concluido')
+assert.equal(cumpriuDesp.cumpriu, true)
+assert.match(cumpriuDesp.texto, /despachado 4d antes do prazo/)
+// Sem prazo proprio E sem assinatura segue cinza.
+assert.equal(desp({}).cor, 'cinza')
+// Com prazo proprio e sem assinatura, da para cobrar: o prazo existe.
+assert.equal(desp({ prazoDespacho: '2026-09-20' }).cor, 'vermelho')
+
+console.log('ok — prazo próprio do faturamento')

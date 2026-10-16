@@ -32,6 +32,10 @@ const PROPS = [
   'hs_v2_date_entered_1450325175',
   'data_de_faturamento',
   'data_de_emissao',
+  // Prazo próprio do faturamento, quando o CS marca um. Duas propriedades com
+  // nome quase igual: a que o CS usa tem 277 preenchidas, a outra 1.
+  'prazo_para_despachar_faturamento_ao_financeiro',
+  'despachar_faturamento_ao_financeiro',
   'adquirir_logistica',
   // Mesmo campo em três propriedades, criadas em momentos diferentes. Medido
   // em 15/10/2026: adquirir_logistica 162, prazo_de_aquisicao_de_logistica 51
@@ -154,6 +158,10 @@ async function buscarAoVivo(
         entrouBriefing: iso(p.hs_v2_date_entered_1450325175),
         dataFaturamento: iso(p.data_de_faturamento),
         dataEmissao: iso(p.data_de_emissao),
+        prazoDespacho: primeira(
+          p.prazo_para_despachar_faturamento_ao_financeiro,
+          p.despachar_faturamento_ao_financeiro,
+        ),
         prazoLogistica: primeira(
           p.adquirir_logistica,
           p.prazo_de_aquisicao_de_logistica,

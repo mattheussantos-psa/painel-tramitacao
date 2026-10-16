@@ -445,22 +445,42 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Faturar', 'Faturamento'],
     nome: 'Emissão do faturamento',
     curto: 'emissão',
-    regra: 'Até 3 dias após a assinatura · amarelo 4 a 5 · vermelho 6+',
+    regra: 'Até a data em "Prazo para Despachar (Faturamento ao Financeiro)" quando houver; senão 3 dias após a assinatura · amarelo 1 a 2 dias depois · vermelho 3+',
     confianca: 'hipotese',
     gatilho: 'data_de_assinatura_do_contrato',
     marco: 'data_de_emissao e data_emissao_nf existem e estão zeradas — uso "Enviado ao Faturamento" como proxy',
     pendencia: 'Falta definir o campo oficial de emissão, e se Órgão Público suspende o vermelho ou só ganha a tag.',
     ver: (t, hoje) => {
-      if (!tem(t.dataAssinatura))
+      // Prazo marcado no ticket manda. Medido em 16/10/2026: 277 tickets com
+      // esse prazo, e a distância dele até a assinatura vai de -142 a +414
+      // dias — não é "assinatura + N" disfarçado, é prazo próprio, e o CS o
+      // escolhe caso a caso. Em Faturar são 10 dos 13.
+      const limite = tem(t.prazoDespacho) ? dia(t.prazoDespacho) : dia(t.dataAssinatura) + 3 * DIA
+      const prazo = Number.isFinite(limite) ? iso(limite) : undefined
+
+      if (!Number.isFinite(limite))
         return { estado: 'sem-dado', dias: null, texto: 'contrato ainda não assinado', cumpriu: null }
+
       if (tem(t.dataEmissao))
-        return { estado: 'concluido', dias: emDias(dia(t.dataEmissao), dia(t.dataAssinatura)), texto: 'emitido', cumpriu: null }
+        return { estado: 'concluido', dias: emDias(dia(t.dataEmissao), limite), prazo, texto: 'emitido', cumpriu: emDias(dia(t.dataEmissao), limite) <= 0 }
       if (tem(t.dataFaturamento)) {
-        const d = emDias(dia(t.dataFaturamento), dia(t.dataAssinatura))
-        return { estado: 'concluido', dias: d, texto: `despachado ao financeiro em ${d}d`, cumpriu: d <= 3 }
+        const d = emDias(dia(t.dataFaturamento), limite)
+        return {
+          estado: 'concluido',
+          dias: d,
+          prazo,
+          texto: d <= 0 ? `despachado ${-d}d antes do prazo` : `despachado ${d}d depois do prazo`,
+          cumpriu: d <= 0,
+        }
       }
-      const d = emDias(hojeEmDias(hoje), dia(t.dataAssinatura))
-      return { estado: faixa(d, 3, 5), dias: d, texto: `${d}d desde a assinatura`, cumpriu: null }
+      const d = emDias(hojeEmDias(hoje), limite)
+      return {
+        estado: d <= 0 ? 'verde' : faixa(d, 0, 2),
+        dias: d,
+        prazo,
+        texto: d <= 0 ? `faltam ${-d}d para o prazo` : `${d}d depois do prazo`,
+        cumpriu: null,
+      }
     },
   },
   {
@@ -738,6 +758,10 @@ const PROP: Record<string, { rotulo: string; campo: keyof TicketSim }> = {
   data_de_envio_contrato_cliente: { rotulo: 'Envio ao cliente', campo: 'envioCliente' },
   assinar_contrato: { rotulo: 'Prazo de assinatura', campo: 'prazoAssinatura' },
   data_de_assinatura_do_contrato: { rotulo: 'Assinatura do cliente', campo: 'dataAssinatura' },
+  prazo_para_despachar_faturamento_ao_financeiro: {
+    rotulo: 'Prazo para despachar',
+    campo: 'prazoDespacho',
+  },
   data_de_envio_contrato_palestrante: { rotulo: 'Envio ao palestrante', campo: 'envioPalestrante' },
   prazo_de_assinatura__contrato_palestrante: {
     rotulo: 'Prazo de assinatura do palestrante',
