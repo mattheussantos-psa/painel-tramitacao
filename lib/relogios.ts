@@ -448,7 +448,7 @@ export const RELOGIOS: Relogio[] = [
     regra: `Com "Prazo para Despachar (Faturamento ao Financeiro)": até essa data, amarelo nos ${AMARELO_ANTES} dias antes, vermelho depois · sem ela: 3 dias após a assinatura, amarelo 1 a 2 depois, vermelho 3+`,
     confianca: 'hipotese',
     gatilho: 'data_de_assinatura_do_contrato',
-    marco: 'data_de_emissao e data_emissao_nf existem e estão zeradas — uso "Enviado ao Faturamento" como proxy',
+    marco: '— sair da etapa é o único sinal de que o faturamento terminou',
     pendencia: 'Falta definir o campo oficial de emissão, e se Órgão Público suspende o vermelho ou só ganha a tag.',
     ver: (t, hoje) => {
       // Prazo marcado no ticket manda. Medido em 16/10/2026: 277 tickets com
@@ -469,25 +469,34 @@ export const RELOGIOS: Relogio[] = [
           faltaDado: true,
         }
 
-      if (tem(t.dataEmissao))
-        return { estado: 'concluido', dias: emDias(dia(t.dataEmissao), limite), prazo, texto: 'emitido', cumpriu: emDias(dia(t.dataEmissao), limite) <= 0 }
-      if (tem(t.dataFaturamento)) {
-        const d = emDias(dia(t.dataFaturamento), limite)
+      // Despachar não fecha a etapa: só sair dela fecha. O que se cobra aqui
+      // é CONCLUIR o faturamento, e isso não aconteceu enquanto o ticket
+      // estiver na coluna — então o relógio corre contra o prazo igual a
+      // qualquer pendência. A data de despacho entra na frase como contexto,
+      // não como alívio: Alvarez & Marsal (47449431815) tinha prazo 01/09,
+      // despacho em 02/09 e seguia na etapa em 16/10.
+      const marco = tem(t.dataEmissao) ? t.dataEmissao : t.dataFaturamento
+      const d = emDias(hojeEmDias(hoje), limite)
+      const correndo = proprio ? faixaAteOPrazo(d) : d <= 0 ? 'verde' : faixa(d, 0, 2)
+      if (tem(marco)) {
+        const atraso = emDias(dia(marco), limite)
         return {
-          estado: 'concluido',
+          estado: correndo,
           dias: d,
           prazo,
-          texto: d <= 0 ? `despachado ${-d}d antes do prazo` : `despachado ${d}d depois do prazo`,
-          cumpriu: d <= 0,
+          texto:
+            d > 0
+              ? `despachado ${br(marco)} e a etapa não fechou — ${d}d depois do prazo`
+              : `despachado ${br(marco)}, ${atraso <= 0 ? 'no prazo' : `${atraso}d depois do prazo`}, etapa aberta`,
+          cumpriu: atraso <= 0,
         }
       }
       // Reta final amarela só quando o prazo é o do ticket. Na regra de
       // "assinatura + 3" a janela inteira é menor que os AMARELO_ANTES dias
       // da reta final, então ela nasceria amarela e nunca ficaria verde — a
       // cor pararia de informar. Lá vale a tolerância de 2 dias depois.
-      const d = emDias(hojeEmDias(hoje), limite)
       return {
-        estado: proprio ? faixaAteOPrazo(d) : d <= 0 ? 'verde' : faixa(d, 0, 2),
+        estado: correndo,
         dias: d,
         prazo,
         texto: d <= 0 ? `faltam ${-d}d para o prazo` : `${d}d depois do prazo`,
