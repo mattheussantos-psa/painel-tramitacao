@@ -247,6 +247,10 @@ export function avaliar(
 // passou do prazo. Um ticket pode estar verde na etapa e ter alerta.
 export type Alerta = { chave: string; texto: string }
 
+// NÃO decide mais cor: o prazo de assinatura passou a sair da propriedade
+// "Prazo de Assinatura de Contrato" do ticket. Fica como registro do que o CS
+// acordou, para conferir prazo digitado contra a política.
+//
 // Prazo para assinar o contrato, contado da realização do onboarding, por
 // Formato da Empresa. Quanto mais formal a contratação, mais longo: empresa
 // privada 20, Sistema S 30, órgão público 45. Formato fora desta tabela —

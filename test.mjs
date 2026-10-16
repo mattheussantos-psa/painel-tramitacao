@@ -128,51 +128,53 @@ console.log('ok — selecao de tarefa')
 // que o alerta atravessa a etapa onde o ticket está.
 const A = (o) => alertas(t({ stage: '1088360205', ...o }), HOJE, QUADROS.cs.sla).map((x) => x.chave).sort()
 
-// Contrato do cliente: 20 dias para empresa privada, 45 para orgao publico,
-// contados do onboarding — a mesma conta do relogio da etapa.
-const PRIV = { formatoEmpresa: 'Empresa Privada', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }
-const PUB = { formatoEmpresa: 'Órgão Público', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }
-assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-01', statusContrato: 'Pendente' }), ['contrato'])
-assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-01', statusContrato: 'Assinado' }), [])
-assert.deepEqual(A({ ...PRIV, onboarding: '2026-07-01', dataAssinatura: '2026-07-10' }), [], 'assinado fecha o alerta')
-assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-15', statusContrato: 'Pendente' }), [], 'vence 05/10, faltam 6 dias')
+// Contrato do cliente: o prazo e a propriedade "Prazo de Assinatura de
+// Contrato", a mesma conta do relogio da etapa. HOJE = 29/09.
+const INTERVENIENTE = { formatoContrato: 'MC (Cliente x PSA x Palestrante)' }
+assert.deepEqual(A({ ...INTERVENIENTE, prazoAssinatura: '2026-09-20', statusContrato: 'Pendente' }), ['contrato'])
+assert.deepEqual(A({ ...INTERVENIENTE, prazoAssinatura: '2026-09-20', statusContrato: 'Assinado' }), [])
+assert.deepEqual(A({ ...INTERVENIENTE, prazoAssinatura: '2026-09-20', dataAssinatura: '2026-09-18' }), [], 'assinado fecha o alerta')
+assert.deepEqual(A({ ...INTERVENIENTE, prazoAssinatura: '2026-10-10', statusContrato: 'Pendente' }), [], 'faltam 11 dias')
 // A reta final amarela ja acende o alerta: o ponto e cobrar antes de estourar.
-assert.deepEqual(A({ ...PRIV, onboarding: '2026-09-13', statusContrato: 'Pendente' }), ['contrato'], 'vence 03/10, faltam 4')
+assert.deepEqual(A({ ...INTERVENIENTE, prazoAssinatura: '2026-10-03', statusContrato: 'Pendente' }), ['contrato'], 'faltam 4')
 
-// Orgao publico tem 45 dias: o mesmo onboarding que acende a privada nao
-// acende ele.
-assert.deepEqual(A({ ...PUB, onboarding: '2026-09-01', statusContrato: 'Pendente' }), [], 'dia 28 dos 45')
-assert.deepEqual(A({ ...PUB, onboarding: '2026-08-01', statusContrato: 'Pendente' }), ['contrato'], 'dia 59')
+// Sem o prazo preenchido o relogio ja conta como atraso, entao o alerta
+// acende junto — e a divergencia com o quadro que isso evita.
+assert.deepEqual(A({ ...INTERVENIENTE, statusContrato: 'Pendente' }), ['contrato'])
 
-// Sem onboarding o relogio ja conta como atraso, entao o alerta acende junto —
-// antes ficava calado, que era a divergencia com o quadro.
-assert.deepEqual(A({ ...PRIV, onboarding: '', statusContrato: 'Pendente' }), ['contrato'])
-
-// Formato sem prazo acordado, ou em branco, nao acende: o painel nao inventa
-// prazo que o CS nao deu.
-assert.deepEqual(A({ formatoContrato: 'MC (Cliente x PSA x Palestrante)', onboarding: '2026-01-01' }), [])
-assert.deepEqual(
-  A({ formatoEmpresa: 'Associação', formatoContrato: 'MC (Cliente x PSA x Palestrante)', onboarding: '2026-01-01' }),
-  [],
-)
+// Formato em que a PSA nao e parte do contrato do cliente nao acende o dele.
+assert.deepEqual(A({ formatoContrato: 'MC (Cliente x Palestrante)', prazoAssinaturaPalestrante: '2026-10-10' }), [])
 
 // Contrato do palestrante e alerta proprio, nao somado ao do cliente.
 const COM_MINUTA = { formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não' }
-assert.deepEqual(A({ ...COM_MINUTA, ...PRIV, formatoContrato: COM_MINUTA.formatoContrato, onboarding: '2026-09-01' }), ['contrato', 'minuta'])
-assert.deepEqual(A({ ...COM_MINUTA, onboarding: '2026-09-01' }), ['minuta'], 'formato da empresa em branco so acende a minuta')
-assert.deepEqual(A({ ...COM_MINUTA, palestranteExclusivo: 'Sim', onboarding: '2026-09-01' }), [], 'exclusivo nao tem minuta')
 assert.deepEqual(
-  A({ ...COM_MINUTA, onboarding: '2026-09-01', dataAssinaturaPalestrante: '2026-09-10' }),
+  A({ ...COM_MINUTA, prazoAssinatura: '2026-09-20', prazoAssinaturaPalestrante: '2026-09-20' }),
+  ['contrato', 'minuta'],
+)
+assert.deepEqual(
+  A({ ...COM_MINUTA, prazoAssinatura: '2026-10-10', prazoAssinaturaPalestrante: '2026-09-20' }),
+  ['minuta'],
+  'so o do palestrante estourou',
+)
+assert.deepEqual(
+  A({ ...COM_MINUTA, palestranteExclusivo: 'Sim', prazoAssinatura: '2026-10-10' }),
+  [],
+  'exclusivo nao tem minuta',
+)
+assert.deepEqual(
+  A({ ...COM_MINUTA, prazoAssinatura: '2026-10-10', prazoAssinaturaPalestrante: '2026-09-20', dataAssinaturaPalestrante: '2026-09-10' }),
   [],
   'assinado fecha a minuta',
 )
 
 // Briefing: a mesma regra do quadro — D-15 amarelo, D-7 vermelho, e so para
-// quem nao passou por Realizar Briefing.
-assert.deepEqual(A({ evento: '2026-10-05' }), ['briefing'], 'D-6')
-assert.deepEqual(A({ evento: '2026-10-20' }), [], 'D-21 ainda da tempo')
-assert.deepEqual(A({ evento: '2026-10-05', entrouBriefing: '2026-09-20' }), [], 'ja passou pelo briefing')
-assert.deepEqual(A({ evento: '2026-09-01' }), [], 'evento passado nao cobra briefing')
+// quem nao passou por Realizar Briefing. Prazo de contrato em aberto para o
+// alerta de contrato nao poluir a conta.
+const SO_BRIEFING = { ...INTERVENIENTE, prazoAssinatura: '2026-10-10' }
+assert.deepEqual(A({ ...SO_BRIEFING, evento: '2026-10-05' }), ['briefing'], 'D-6')
+assert.deepEqual(A({ ...SO_BRIEFING, evento: '2026-10-20' }), [], 'D-21 ainda da tempo')
+assert.deepEqual(A({ ...SO_BRIEFING, evento: '2026-10-05', entrouBriefing: '2026-09-20' }), [], 'ja passou pelo briefing')
+assert.deepEqual(A({ ...SO_BRIEFING, evento: '2026-09-01' }), [], 'evento passado nao cobra briefing')
 
 console.log('ok — alertas de processo')
 
@@ -248,55 +250,29 @@ assert.equal(R['log-pagamento']({ logistica: REEMBOLSO, pagamentoLogistica: '202
 // 07/10 vence em 27/10. Nao ha faixa de atencao — verde ate o prazo, vermelho
 // depois — e sem onboarding conta como atrasado.
 const assin = (over) => R['contrato-assinatura']({ formatoEmpresa: PRIVADA, ...over })
-assert.equal(assin({ onboarding: '2026-10-07' }).prazo, '2026-10-27', 'onboarding + 20 dias')
-assert.equal(assin({ onboarding: '2026-09-20' }).estado, 'verde', 'vence 10/10, ainda no prazo')
-// A reta final e amarela: ir de verde direto para vermelho esconde a janela
-// em que cobrar ainda adianta. Amarelo cobre os 4 dias antes e o dia do prazo.
-assert.equal(assin({ onboarding: '2026-09-09' }).estado, 'amarelo', 'vence hoje 29/09')
-assert.equal(assin({ onboarding: '2026-09-13' }).estado, 'amarelo', 'vence 03/10, faltam 4 dias')
-assert.equal(assin({ onboarding: '2026-09-14' }).estado, 'verde', 'vence 04/10, faltam 5 dias')
-assert.equal(assin({ onboarding: '2026-09-08' }).estado, 'vermelho', 'venceu ontem')
-assert.equal(assin({ onboarding: '2026-09-08' }).dias, 1)
-assert.equal(assin({}).estado, 'vermelho', 'sem onboarding conta como atrasado')
-assert.match(assin({}).texto, /sem data de onboarding/)
+// O prazo e a propriedade "Prazo de Assinatura de Contrato". HOJE = 29/09.
+assert.equal(assin({ prazoAssinatura: '2026-10-10' }).estado, 'verde', 'faltam 11 dias')
+assert.equal(assin({ prazoAssinatura: '2026-10-10' }).prazo, '2026-10-10')
+// Reta final: 4 dias antes e o dia do prazo.
+assert.equal(assin({ prazoAssinatura: '2026-10-03' }).estado, 'amarelo', 'faltam 4')
+assert.equal(assin({ prazoAssinatura: '2026-09-29' }).estado, 'amarelo', 'vence hoje')
+assert.equal(assin({ prazoAssinatura: '2026-09-28' }).estado, 'vermelho', 'venceu ontem')
+assert.equal(assin({ prazoAssinatura: '2026-09-28' }).dias, 1)
+// Prazo em branco nao e prazo em dia.
+assert.equal(assin({}).estado, 'vermelho', 'sem prazo preenchido conta como atrasado')
+assert.match(assin({}).texto, /sem "Prazo de Assinatura de Contrato" preenchido/)
+// O onboarding nao entra mais na conta do prazo de assinatura.
+assert.equal(assin({ onboarding: '2026-09-28' }).estado, 'vermelho', 'onboarding nao e prazo')
 
-// As duas pontas: da pra dizer se cumpriu, agora contra o prazo calculado.
-const noPrazo = assin({ onboarding: '2026-08-20', dataAssinatura: '2026-09-05' })
-assert.equal(noPrazo.cumpriu, true, 'assinou em 05/09, prazo era 09/09')
-const atrasado = assin({ onboarding: '2026-08-20', dataAssinatura: '2026-09-13' })
+// Assinado mede contra a propriedade.
+const noPrazo = assin({ prazoAssinatura: '2026-09-10', dataAssinatura: '2026-09-05' })
+assert.equal(noPrazo.cumpriu, true)
+const atrasado = assin({ prazoAssinatura: '2026-09-10', dataAssinatura: '2026-09-13' })
 assert.equal(atrasado.cumpriu, false)
-assert.equal(atrasado.dias, 4)
-
-// A data manual deixou de valer como prazo: so o onboarding manda.
-assert.equal(assin({ prazoAssinatura: '2026-12-31' }).estado, 'vermelho', 'data manual nao salva ticket sem onboarding')
-
-// Contrato assinado prova que foi enviado, mesmo sem o valor "Enviado".
-assert.equal(R['contrato-envio']({ onboarding: '2026-01-01', statusContrato: 'Assinado' }).estado, 'concluido')
-assert.equal(R['contrato-envio']({ onboarding: '2026-01-01', dataAssinatura: '2026-02-01' }).estado, 'concluido')
-
-// Briefing anda pela data do evento, e a reuniao associada e o marco.
-assert.equal(R['briefing-agendamento']({ evento: '2026-11-30' }).estado, 'nao-iniciado', 'D-62')
-assert.equal(R['briefing-agendamento']({ evento: '2026-10-27' }).estado, 'verde', 'D-28')
-assert.equal(R['briefing-agendamento']({ evento: '2026-10-19' }).estado, 'amarelo', 'D-20')
-assert.equal(R['briefing-agendamento']({ evento: '2026-10-09' }).estado, 'vermelho', 'D-10')
-assert.equal(
-  R['briefing-agendamento']({ evento: '2026-10-09', reunioes: [{ titulo: 'Briefing PSA', inicio: '2026-10-05', desfecho: '' }] }).estado,
-  'concluido',
-  'reuniao marcada fecha o agendamento',
-)
-// Reuniao futura conta como agendada, nao como realizada.
-const futura = [{ titulo: 'Alinhamento de conteúdo', inicio: '2026-10-02', desfecho: 'SCHEDULED' }]
-assert.equal(R['briefing-realizacao']({ evento: '2026-10-03', reunioes: futura }).estado, 'vermelho', 'D-4 com reuniao ainda por acontecer')
-const passada = [{ titulo: 'Alinhamento de conteúdo', inicio: '2026-09-20', desfecho: 'COMPLETED' }]
-assert.equal(R['briefing-realizacao']({ evento: '2026-10-09', reunioes: passada }).estado, 'concluido')
-// Bordas que a regra deixou em duas cores caem sempre na pior.
-assert.equal(R['briefing-realizacao']({ evento: '2026-10-10' }).estado, 'verde', 'D-11')
-assert.equal(R['briefing-realizacao']({ evento: '2026-10-09' }).estado, 'amarelo', 'D-10')
-assert.equal(R['briefing-realizacao']({ evento: '2026-10-06' }).estado, 'vermelho', 'D-7')
-
-// Minuta individual cai quando o palestrante e interveniente no contrato.
-assert.equal(EXIGE_MINUTA_PALESTRANTE('MC (Cliente x PSA) = 100% PSA'), true)
-assert.equal(EXIGE_MINUTA_PALESTRANTE('MC (Cliente x PSA x Palestrante)'), false)
+assert.match(atrasado.texto, /assinado 3d depois do prazo/)
+// Assinado sem prazo preenchido nao tem como dizer se cumpriu, mas fecha.
+assert.equal(assin({ dataAssinatura: '2026-09-05' }).estado, 'concluido')
+assert.equal(assin({ dataAssinatura: '2026-09-05' }).cumpriu, null)
 
 console.log('ok — relogios da Tramitacao')
 
@@ -325,54 +301,61 @@ assert.equal(log({ logistica: '', ganhoNegocio: '2026-09-15' }).cor, 'cinza', 's
 // Sem as datas preenchidas o card nao vira verde por omissao.
 assert.equal(log({}).cor, 'cinza', 'sem ganho e sem pagamento')
 
-// Contrato: envio em 1 dia util e assinatura em 20 dias do onboarding, pior
-// manda.
+// Contrato: o envio corre 1 dia util do onboarding, a assinatura corre ate a
+// data em "Prazo de Assinatura de Contrato". Pior manda.
 const ctr = (over) => E({ stage: CTR, evento: '2026-11-20', ...over })
-assert.equal(ctr({ onboarding: '2026-09-28' }).cor, 'verde', 'enviado ontem, assinatura vence em 18/10')
-assert.equal(ctr({ onboarding: '2026-08-20' }).cor, 'vermelho', 'assinatura venceu em 09/09')
+// Enviado ontem e prazo la na frente: verde nos dois.
+assert.equal(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-10-20' }).cor, 'verde')
+// Prazo de assinatura vencido com envio em dia: a assinatura manda.
+assert.equal(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-09-10' }).cor, 'vermelho')
+assert.match(ctr({ onboarding: '2026-09-28', prazoAssinatura: '2026-09-10' }).texto, /^assinatura · /)
 // Os dois vermelhos: manda quem trava primeiro, que e o envio.
-assert.match(ctr({ onboarding: '2026-08-20' }).texto, /^envio · /)
+assert.match(ctr({ onboarding: '2026-08-20', prazoAssinatura: '2026-09-10' }).texto, /^envio · /)
 // Com o envio registrado sobra a assinatura, que e a que o farmer cobra.
-assert.match(ctr({ onboarding: '2026-08-20', envioCliente: '2026-08-21' }).texto, /^assinatura · /)
-assert.equal(ctr({}).cor, 'vermelho', 'sem onboarding a assinatura ja conta como atrasada')
+assert.match(
+  ctr({ onboarding: '2026-08-20', prazoAssinatura: '2026-09-10', envioCliente: '2026-08-21' }).texto,
+  /^assinatura · /,
+)
+// Sem prazo preenchido a assinatura ja conta como atrasada.
+assert.equal(ctr({ onboarding: '2026-09-28' }).cor, 'vermelho', 'sem prazo de assinatura')
 // 25/09 e sexta: ate 29/09 sao 2 dias uteis, nao 4. O envio fica amarelo e a
 // assinatura verde, entao a etapa sai amarela.
-assert.equal(ctr({ onboarding: '2026-09-25' }).cor, 'amarelo', 'fim de semana nao conta')
+assert.equal(ctr({ onboarding: '2026-09-25', prazoAssinatura: '2026-10-20' }).cor, 'amarelo', 'fim de semana nao conta')
 // Cumprido e verde: cinza so quando falta dado ou falta regra.
+const fechado = { onboarding: '2026-01-05', prazoAssinatura: '2026-01-20', dataAssinatura: '2026-01-08', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }
+assert.equal(ctr(fechado).cor, 'verde', 'assinado fecha os dois relogios da etapa')
+assert.match(ctr(fechado).texto, /^assinatura · assinado/)
+// Com minuta do palestrante exigida e sem prazo dela, a etapa fica vermelha
+// mesmo com o cliente fechado.
 assert.equal(
-  ctr({ onboarding: '2026-01-05', dataAssinatura: '2026-01-08', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }).cor,
-  'verde',
-  'assinado fecha os dois relogios da etapa, e cumprido e verde',
-)
-assert.match(
-  ctr({ onboarding: '2026-01-05', dataAssinatura: '2026-01-08', formatoContrato: 'MC (Cliente x PSA x Palestrante)' }).texto,
-  /^assinatura · assinado/,
-)
-// O prazo do palestrante tambem sai do onboarding: 05/01 + 25 = 30/01, que ja
-// venceu. O cliente assinou, o palestrante nao — e isso e vermelho, nao cinza.
-assert.equal(
-  ctr({ onboarding: '2026-01-05', dataAssinatura: '2026-01-08', formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não' }).cor,
+  ctr({ ...fechado, formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não' }).cor,
   'vermelho',
-  'palestrante nao assinou e os 25 dias venceram',
+  'falta o prazo do palestrante',
 )
 
-// ---- 25 dias do onboarding para o palestrante assinar ----
-// Mesmo marco do contrato do cliente, numero unico: o do cliente varia por
-// Formato da Empresa, o do palestrante nao.
+// ---- prazo do palestrante sai da propriedade ----
+// "Prazo de Assinatura  Contrato Palestrante" e o validador. Colombo
+// (46097473964) tinha 26/10 no campo e o painel cobrava 19/07, calculado do
+// onboarding — o calculo saiu.
 const palestrante100 = { formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não' }
 const assinaPal = (over) => R['palestrante-assinatura']({ ...palestrante100, ...over })
-// HOJE = 29/09. 10/09 + 25 = 05/10, faltam 6 dias: fora da reta final.
-assert.equal(assinaPal({ onboarding: '2026-09-10' }).estado, 'verde')
-assert.equal(assinaPal({ onboarding: '2026-09-10' }).prazo, '2026-10-05')
-// 04/09 + 25 = 29/09, vence hoje: amarelo, igual ao contrato do cliente.
-assert.equal(assinaPal({ onboarding: '2026-09-04' }).estado, 'amarelo')
-// 01/09 + 25 = 26/09, tres dias depois. Sem faixa de atencao: ja e vermelho.
-assert.equal(assinaPal({ onboarding: '2026-09-01' }).estado, 'vermelho')
-// Sem onboarding o prazo nem comeca a correr, e isso conta como atraso.
-assert.equal(assinaPal({}).estado, 'vermelho')
-// Assinado mede contra o prazo calculado, nao contra a propriedade.
-assert.equal(assinaPal({ onboarding: '2026-09-01', dataAssinaturaPalestrante: '2026-09-20' }).cumpriu, true)
-assert.equal(assinaPal({ onboarding: '2026-09-01', dataAssinaturaPalestrante: '2026-09-30' }).cumpriu, false)
+assert.equal(assinaPal({ prazoAssinaturaPalestrante: '2026-10-10' }).estado, 'verde', 'faltam 11')
+assert.equal(assinaPal({ prazoAssinaturaPalestrante: '2026-10-03' }).estado, 'amarelo', 'faltam 4')
+assert.equal(assinaPal({ prazoAssinaturaPalestrante: '2026-09-29' }).estado, 'amarelo', 'vence hoje')
+assert.equal(assinaPal({ prazoAssinaturaPalestrante: '2026-09-20' }).estado, 'vermelho')
+assert.equal(assinaPal({}).estado, 'vermelho', 'sem prazo preenchido')
+assert.match(assinaPal({}).texto, /sem "Prazo de Assinatura  Contrato Palestrante" preenchido/)
+// O onboarding nao entra.
+assert.equal(assinaPal({ onboarding: '2026-09-28' }).estado, 'vermelho')
+// Assinado mede contra a propriedade.
+assert.equal(
+  assinaPal({ prazoAssinaturaPalestrante: '2026-09-25', dataAssinaturaPalestrante: '2026-09-20' }).cumpriu,
+  true,
+)
+assert.equal(
+  assinaPal({ prazoAssinaturaPalestrante: '2026-09-25', dataAssinaturaPalestrante: '2026-09-30' }).cumpriu,
+  false,
+)
 // Formato que nao exige minuta do palestrante segue fora de qualquer prazo.
 assert.equal(R['palestrante-assinatura']({ formatoContrato: 'MC (Cliente x PSA x Palestrante)' }).estado, 'nao-aplica')
 assert.equal(
@@ -380,7 +363,7 @@ assert.equal(
   'nao-aplica',
 )
 
-console.log('ok — 25 dias do onboarding para o palestrante')
+console.log('ok — prazo do palestrante sai da propriedade')
 
 // Briefing: so a data do evento manda.
 assert.equal(E({ stage: BRF, evento: '2026-10-27' }).cor, 'verde', 'D-28')
@@ -458,8 +441,8 @@ const CLIPAL = 'MC (Cliente x Palestrante)'
 const pal = (chave, over) => RELOGIOS.find((r) => r.chave === chave).ver(T(over), HOJE)
 
 assert.equal(pal('palestrante-assinatura', { formatoContrato: INTERV }).estado, 'nao-aplica', 'interveniente nao tem minuta propria')
-assert.equal(pal('palestrante-assinatura', { formatoContrato: CLIPAL, onboarding: '2026-08-20' }).estado, 'vermelho')
-const palOk = pal('palestrante-assinatura', { formatoContrato: PSA100, onboarding: '2026-09-01', dataAssinaturaPalestrante: '2026-09-18' })
+assert.equal(pal('palestrante-assinatura', { formatoContrato: CLIPAL, prazoAssinaturaPalestrante: '2026-09-20' }).estado, 'vermelho')
+const palOk = pal('palestrante-assinatura', { formatoContrato: PSA100, prazoAssinaturaPalestrante: '2026-09-26', dataAssinaturaPalestrante: '2026-09-18' })
 assert.equal(palOk.estado, 'concluido')
 assert.equal(palOk.cumpriu, true, '18/09 veio antes de 26/09')
 
@@ -474,10 +457,12 @@ assert.equal(pal('contrato-envio', { formatoContrato: PSA100, onboarding: '2026-
 assert.equal(pal('contrato-envio', { formatoContrato: CLIPAL }).estado, 'nao-aplica')
 
 // Com o contrato do cliente fechado, quem sobra na etapa e a minuta do
-// palestrante — 01/09 + 25 = 26/09, vencido.
+// palestrante — prazo dela em 20/09, vencido.
 const soMinuta = {
   stage: CTR, evento: '2026-11-20', formatoContrato: PSA100, palestranteExclusivo: 'Não',
-  onboarding: '2026-09-01', envioCliente: '2026-09-02', dataAssinatura: '2026-09-10',
+  onboarding: '2026-09-01', envioCliente: '2026-09-02',
+  prazoAssinatura: '2026-09-15', dataAssinatura: '2026-09-10',
+  prazoAssinaturaPalestrante: '2026-09-20',
 }
 assert.equal(E(soMinuta).cor, 'vermelho')
 assert.match(E(soMinuta).texto, /^assinatura do palestrante · /)
@@ -554,67 +539,57 @@ assert.equal(
 
 console.log('ok — evento passado manda na cor')
 
-// O prazo de assinatura vale so para empresa privada: orgao publico, Sistema S
-// e associacao tem rito proprio, e formato em branco nao vira regra por
-// suposicao — sao 44 dos 118 da etapa.
-for (const f of ['Associação', 'Agência', '']) {
-  const v = R['contrato-assinatura']({ formatoEmpresa: f, onboarding: '2026-01-01' })
-  assert.equal(v.estado, 'nao-aplica', 'formato sem prazo acordado nao corre o relogio: ' + f)
+// Formato da Empresa saiu da conta do prazo de assinatura: o prazo e a
+// propriedade do ticket, igual para privada, orgao publico, Sistema S,
+// associacao e formato em branco. Antes era 20/30/45 por formato, e isso
+// contradizia o prazo que o CS escrevia no campo.
+for (const f of ['Associação', 'Agência', '', 'Empresa Privada', 'Órgão Público']) {
+  assert.equal(
+    R['contrato-assinatura']({ formatoEmpresa: f, prazoAssinatura: '2026-10-10' }).estado,
+    'verde',
+    'o prazo manda, nao o formato: ' + f,
+  )
+  assert.equal(
+    R['contrato-assinatura']({ formatoEmpresa: f, prazoAssinatura: '2026-09-20' }).estado,
+    'vermelho',
+    'o prazo manda, nao o formato: ' + f,
+  )
+  assert.equal(
+    R['contrato-assinatura']({ formatoEmpresa: f }).estado,
+    'vermelho',
+    'sem prazo preenchido, em qualquer formato: ' + f,
+  )
 }
-assert.equal(R['contrato-assinatura']({ formatoEmpresa: PRIVADA, onboarding: '2026-01-01' }).estado, 'vermelho')
-
-// Orgao publico tem 45 dias em vez de 20: a mesma data que estoura a privada
-// ainda esta no prazo dele.
-const PUBLICO = 'Órgão Público'
-const SISTEMA_S = 'Sistema S (SEST/SENAT/SEBRAE/SESCOOP)'
-
-// Sistema S fica no meio: 30 dias. O mesmo onboarding que ja estourou a
-// privada ainda esta no prazo dele, e o dele estoura antes do orgao publico.
-assert.equal(R['contrato-assinatura']({ formatoEmpresa: SISTEMA_S, onboarding: '2026-09-01' }).prazo, '2026-10-01')
-assert.equal(R['contrato-assinatura']({ formatoEmpresa: SISTEMA_S, onboarding: '2026-09-05' }).estado, 'verde')
-assert.equal(R['contrato-assinatura']({ formatoEmpresa: SISTEMA_S, onboarding: '2026-08-25' }).estado, 'vermelho')
-assert.equal(R['contrato-assinatura']({ formatoEmpresa: PUBLICO, onboarding: '2026-08-25' }).estado, 'verde', 'os 45 dias ainda seguram')
-assert.equal(R['contrato-assinatura']({ formatoEmpresa: PUBLICO, onboarding: '2026-09-01' }).prazo, '2026-10-16')
-assert.equal(R['contrato-assinatura']({ formatoEmpresa: PUBLICO, onboarding: '2026-09-01' }).estado, 'verde')
-assert.equal(R['contrato-assinatura']({ formatoEmpresa: PRIVADA, onboarding: '2026-09-01' }).estado, 'vermelho')
-assert.equal(R['contrato-assinatura']({ formatoEmpresa: PUBLICO, onboarding: '2026-07-01' }).estado, 'vermelho')
-assert.equal(
-  R['contrato-assinatura']({ formatoEmpresa: PUBLICO }).estado,
-  'vermelho',
-  'sem onboarding vale para os dois formatos',
-)
-assert.match(R['contrato-assinatura']({ formatoEmpresa: '', onboarding: '' }).texto, /em branco/)
-
-// Na etapa, formato sem prazo acordado fica cinza mesmo sem onboarding.
-assert.equal(E({ stage: CTR, evento: '2026-11-20', formatoEmpresa: 'Associação' }).cor, 'cinza')
-// Orgao publico agora tem prazo, entao sem onboarding ele fica vermelho.
+// Na etapa, sem prazo de assinatura preenchido o card fica vermelho em
+// qualquer formato de empresa.
+assert.equal(E({ stage: CTR, evento: '2026-11-20', formatoEmpresa: 'Associação' }).cor, 'vermelho')
 assert.equal(E({ stage: CTR, evento: '2026-11-20', formatoEmpresa: 'Órgão Público' }).cor, 'vermelho')
 
-console.log('ok — prazo de assinatura por formato da empresa')
+console.log('ok — formato da empresa nao decide prazo')
 
 // Campo em branco para o relogio e cinza no card, mas tem que aparecer no
 // dialogo: isento e falta de preenchimento ficam iguais na cor, e so um dos
 // dois alguem consegue resolver.
 const semFormato = explicar(
-  T({ stage: CTR, formatoEmpresa: '', formatoContrato: '', onboarding: '2026-01-01', evento: '2026-11-20' }),
+  T({ stage: CTR, formatoEmpresa: '', formatoContrato: '', prazoAssinatura: '2026-10-10', evento: '2026-11-20' }),
   'Assinar Contrato',
   HOJE,
 )
 const branco = semFormato.contas.filter((c) => c.faltaDado)
-assert.equal(branco.length, 3, 'assinatura do cliente e os dois relogios do palestrante')
-assert.match(branco[0].porque, /^Formato da Empresa está em branco/)
-assert.match(branco[1].porque, /^Formato de Contrato está em branco/)
+assert.equal(branco.length, 2, 'os dois relogios do palestrante param pelo Formato de Contrato')
+assert.match(branco[0].porque, /^Formato de Contrato está em branco/)
 
-// Isento de verdade nao leva a marca: nao ha o que preencher.
-const publico = explicar(
-  T({ stage: CTR, formatoEmpresa: 'Associação', formatoContrato: 'MC (Cliente x PSA) = 100% PSA', evento: '2026-11-20' }),
+// Isento de verdade nao leva a marca: nao ha o que preencher. O unico isento
+// do relogio do cliente e o contrato em que a PSA nao e parte.
+const semPsa = explicar(
+  T({ stage: CTR, formatoContrato: 'MC (Cliente x Palestrante)', prazoAssinaturaPalestrante: '2026-10-10', evento: '2026-11-20' }),
   'Assinar Contrato',
   HOJE,
 )
-const assinatura = publico.contas.find((c) => c.chave === 'contrato-assinatura')
+const assinatura = semPsa.contas.find((c) => c.chave === 'contrato-assinatura')
 assert.equal(assinatura.estado, 'nao-aplica')
 assert.equal(assinatura.faltaDado, false)
-assert.match(assinatura.porque, /Associação/)
+assert.match(assinatura.porque, /contrato é entre cliente e palestrante/)
 
 console.log('ok — campo em branco aparece no dialogo')
 
@@ -685,7 +660,7 @@ const interv = explicar(
 )
 assert.deepEqual(
   interv.datas.map((d) => d.rotulo),
-  ['Data de realização do Onboarding', 'Data de Envio contrato Cliente', 'Prazo de assinatura'],
+  ['Data de realização do Onboarding', 'Data de Envio contrato Cliente', 'Prazo de Assinatura de Contrato'],
   'a tabela nao lista data de palestrante num formato que nao tem minuta',
 )
 assert.deepEqual(
@@ -840,26 +815,24 @@ console.log('ok — relogio que nao corre diz por que')
 // Suzano - Mariana Ferrao (45637669421): contrato do palestrante anexado ao
 // ticket, sem data de assinatura. O painel cobrava um contrato que esta la.
 // 127 dos 245 tickets que exigem minuta tem anexo, contra 6 com data.
-const anexado = { formatoContrato: 'MC (Cliente x PSA) = 100% PSA', palestranteExclusivo: 'Não', onboarding: '2026-06-09' }
-assert.equal(R['palestrante-assinatura'](anexado).estado, 'vermelho', 'sem anexo e sem data, 09/06 + 25 venceu')
+const anexado = {
+  formatoContrato: 'MC (Cliente x PSA) = 100% PSA',
+  palestranteExclusivo: 'Não',
+  prazoAssinaturaPalestrante: '2026-06-20',
+}
+assert.equal(R['palestrante-assinatura'](anexado).estado, 'vermelho', 'sem anexo e sem data, prazo 20/06 venceu')
 assert.equal(R['palestrante-assinatura']({ ...anexado, anexoPalestrante: '12345' }).estado, 'concluido')
 assert.equal(R['palestrante-assinatura']({ ...anexado, anexoPalestrante: '12345' }).texto, 'contrato anexado ao ticket')
 // A data continua mandando quando existe: ela diz se cumpriu o prazo, o anexo nao.
 assert.equal(
-  R['palestrante-assinatura']({ ...anexado, anexoPalestrante: '12345', dataAssinaturaPalestrante: '2026-06-20' }).cumpriu,
+  R['palestrante-assinatura']({ ...anexado, anexoPalestrante: '12345', dataAssinaturaPalestrante: '2026-06-15' }).cumpriu,
   true,
 )
 // Mesmo tratamento do lado do cliente.
-assert.equal(R['contrato-assinatura']({ formatoEmpresa: 'Empresa Privada', onboarding: '2026-06-09' }).estado, 'vermelho')
-assert.equal(
-  R['contrato-assinatura']({ formatoEmpresa: 'Empresa Privada', onboarding: '2026-06-09', anexoCliente: '9' }).estado,
-  'concluido',
-)
+assert.equal(R['contrato-assinatura']({ prazoAssinatura: '2026-06-20' }).estado, 'vermelho')
+assert.equal(R['contrato-assinatura']({ prazoAssinatura: '2026-06-20', anexoCliente: '9' }).estado, 'concluido')
 // E o envio passa a estar provado pelo anexo: nao se anexa o que nao existe.
-assert.equal(
-  R['contrato-envio']({ formatoEmpresa: 'Empresa Privada', onboarding: '2026-06-09', anexoCliente: '9' }).estado,
-  'concluido',
-)
+assert.equal(R['contrato-envio']({ onboarding: '2026-06-09', anexoCliente: '9' }).estado, 'concluido')
 
 console.log('ok — anexo do contrato conta como prova')
 
@@ -908,13 +881,16 @@ assert.equal(
 console.log('ok — fora de cena por resposta preenchida e verde')
 
 // ---- cinza diz qual campo falta ----
-// Santa Casa (47323751329): Assinar Contrato com Formato da Empresa e Formato
-// de Contrato os dois em branco. O card dizia "sem prazo nesta etapa" numa
-// etapa que tem quatro relogios — a frase escondia a unica acao possivel.
-const faltaFormatoEmpresa = T({ stage: CTR, evento: '2026-11-13', onboarding: '2026-08-03', formatoEmpresa: '', formatoContrato: '', envioCliente: '2026-08-07' })
-const vFormato = avaliarEtapa(faltaFormatoEmpresa, HOJE, QUADROS.cs.sla)
+// O card dizia "sem prazo nesta etapa" numa etapa que tem quatro relogios — a
+// frase escondia a unica acao possivel. Com os relogios do cliente fechados e
+// o Formato de Contrato em branco, o que falta e esse campo.
+const faltaFormatoContrato = T({
+  stage: CTR, evento: '2026-11-13', onboarding: '2026-08-03', formatoContrato: '',
+  envioCliente: '2026-08-07', prazoAssinatura: '2026-08-20', dataAssinatura: '2026-08-10',
+})
+const vFormato = avaliarEtapa(faltaFormatoContrato, HOJE, QUADROS.cs.sla)
 assert.equal(vFormato.cor, 'cinza')
-assert.equal(vFormato.texto, 'falta Formato da Empresa')
+assert.equal(vFormato.texto, 'falta Formato de Contrato')
 // Logistica sem resposta diz o campo dela.
 assert.equal(
   avaliarEtapa(T({ stage: LOG, logistica: '', entrouEtapa: '2026-10-05' }), HOJE, QUADROS.cs.sla).texto,
@@ -996,15 +972,15 @@ console.log('ok — despacho registrado nao fecha a etapa')
 // ---- cumprido fora do prazo nao e verde ----
 // O codigo tratava "concluido" como verde sem olhar o cumpriu do veredito:
 // havia card verde com o contrato assinado 197 dias depois do prazo.
-const assinouTarde = E({ stage: CTR, evento: '2026-11-20', formatoEmpresa: 'Empresa Privada',
+const assinouTarde = E({ stage: CTR, evento: '2026-11-20',
   formatoContrato: 'MC (Cliente x PSA x Palestrante)', onboarding: '2026-01-05',
-  envioCliente: '2026-01-06', dataAssinatura: '2026-06-01' })
+  envioCliente: '2026-01-06', prazoAssinatura: '2026-01-25', dataAssinatura: '2026-06-01' })
 assert.equal(assinouTarde.cor, 'amarelo')
 assert.match(assinouTarde.texto, /assinado \d+d depois do prazo/)
 // Assinado dentro do prazo segue verde.
-const assinouNoPrazo = E({ stage: CTR, evento: '2026-11-20', formatoEmpresa: 'Empresa Privada',
+const assinouNoPrazo = E({ stage: CTR, evento: '2026-11-20',
   formatoContrato: 'MC (Cliente x PSA x Palestrante)', onboarding: '2026-01-05',
-  envioCliente: '2026-01-06', dataAssinatura: '2026-01-20' })
+  envioCliente: '2026-01-06', prazoAssinatura: '2026-01-25', dataAssinatura: '2026-01-20' })
 assert.equal(assinouNoPrazo.cor, 'verde')
 
 console.log('ok — cumprido fora do prazo nao e verde')

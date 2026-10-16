@@ -11,7 +11,6 @@
 import {
   AMARELO_ANTES,
   type Alerta,
-  DIAS_PARA_ASSINAR,
   avaliar,
   hojeEmDias,
   type Avaliacao,
@@ -138,11 +137,6 @@ export const PRAZO_NPS = 5
 // condição para o prazo começar, não um atraso — sem esta lista, a regra de
 // eventoPassou pintaria de vermelho todo ticket que chega em Coletar NPS.
 export const ETAPAS_POS_EVENTO = ['Coletar NPS e Fotos']
-
-// Dias entre o onboarding e a assinatura do palestrante. Mesmo marco do
-// contrato do cliente, número único: o prazo do cliente varia por Formato da
-// Empresa, o do palestrante não.
-export const DIAS_ASSINATURA_PALESTRANTE = 25
 
 const LOG_REEMBOLSO = 'Sim, com reembolso do cliente'
 const LOG_CUSTO_PSA = 'Sim, com custo para PSA'
@@ -291,34 +285,23 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do contrato pelo cliente',
     curto: 'assinatura',
-    regra: 'Do onboarding: 20 dias para Empresa Privada, 30 para Sistema S, 45 para Órgão Público · amarelo nos ${AMARELO_ANTES} dias antes · vermelho depois disso · sem onboarding também é vermelho',
+    regra: `Até a data em "Prazo de Assinatura de Contrato" · amarelo nos ${AMARELO_ANTES} dias antes · vermelho depois · sem o prazo preenchido também é vermelho`,
     confianca: 'fechado',
-    gatilho: 'data_de_realizacao_do_onboarding',
-    marco: 'data_de_assinatura_do_contrato / status_do_contrato',
-    pendencia:
-      'Associação e agência não têm prazo acordado, e 44 dos 118 tickets da etapa estão com Formato da Empresa em branco — nesses o relógio não corre. Não há faixa de atenção: o CS definiu verde até o prazo e vermelho depois.',
+    gatilho: 'assinar_contrato',
+    marco: 'data_de_assinatura_do_contrato / status_do_contrato / contrato anexado',
     ver: (t, hoje) => {
       if (!usaCliente(t.formatoContrato)) return foraDoFormato('contrato é entre cliente e palestrante')
-      const dias = DIAS_PARA_ASSINAR[t.formatoEmpresa]
-      if (!dias)
-        return t.formatoEmpresa
-          ? foraDoFormato(`não há prazo de assinatura acordado para ${t.formatoEmpresa}`)
-          : foraDoFormato(
-              'Formato da Empresa está em branco, então o prazo de assinatura não corre — preencha para o painel cobrar',
-              true,
-              'Formato da Empresa',
-            )
 
-      const limite = dia(t.onboarding) + dias * DIA
-      const prazo = Number.isFinite(limite) ? iso(limite) : undefined
+      const limite = dia(t.prazoAssinatura)
+      const temPrazo = Number.isFinite(limite)
+      const prazo = temPrazo ? iso(limite) : undefined
 
-      // Único relógio com as duas pontas: dá para dizer se cumpriu de verdade.
       if (anexado(t.anexoCliente) && !tem(t.dataAssinatura) && t.statusContrato !== 'Assinado')
         return { estado: 'concluido', dias: null, prazo, texto: 'contrato anexado ao ticket', cumpriu: null }
 
+      // Único relógio com as duas pontas: dá para dizer se cumpriu de verdade.
       if (tem(t.dataAssinatura)) {
-        if (!prazo)
-          return { estado: 'concluido', dias: null, texto: 'assinado', cumpriu: null }
+        if (!temPrazo) return { estado: 'concluido', dias: null, texto: 'assinado', cumpriu: null }
         const atraso = emDias(dia(t.dataAssinatura), limite)
         return {
           estado: 'concluido',
@@ -331,14 +314,13 @@ export const RELOGIOS: Relogio[] = [
       if (t.statusContrato === 'Assinado')
         return { estado: 'concluido', dias: null, prazo, texto: 'assinado, sem data registrada', cumpriu: null }
 
-      // Sem onboarding o prazo nem começa a correr, e o CS decidiu que isso
-      // conta como atrasado: contrato sem onboarding registrado é o caso que
-      // mais some, justamente por não ter data para cobrar.
-      if (!prazo)
+      // Prazo em branco não é prazo em dia: sem data não há o que cobrar, e
+      // isso conta como atraso. Mesma decisão do faturamento.
+      if (!temPrazo)
         return {
           estado: 'vermelho',
           dias: null,
-          texto: 'sem data de onboarding, não há prazo para cobrar',
+          texto: 'sem "Prazo de Assinatura de Contrato" preenchido',
           cumpriu: null,
         }
 
@@ -386,12 +368,10 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Assinar Contrato', 'Contrato'],
     nome: 'Assinatura do palestrante',
     curto: 'assinatura do palestrante',
-    regra: `${DIAS_ASSINATURA_PALESTRANTE} dias após o onboarding, quando o formato exige contrato com o palestrante · amarelo nos ${AMARELO_ANTES} dias antes · vermelho depois disso · sem onboarding também é vermelho`,
+    regra: `Até a data em "Prazo de Assinatura  Contrato Palestrante" · amarelo nos ${AMARELO_ANTES} dias antes · vermelho depois · sem o prazo preenchido também é vermelho`,
     confianca: 'fechado',
-    gatilho: 'data_de_realizacao_do_onboarding',
-    marco: 'data_de_assinatura__palestrante_',
-    pendencia:
-      'A propriedade "Prazo de Assinatura Contrato Palestrante", em branco em 29 tickets, deixou de decidir a cor — era a causa dos cinzas nesta etapa.',
+    gatilho: 'prazo_de_assinatura__contrato_palestrante',
+    marco: 'data_de_assinatura__palestrante_ / contrato do palestrante anexado',
     ver: (t, hoje) => {
       if (!usaPalestrante(t))
         return foraDoFormato(
@@ -399,14 +379,16 @@ export const RELOGIOS: Relogio[] = [
           !t.formatoContrato && t.palestranteExclusivo !== 'Sim',
           'Formato de Contrato',
         )
-      const limite = dia(t.onboarding) + DIAS_ASSINATURA_PALESTRANTE * DIA
-      const prazo = Number.isFinite(limite) ? iso(limite) : undefined
+
+      const limite = dia(t.prazoAssinaturaPalestrante)
+      const temPrazo = Number.isFinite(limite)
+      const prazo = temPrazo ? iso(limite) : undefined
 
       if (anexado(t.anexoPalestrante) && !tem(t.dataAssinaturaPalestrante))
         return { estado: 'concluido', dias: null, prazo, texto: 'contrato anexado ao ticket', cumpriu: null }
 
       if (tem(t.dataAssinaturaPalestrante)) {
-        if (!prazo)
+        if (!temPrazo)
           return { estado: 'concluido', dias: null, texto: 'assinado pelo palestrante', cumpriu: null }
         const atraso = emDias(dia(t.dataAssinaturaPalestrante), limite)
         return {
@@ -418,18 +400,14 @@ export const RELOGIOS: Relogio[] = [
         }
       }
 
-      // Mesmo marco do contrato do cliente, mesmo tratamento: sem onboarding o
-      // prazo nem começa a correr, e o CS decidiu que isso conta como atraso.
-      if (!prazo)
+      if (!temPrazo)
         return {
           estado: 'vermelho',
           dias: null,
-          texto: 'sem data de onboarding, não há prazo para cobrar',
+          texto: 'sem "Prazo de Assinatura  Contrato Palestrante" preenchido',
           cumpriu: null,
         }
 
-      // Sem faixa de atenção, igual ao contrato do cliente: verde até o prazo,
-      // vermelho depois.
       const d = emDias(hojeEmDias(hoje), limite)
       return {
         estado: faixaAteOPrazo(d),
@@ -590,11 +568,12 @@ export function briefingPendente(t: TicketSim, etapa: string, hoje: number): { c
 
 export const ORGAO_PUBLICO = 'Órgão Público'
 
-// O prazo de assinatura sai de DIAS_PARA_ASSINAR: 20 dias para empresa
-// privada, 30 para Sistema S e 45 para órgão público. Associação e agência não têm
-// prazo acordado, e formato em branco não entra — aplicar prazo de um tipo de
-// empresa a uma que ninguém classificou seria supor. São 44 dos 118 da etapa,
-// e a conversa ali é preencher o campo, não afrouxar a régua.
+// O prazo de assinatura dos dois contratos vem da propriedade do ticket —
+// "Prazo de Assinatura de Contrato" e "Prazo de Assinatura  Contrato
+// Palestrante". Era calculado do onboarding (20/30/45 por Formato da Empresa,
+// 25 para o palestrante), e isso contradizia o prazo que o CS escrevia no
+// ticket: Colombo (46097473964) tinha 26/10 no campo e o painel cobrava
+// 19/07. Formato da Empresa deixa de entrar na conta.
 
 // Formatos em que a PSA contrata o palestrante por minuta própria. Com
 // interveniente (Cliente x PSA x Palestrante) a minuta individual cai.
@@ -884,7 +863,10 @@ export function explicar(t: TicketSim, etapa: string, hoje: number) {
     // Prazo calculado: entra na tabela com o nome do relógio, senão o da
     // logística apareceria como "Prazo de assinatura".
     const rotuloPrazo = `Prazo de ${rel.curto}`
-    if (v.prazo && !vistos.has(rotuloPrazo)) {
+    // Com o prazo vindo de propriedade, a data já está na tabela pelo nome do
+    // campo: repetir como "Prazo de assinatura" seria a mesma data duas vezes.
+    const jaListado = datas.some((x) => x.valor === v.prazo)
+    if (v.prazo && !jaListado && !vistos.has(rotuloPrazo)) {
       vistos.add(rotuloPrazo)
       datas.push({ rotulo: rotuloPrazo, valor: v.prazo })
     }
