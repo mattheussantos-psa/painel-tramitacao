@@ -429,27 +429,23 @@ assert.match(
 
 console.log('ok — empate cobra quem trava primeiro')
 
-// Faturamento entrou no CS em 02/10/2026 com a regra de 3 dias apos a
-// assinatura. Sem assinatura nao ha de onde contar: cinza, nao verde.
+// Faturamento corre contra "Prazo para Despachar (Faturamento ao
+// Financeiro)" e so contra ele. Prazo em branco e vermelho, igual ao
+// contrato sem onboarding: Redetelesul (47930894741) ficava verde com o
+// prazo vazio porque o calculo de "assinatura + 3" dava 16/10, "vence hoje".
 const FAT = '1450683393'
 const fat = (over) => E({ stage: FAT, evento: '2026-11-20', ...over })
-assert.equal(fat({}).cor, 'cinza', 'contrato nao assinado nao inicia o relogio')
-assert.equal(fat({ dataAssinatura: '2026-09-28' }).cor, 'verde', '1 dia')
-assert.equal(fat({ dataAssinatura: '2026-09-26' }).cor, 'verde', '3 dias')
-assert.equal(fat({ dataAssinatura: '2026-09-24' }).cor, 'amarelo', '5 dias')
-assert.equal(fat({ dataAssinatura: '2026-09-20' }).cor, 'vermelho', '9 dias')
-// Despachar nao fecha a etapa: so sair dela fecha. Com o prazo de 23/09 ja
-// vencido e o ticket ainda na coluna, segue vermelho — o que se cobra e
-// CONCLUIR o faturamento.
-assert.equal(fat({ dataAssinatura: '2026-09-20', dataFaturamento: '2026-09-22' }).cor, 'vermelho')
-assert.match(
-  fat({ dataAssinatura: '2026-09-20', dataFaturamento: '2026-09-22' }).texto,
-  /despachado 22\/09\/2026 e a etapa não fechou — 6d depois do prazo/,
-)
-// Com o prazo ainda em aberto, despachado e verde — nada venceu.
-assert.equal(fat({ dataAssinatura: '2026-09-28', dataFaturamento: '2026-09-29' }).cor, 'verde')
-assert.match(fat({ dataAssinatura: '2026-09-28', dataFaturamento: '2026-09-29' }).texto, /etapa aberta/)
-assert.match(fat({ dataAssinatura: '2026-09-20' }).texto, /^emissão · /)
+assert.equal(fat({}).cor, 'vermelho', 'sem prazo preenchido nao e em dia')
+assert.match(fat({}).texto, /sem "Prazo para Despachar \(Faturamento ao Financeiro\)" preenchido/)
+// Assinatura preenchida nao substitui o prazo.
+assert.equal(fat({ dataAssinatura: '2026-09-28' }).cor, 'vermelho')
+// HOJE = 29/09. Prazo 10/10: faltam 11 dias.
+assert.equal(fat({ prazoDespacho: '2026-10-10' }).cor, 'verde')
+// Reta final: 4 dias antes ja e amarelo, e o dia do prazo tambem.
+assert.equal(fat({ prazoDespacho: '2026-10-03' }).cor, 'amarelo', 'faltam 4')
+assert.equal(fat({ prazoDespacho: '2026-09-29' }).cor, 'amarelo', 'vence hoje')
+assert.equal(fat({ prazoDespacho: '2026-09-28' }).cor, 'vermelho', 'venceu ontem')
+assert.match(fat({ prazoDespacho: '2026-09-20' }).texto, /^emissão · 9d depois do prazo/)
 
 console.log('ok — faturamento no CS')
 
@@ -977,47 +973,25 @@ assert.match(R['contrato-envio']({ onboarding: '2026-09-01', envioCliente: '2026
 
 console.log('ok — marco com data no futuro nao aconteceu')
 
-// ---- prazo próprio do faturamento ----
-// APASSUL (47970226845): "Prazo para Despachar (Faturamento ao Financeiro)"
-// em 19/10, assinatura em 22/09. Pela regra dos 3 dias ja estava vermelho ha
-// semanas; pelo prazo do ticket ainda nem venceu. Medido: 277 tickets tem esse
-// prazo, e a distancia ate a assinatura vai de -142 a +414 dias — e prazo
-// proprio, nao "assinatura + N".
+// ---- despacho registrado nao fecha a etapa ----
+// Despachar nao conclui o faturamento: so sair da coluna conclui. A data de
+// despacho entra na frase como contexto, nao como alivio.
 const desp = (over) => E({ stage: FAT, evento: '2026-11-20', ...over })
-// HOJE = 29/09. Assinatura 20/09 sozinha = 9 dias, vermelho.
-assert.equal(desp({ dataAssinatura: '2026-09-20' }).cor, 'vermelho')
-// Com prazo proprio em 05/10, o mesmo ticket esta em dia.
-assert.equal(desp({ dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05' }).cor, 'verde')
-assert.match(desp({ dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05' }).texto, /^emissão · faltam 6d/)
-// E o prazo proprio tambem pode apertar: 25/09 ja venceu ha 4 dias.
-assert.equal(desp({ dataAssinatura: '2026-09-28', prazoDespacho: '2026-09-25' }).cor, 'vermelho')
-// Reta final: prazo proprio a 3 dias e amarelo, nao verde. Com a janela
-// aberta (6 dias) segue verde.
-assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-10-02' }).cor, 'amarelo', 'faltam 3')
-assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-10-03' }).cor, 'amarelo', 'faltam 4')
-assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-10-04' }).cor, 'verde', 'faltam 5 ja esta fora da reta')
-// Vence hoje tambem e amarelo: e o ultimo dia para despachar.
-assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-09-29' }).cor, 'amarelo')
-// Um dia depois ja e vermelho — o prazo proprio nao tem tolerancia.
-assert.equal(desp({ dataAssinatura: '2026-09-10', prazoDespacho: '2026-09-28' }).cor, 'vermelho')
-// Sem prazo proprio, a janela de "assinatura + 3" e menor que a reta final:
-// com ela a coluna nasceria amarela e nunca ficaria verde. La vale a
-// tolerancia de 2 dias depois.
-assert.equal(desp({ dataAssinatura: '2026-09-28' }).cor, 'verde', 'assinado ontem')
-assert.equal(desp({ dataAssinatura: '2026-09-26' }).cor, 'verde', 'vence hoje')
-assert.equal(desp({ dataAssinatura: '2026-09-25' }).cor, 'amarelo', '1 dia depois')
-assert.equal(desp({ dataAssinatura: '2026-09-23' }).cor, 'vermelho', '3 dias depois')
-// Despachado mede contra o prazo proprio, nao contra a assinatura: 01/10 e
-// anterior ao prazo de 05/10, entao cumpriu — mas a etapa segue aberta.
-const cumpriuDesp = R['faturamento']({ dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05', dataFaturamento: '2026-10-01' })
-assert.equal(cumpriuDesp.cumpriu, true)
-assert.match(cumpriuDesp.texto, /despachado 01\/10\/2026, no prazo, etapa aberta/)
-// Sem prazo proprio E sem assinatura segue cinza.
-assert.equal(desp({}).cor, 'cinza')
-// Com prazo proprio e sem assinatura, da para cobrar: o prazo existe.
-assert.equal(desp({ prazoDespacho: '2026-09-20' }).cor, 'vermelho')
+// Prazo vencido com despacho feito: segue vermelho, e a frase diz as duas
+// coisas. Alvarez & Marsal (47449431815): prazo 01/09, despacho 02/09, e em
+// 16/10 ainda em Faturar.
+const preso = desp({ prazoDespacho: '2026-09-01', dataFaturamento: '2026-09-02' })
+assert.equal(preso.cor, 'vermelho')
+assert.match(preso.texto, /despachado 02\/09\/2026 e a etapa não fechou — 28d depois do prazo/)
+// Prazo em aberto com despacho feito: verde, dizendo que a etapa segue aberta.
+const noPrazoAberto = desp({ prazoDespacho: '2026-10-05', dataFaturamento: '2026-10-01' })
+assert.equal(noPrazoAberto.cor, 'verde')
+assert.match(noPrazoAberto.texto, /despachado 01\/10\/2026, no prazo, etapa aberta/)
+// cumpriu mede o despacho contra o prazo, nao contra hoje.
+assert.equal(R['faturamento']({ prazoDespacho: '2026-10-05', dataFaturamento: '2026-10-01' }).cumpriu, true)
+assert.equal(R['faturamento']({ prazoDespacho: '2026-10-05', dataFaturamento: '2026-10-06' }).cumpriu, false)
 
-console.log('ok — prazo próprio do faturamento')
+console.log('ok — despacho registrado nao fecha a etapa')
 
 // ---- cumprido fora do prazo nao e verde ----
 // O codigo tratava "concluido" como verde sem olhar o cumpriu do veredito:
@@ -1035,14 +1009,3 @@ assert.equal(assinouNoPrazo.cor, 'verde')
 
 console.log('ok — cumprido fora do prazo nao e verde')
 
-// ---- faturamento despachado mas preso na etapa ----
-// Alvarez & Marsal (47449431815): prazo 01/09, despacho 02/09, e em 16/10
-// seguia em Faturar. Despachar nao fecha a etapa — so sair dela fecha.
-const presoEmFaturar = E({ stage: FAT, evento: '2026-11-20', dataAssinatura: '2026-08-20', prazoDespacho: '2026-09-01', dataFaturamento: '2026-09-02' })
-assert.equal(presoEmFaturar.cor, 'vermelho')
-assert.match(presoEmFaturar.texto, /e a etapa não fechou — 28d depois do prazo/)
-// Dentro do prazo proprio, com despacho feito, segue verde.
-const despachouNoPrazo = E({ stage: FAT, evento: '2026-11-20', dataAssinatura: '2026-09-20', prazoDespacho: '2026-10-05', dataFaturamento: '2026-10-01' })
-assert.equal(despachouNoPrazo.cor, 'verde')
-
-console.log('ok — faturamento despachado mas preso na etapa')

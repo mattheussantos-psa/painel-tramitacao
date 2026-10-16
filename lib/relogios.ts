@@ -445,29 +445,25 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Faturar', 'Faturamento'],
     nome: 'Emissão do faturamento',
     curto: 'emissão',
-    regra: `Com "Prazo para Despachar (Faturamento ao Financeiro)": até essa data, amarelo nos ${AMARELO_ANTES} dias antes, vermelho depois · sem ela: 3 dias após a assinatura, amarelo 1 a 2 depois, vermelho 3+`,
-    confianca: 'hipotese',
-    gatilho: 'data_de_assinatura_do_contrato',
+    regra: `Até a data em "Prazo para Despachar (Faturamento ao Financeiro)" · amarelo nos ${AMARELO_ANTES} dias antes · vermelho depois · sem o prazo preenchido também é vermelho`,
+    confianca: 'fechado',
+    gatilho: 'prazo_para_despachar_faturamento_ao_financeiro',
     marco: '— sair da etapa é o único sinal de que o faturamento terminou',
-    pendencia: 'Falta definir o campo oficial de emissão, e se Órgão Público suspende o vermelho ou só ganha a tag.',
+    pendencia: 'Falta definir se Órgão Público suspende o vermelho ou só ganha a tag.',
     ver: (t, hoje) => {
-      // Prazo marcado no ticket manda. Medido em 16/10/2026: 277 tickets com
-      // esse prazo, e a distância dele até a assinatura vai de -142 a +414
-      // dias — não é "assinatura + N" disfarçado, é prazo próprio, e o CS o
-      // escolhe caso a caso. Em Faturar são 10 dos 13.
-      const proprio = tem(t.prazoDespacho)
-      const limite = proprio ? dia(t.prazoDespacho) : dia(t.dataAssinatura) + 3 * DIA
-      const prazo = Number.isFinite(limite) ? iso(limite) : undefined
-
+      // O prazo é a propriedade, ponto. Caiu o cálculo de "assinatura + 3":
+      // com ele, Redetelesul (47930894741) ficava verde com o prazo em branco
+      // — assinatura 13/10 + 3 dava 16/10, "vence hoje". Prazo em branco não
+      // é prazo em dia; é a mesma decisão do contrato sem onboarding.
+      const limite = dia(t.prazoDespacho)
       if (!Number.isFinite(limite))
         return {
-          estado: 'sem-dado',
+          estado: 'vermelho',
           dias: null,
-          texto:
-            'sem prazo: preencha "Data de assinatura do contrato" ou "Prazo para Despachar (Faturamento ao Financeiro)"',
+          texto: 'sem "Prazo para Despachar (Faturamento ao Financeiro)" preenchido',
           cumpriu: null,
-          faltaDado: true,
         }
+      const prazo = iso(limite)
 
       // Despachar não fecha a etapa: só sair dela fecha. O que se cobra aqui
       // é CONCLUIR o faturamento, e isso não aconteceu enquanto o ticket
@@ -475,13 +471,12 @@ export const RELOGIOS: Relogio[] = [
       // qualquer pendência. A data de despacho entra na frase como contexto,
       // não como alívio: Alvarez & Marsal (47449431815) tinha prazo 01/09,
       // despacho em 02/09 e seguia na etapa em 16/10.
-      const marco = tem(t.dataEmissao) ? t.dataEmissao : t.dataFaturamento
       const d = emDias(hojeEmDias(hoje), limite)
-      const correndo = proprio ? faixaAteOPrazo(d) : d <= 0 ? 'verde' : faixa(d, 0, 2)
+      const marco = tem(t.dataEmissao) ? t.dataEmissao : t.dataFaturamento
       if (tem(marco)) {
         const atraso = emDias(dia(marco), limite)
         return {
-          estado: correndo,
+          estado: faixaAteOPrazo(d),
           dias: d,
           prazo,
           texto:
@@ -491,12 +486,8 @@ export const RELOGIOS: Relogio[] = [
           cumpriu: atraso <= 0,
         }
       }
-      // Reta final amarela só quando o prazo é o do ticket. Na regra de
-      // "assinatura + 3" a janela inteira é menor que os AMARELO_ANTES dias
-      // da reta final, então ela nasceria amarela e nunca ficaria verde — a
-      // cor pararia de informar. Lá vale a tolerância de 2 dias depois.
       return {
-        estado: correndo,
+        estado: faixaAteOPrazo(d),
         dias: d,
         prazo,
         texto: d <= 0 ? `faltam ${-d}d para o prazo` : `${d}d depois do prazo`,
