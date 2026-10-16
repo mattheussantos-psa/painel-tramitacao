@@ -490,17 +490,22 @@ console.log('ok — minuta do palestrante')
 const tLog = T({ stage: LOG, logistica: REEMBOLSO, ganhoNegocio: '2026-09-15', pagamentoLogistica: '2026-10-05', entrouEtapa: '2026-10-02', evento: '2026-11-20' })
 const { datas, contas } = explicar(tLog, 'Contratar Logística', HOJE)
 
-// A tabela traz data com nome humano, nao nome de propriedade.
+// A tabela traz o nome EXATO da propriedade no HubSpot: quem le o dialogo
+// precisa achar o campo na tela do ticket.
 assert.deepEqual(
   datas.map((d) => [d.rotulo, d.valor]),
-  [['Negócio ganho', '2026-09-15'], ['Pagamento previsto', '2026-10-05'], ['Prazo de aquisição', '2026-09-20']],
+  [
+    ['Negócio ganho', '2026-09-15'],
+    ['Data prevista de pagamento Logistica', '2026-10-05'],
+    ['Prazo de aquisição', '2026-09-20'],
+  ],
 )
 
 // Uma frase por relogio, com a data e a conta de dias.
 assert.equal(contas[0].estado, 'vermelho')
 assert.equal(contas[0].porque, 'O prazo era 20/09/2026 venceu há 9 dias.')
 assert.equal(contas[1].estado, 'verde')
-assert.equal(contas[1].porque, 'Pagamento previsto 05/10/2026 ainda não venceu: faltam 6 dias.')
+assert.equal(contas[1].porque, 'Data prevista de pagamento Logistica 05/10/2026 ainda não venceu: faltam 6 dias.')
 
 // Prazo anterior a entrada na etapa e dado possivelmente herdado.
 assert.equal(contas[0].herdado, true, 'prazo 20/09 contra entrada 02/10')
@@ -678,7 +683,7 @@ const interv = explicar(
 )
 assert.deepEqual(
   interv.datas.map((d) => d.rotulo),
-  ['Onboarding', 'Envio ao cliente', 'Prazo de assinatura'],
+  ['Data de realização do Onboarding', 'Data de Envio contrato Cliente', 'Prazo de assinatura'],
   'a tabela nao lista data de palestrante num formato que nao tem minuta',
 )
 assert.deepEqual(

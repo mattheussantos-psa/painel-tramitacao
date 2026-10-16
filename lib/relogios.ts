@@ -460,7 +460,14 @@ export const RELOGIOS: Relogio[] = [
       const prazo = Number.isFinite(limite) ? iso(limite) : undefined
 
       if (!Number.isFinite(limite))
-        return { estado: 'sem-dado', dias: null, texto: 'contrato ainda não assinado', cumpriu: null }
+        return {
+          estado: 'sem-dado',
+          dias: null,
+          texto:
+            'sem prazo: preencha "Data de assinatura do contrato" ou "Prazo para Despachar (Faturamento ao Financeiro)"',
+          cumpriu: null,
+          faltaDado: true,
+        }
 
       if (tem(t.dataEmissao))
         return { estado: 'concluido', dias: emDias(dia(t.dataEmissao), limite), prazo, texto: 'emitido', cumpriu: emDias(dia(t.dataEmissao), limite) <= 0 }
@@ -755,28 +762,34 @@ export function alertas(t: TicketSim, hoje: number, sla: Record<string, Regra>):
 // Nome humano e campo do ticket para cada propriedade que um relógio lê. O
 // diálogo mostra "Prazo de aquisição", não "adquirir_logistica": quem abre o
 // painel não precisa saber o nome interno da propriedade.
+// O rótulo é o nome EXATO da propriedade no HubSpot, não um apelido curto.
+// O diálogo manda preencher campo, e campo com nome inventado não se acha na
+// tela do ticket — "Assinatura do cliente" não existe, "Data de assinatura do
+// contrato" existe. Conferido contra /properties/tickets: os 12 divergiam.
 const PROP: Record<string, { rotulo: string; campo: keyof TicketSim }> = {
-  data_de_realizacao_do_onboarding: { rotulo: 'Onboarding', campo: 'onboarding' },
-  adquirir_logistica: { rotulo: 'Prazo de aquisição', campo: 'prazoLogistica' },
+  data_de_realizacao_do_onboarding: { rotulo: 'Data de realização do Onboarding', campo: 'onboarding' },
+  adquirir_logistica: { rotulo: 'Prazo de aquisição da Logística', campo: 'prazoLogistica' },
+  // Único que não é propriedade do ticket: vem do histórico do negócio
+  // associado, então não há nome de campo para mandar preencher.
   ganho_negocio: { rotulo: 'Negócio ganho', campo: 'ganhoNegocio' },
-  data_prevista_de_pagamento_logistica: { rotulo: 'Pagamento previsto', campo: 'pagamentoLogistica' },
-  data_de_envio_contrato_cliente: { rotulo: 'Envio ao cliente', campo: 'envioCliente' },
-  assinar_contrato: { rotulo: 'Prazo de assinatura', campo: 'prazoAssinatura' },
-  data_de_assinatura_do_contrato: { rotulo: 'Assinatura do cliente', campo: 'dataAssinatura' },
+  data_prevista_de_pagamento_logistica: { rotulo: 'Data prevista de pagamento Logistica', campo: 'pagamentoLogistica' },
+  data_de_envio_contrato_cliente: { rotulo: 'Data de Envio contrato Cliente', campo: 'envioCliente' },
+  assinar_contrato: { rotulo: 'Prazo de Assinatura de Contrato', campo: 'prazoAssinatura' },
+  data_de_assinatura_do_contrato: { rotulo: 'Data de assinatura do contrato', campo: 'dataAssinatura' },
   prazo_para_despachar_faturamento_ao_financeiro: {
-    rotulo: 'Prazo para despachar',
+    rotulo: 'Prazo para Despachar (Faturamento ao Financeiro)',
     campo: 'prazoDespacho',
   },
-  data_de_envio_contrato_palestrante: { rotulo: 'Envio ao palestrante', campo: 'envioPalestrante' },
+  data_de_envio_contrato_palestrante: { rotulo: 'Data de Envio contrato Palestrante', campo: 'envioPalestrante' },
   prazo_de_assinatura__contrato_palestrante: {
-    rotulo: 'Prazo de assinatura do palestrante',
+    rotulo: 'Prazo de Assinatura  Contrato Palestrante',
     campo: 'prazoAssinaturaPalestrante',
   },
   data_de_assinatura__palestrante_: {
-    rotulo: 'Assinatura do palestrante',
+    rotulo: 'Data de Assinatura (Palestrante)',
     campo: 'dataAssinaturaPalestrante',
   },
-  data_do_evento__ganho_: { rotulo: 'Evento', campo: 'evento' },
+  data_do_evento__ganho_: { rotulo: 'Data do Evento', campo: 'evento' },
 }
 
 const dataDe = (t: TicketSim, prop: string) => {
