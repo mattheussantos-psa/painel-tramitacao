@@ -197,6 +197,117 @@ function Grupo({
   )
 }
 
+// Evento já realizado e ticket ainda em atraso: o pior caso do painel, porque
+// não há mais prazo a salvar. Vinha diluído nas cinco faixas do gráfico.
+function EventoRealizado({
+  linhas,
+  aoAbrir,
+}: {
+  linhas: Linha[]
+  aoAbrir: (titulo: string, itens: Linha[]) => void
+}) {
+  const atrasados = linhas.filter((l) => jaRealizado(l) && l.cor === 'vermelho')
+  if (!atrasados.length) return null
+
+  // Onde o atraso se concentra. Sem isso o número grande não diz o que fazer.
+  const porEtapa = [...new Map(atrasados.map((l) => [l.etapa, 0])).keys()]
+    .map((etapa) => ({ etapa, n: atrasados.filter((l) => l.etapa === etapa).length }))
+    .sort((a, b) => b.n - a.n)
+
+  const pior = atrasados.reduce((a, b) => (b.dias > a.dias ? b : a))
+
+  return (
+    <Grupo style={{ marginBottom: 18, background: 'var(--vermelho-bg)' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 18,
+          flexWrap: 'wrap',
+          padding: '15px 20px 16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, minWidth: 0 }}>
+          <span
+            style={{
+              fontFamily: 'var(--display)',
+              fontSize: 34,
+              fontWeight: 800,
+              lineHeight: 1,
+              color: 'var(--vermelho)',
+            }}
+          >
+            {atrasados.length}
+          </span>
+          <span style={{ minWidth: 0 }}>
+            <span
+              style={{
+                display: 'block',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.07em',
+                textTransform: 'uppercase',
+                color: 'var(--vermelho)',
+              }}
+            >
+              Evento já aconteceu e segue em atraso
+            </span>
+            <span style={{ display: 'block', fontSize: 12 }}>
+              O pior é {pior.cliente}, {pior.dias}d · {porEtapa.length}{' '}
+              {porEtapa.length === 1 ? 'etapa' : 'etapas'} envolvidas
+            </span>
+          </span>
+        </div>
+
+        <button
+          onClick={() => aoAbrir('Evento já aconteceu e segue em atraso', atrasados)}
+          style={{
+            ...CONTROLE,
+            width: 'auto',
+            padding: '0 14px',
+            background: 'var(--vermelho)',
+            color: '#fff',
+            borderColor: 'transparent',
+            fontWeight: 600,
+          }}
+        >
+          Ver os {atrasados.length}
+        </button>
+      </div>
+
+      {/* Uma linha por etapa: é onde a cobrança acontece. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 1, background: 'var(--line)' }}>
+        {porEtapa.map((e) => (
+          <button
+            key={e.etapa}
+            onClick={() =>
+              aoAbrir(
+                `${e.etapa} · evento já aconteceu e segue em atraso`,
+                atrasados.filter((l) => l.etapa === e.etapa),
+              )
+            }
+            style={{
+              flex: '1 1 150px',
+              maxWidth: 300,
+              border: 0,
+              background: 'var(--card)',
+              padding: '9px 14px',
+              textAlign: 'left',
+              font: 'inherit',
+              color: 'var(--text)',
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{e.etapa}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--vermelho)' }}>{e.n}</span>
+          </button>
+        ))}
+      </div>
+    </Grupo>
+  )
+}
+
 type Faixa = { rotulo: string; dentro: (l: Linha) => boolean }
 
 // Futuro: quanto falta para o evento. Passado: há quanto tempo ele aconteceu e
@@ -455,47 +566,6 @@ function Horizonte({
           ))}
         </div>
       </div>
-
-      {/* Uma linha antes das faixas: o total de eventos já realizados que
-          seguem em atraso. Espalhado pelas quatro faixas de passado, esse
-          número exigia somar na cabeça. */}
-      {(() => {
-        const atrasados = linhas.filter((l) => jaRealizado(l) && l.cor === 'vermelho')
-        if (!atrasados.length) return null
-        return (
-          <button
-            onClick={() => aoAbrir('Eventos já realizados e em atraso', atrasados)}
-            style={{
-              display: 'flex',
-              width: '100%',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              gap: 12,
-              marginBottom: 12,
-              padding: '9px 12px',
-              border: '1px solid var(--line)',
-              borderRadius: 7,
-              background: 'var(--vermelho-bg)',
-              color: 'var(--text)',
-              font: 'inherit',
-              textAlign: 'left',
-              cursor: 'pointer',
-            }}
-          >
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <span
-                aria-hidden
-                style={{ width: 9, height: 9, borderRadius: 3, background: 'var(--vermelho-ponto)', flexShrink: 0 }}
-              />
-              <span style={{ fontSize: 14 }}>Eventos já realizados e em atraso</span>
-            </span>
-            <span style={{ fontSize: 12, color: 'var(--text-2)', flexShrink: 0 }}>
-              <b style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{atrasados.length}</b>{' '}
-              {atrasados.length === 1 ? 'ticket' : 'tickets'} · ver lista
-            </span>
-          </button>
-        )
-      })()}
 
       {faixas.map((f) => {
         return (
@@ -1661,6 +1731,8 @@ export default function Painel({
 
       {/* Alerta é contagem antes de ser filtro: "23 contratos pendentes" é a
           informação. Ficava escondido numa fileira de chips igual aos outros. */}
+      <EventoRealizado linhas={porPessoa} aoAbrir={(titulo, itens) => setDetalhe({ titulo, itens })} />
+
       {porAlerta.length > 0 && (
         <Grupo style={{ marginBottom: 18 }}>
           <div style={{ display: 'flex' }}>
