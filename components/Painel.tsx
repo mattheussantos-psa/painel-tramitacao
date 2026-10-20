@@ -349,7 +349,8 @@ export const jaRealizado = (l: Linha) => passou(l) >= 0
 // em lugar nenhum de propósito: enquanto o prazo corre não há o que cobrar, e
 // no dia em que ele estoura o ticket aparece no card de atraso.
 const FAIXAS: Faixa[] = [
-  { rotulo: 'em até 30 dias', dentro: (l) => l.diasEvento >= 1 && l.diasEvento <= 30 },
+  { rotulo: 'em até 15 dias', dentro: (l) => l.diasEvento >= 1 && l.diasEvento <= 15 },
+  { rotulo: 'em 16–30 dias', dentro: (l) => l.diasEvento >= 16 && l.diasEvento <= 30 },
   { rotulo: 'em 31–60 dias', dentro: (l) => l.diasEvento >= 31 && l.diasEvento <= 60 },
   { rotulo: 'em 61–90 dias', dentro: (l) => l.diasEvento >= 61 && l.diasEvento <= 90 },
   { rotulo: 'em mais de 90 dias', dentro: (l) => l.diasEvento > 90 },
