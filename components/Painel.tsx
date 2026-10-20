@@ -344,6 +344,8 @@ function Detalhe({
                   whiteSpace: 'nowrap',
                 }}
               >
+                {l.etapa}
+                {' · '}
                 {l.proprietario ? `Proprietário ${l.proprietario}` : 'Sem proprietário'}
                 {l.proprietarioInativo ? ' · inativo' : ''}
               </span>
