@@ -28,10 +28,14 @@ const chave = (d: Date) => d.toISOString().slice(0, 10)
 // "Tipo de produto" traz o produto inteiro — "Palestra Presencial",
 // "Treinamento Online", "Mestre de Cerimônias Presencial". No chip cabe só a
 // modalidade; o resto vai no title do botão.
-const MODALIDADE: { teste: RegExp; curto: string; cor: string }[] = [
-  { teste: /presencial/i, curto: 'Presencial', cor: 'var(--verde)' },
-  { teste: /online/i, curto: 'Online', cor: 'var(--link)' },
-  { teste: /híbrid/i, curto: 'Híbrida', cor: 'var(--amarelo)' },
+//
+// Sem cor própria de propósito: a cor no painel significa prazo, e um badge
+// verde de "Presencial" dentro de um chip verde de "em dia" fazia o cartão
+// inteiro virar uma mancha só.
+const MODALIDADE: { teste: RegExp; curto: string }[] = [
+  { teste: /presencial/i, curto: 'Presencial' },
+  { teste: /online/i, curto: 'Online' },
+  { teste: /híbrid/i, curto: 'Híbrida' },
 ]
 const modalidade = (tipo: string) => MODALIDADE.find((m) => m.teste.test(tipo)) ?? null
 const doIso = (iso: string) => new Date(iso.slice(0, 10) + 'T00:00:00Z')
@@ -211,7 +215,8 @@ export default function Calendario({
                 minHeight: 130,
                 borderRadius: 11,
                 padding: 7,
-                background: fora ? 'transparent' : 'var(--cinza-bg)',
+                background: fora ? 'transparent' : 'var(--bg)',
+                border: fora ? '1px solid transparent' : '1px solid var(--line)',
                 opacity: fora ? 0.45 : 1,
                 boxShadow: deste
                   ? 'inset 0 0 0 2px var(--link)'
@@ -254,9 +259,9 @@ export default function Calendario({
                         padding: '5px 7px',
                         font: 'inherit',
                         lineHeight: 1.25,
-                        color: `var(--${l.cor})`,
+                        color: 'var(--text)',
                         background: `var(--${l.cor}-bg)`,
-                        boxShadow: `inset 2px 0 0 var(--${l.cor}-ponto)`,
+                        boxShadow: `inset 3px 0 0 var(--${l.cor}-ponto)`,
                         minWidth: 0,
                       }}
                     >
@@ -282,8 +287,8 @@ export default function Calendario({
                             fontSize: 9.5,
                             fontWeight: 600,
                             letterSpacing: '0.02em',
-                            color: m.cor,
-                            boxShadow: `inset 0 0 0 1px ${m.cor}`,
+                            color: 'var(--text-2)',
+                            background: 'var(--cinza-bg)',
                           }}
                         >
                           {m.curto}
@@ -296,7 +301,7 @@ export default function Calendario({
                           display: 'block',
                           fontSize: 10,
                           fontWeight: 500,
-                          opacity: 0.8,
+                          color: 'var(--text-2)',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
