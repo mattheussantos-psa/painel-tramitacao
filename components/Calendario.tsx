@@ -101,17 +101,29 @@ function Dia({
               key={l.id}
               style={{
                 borderRadius: 10,
-                padding: '11px 14px',
                 background: `var(--${l.cor}-bg)`,
                 boxShadow: `inset 3px 0 0 var(--${l.cor}-ponto)`,
                 display: 'flex',
-                alignItems: 'flex-start',
+                alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: 14,
                 flexWrap: 'wrap',
               }}
             >
-              <div style={{ minWidth: 0, flex: '1 1 320px' }}>
+              <button
+                onClick={() => aoAbrirTicket(l)}
+                style={{
+                  minWidth: 0,
+                  flex: '1 1 320px',
+                  border: 0,
+                  background: 'transparent',
+                  padding: '11px 14px',
+                  font: 'inherit',
+                  color: 'var(--text)',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
                 <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>{l.cliente}</span>
                 <span style={{ display: 'block', fontSize: 12.5, color: 'var(--text-2)' }}>
                   {l.palestrante || 'sem palestrante'}
@@ -147,29 +159,23 @@ function Dia({
                     {prazo(l)}
                   </span>
                 </div>
-              </div>
+              </button>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                <a
-                  href={l.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--text-2)',
-                    textDecoration: 'none',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  #{l.id}
-                </a>
-                <button
-                  onClick={() => aoAbrirTicket(l)}
-                  style={{ ...CONTROLE, width: 'auto', padding: '0 12px', fontSize: 12 }}
-                >
-                  Ver prazos
-                </button>
-              </div>
+              <a
+                href={l.link}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  flexShrink: 0,
+                  padding: '11px 14px',
+                  fontSize: 12,
+                  color: 'var(--text-2)',
+                  textDecoration: 'none',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                #{l.id} ↗
+              </a>
             </div>
           )
         })}
@@ -363,10 +369,14 @@ export default function Calendario({
           const deste = k === hoje
           const fora = d.getUTCMonth() !== mes.getUTCMonth()
           const eventos = (porDia.get(k) ?? []).filter(mostra)
+          const temLista = eventos.length > CHIPS_POR_DIA
+          const abrirDia = () => setDiaAberto(diaAberto === k ? null : k)
           return (
             <div
               key={k}
+              onClick={temLista ? abrirDia : undefined}
               style={{
+                cursor: temLista ? 'pointer' : 'default',
                 minHeight: 130,
                 borderRadius: 11,
                 padding: 7,
@@ -397,7 +407,7 @@ export default function Calendario({
                 <span>{d.getUTCDate()}</span>
                 {eventos.length > 0 && (
                   <button
-                    onClick={() => setDiaAberto(diaAberto === k ? null : k)}
+                    onClick={abrirDia}
                     aria-label={`Ver os ${eventos.length} eventos de ${d.getUTCDate()}`}
                     aria-expanded={diaAberto === k}
                     style={{
@@ -434,7 +444,7 @@ export default function Calendario({
                   return (
                     <button
                       key={l.id}
-                      onClick={() => setConta(l)}
+                      onClick={temLista ? abrirDia : () => setConta(l)}
                       title={`${l.cliente} — ${l.palestrante || 'sem palestrante'} · ${l.etapa}${
                         l.tipoProduto ? ` · ${l.tipoProduto}` : ''
                       }`}
@@ -503,7 +513,7 @@ export default function Calendario({
 
                 {eventos.length > CHIPS_POR_DIA && (
                   <button
-                    onClick={() => setDiaAberto(diaAberto === k ? null : k)}
+                    onClick={abrirDia}
                     style={{
                       border: 0,
                       background: 'transparent',
