@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Cabecalho from './Cabecalho'
-import { Conta, Filtro, type Linha } from './Painel'
+import { Conta, CONTROLE, Filtro, prazo, type Linha } from './Painel'
 import type { Cor } from '@/lib/sinaleira'
 import { FORA_DAS_SQUADS, NOMES_SQUADS } from '@/lib/squads'
 
@@ -24,6 +24,7 @@ const CORES: { cor: Cor; label: string }[] = [
 // começar no dia errado quando o navegador está fora de São Paulo, e o evento
 // cairia na célula vizinha.
 const chave = (d: Date) => d.toISOString().slice(0, 10)
+const CHIPS_POR_DIA = 2
 
 // "Tipo de produto" traz o produto inteiro — "Palestra Presencial",
 // "Treinamento Online", "Mestre de Cerimônias Presencial". No chip cabe só a
@@ -39,6 +40,143 @@ const MODALIDADE: { teste: RegExp; curto: string }[] = [
 ]
 const modalidade = (tipo: string) => MODALIDADE.find((m) => m.teste.test(tipo)) ?? null
 const doIso = (iso: string) => new Date(iso.slice(0, 10) + 'T00:00:00Z')
+
+
+// Painel do dia, abaixo da grade. Na célula cabem dois eventos; aqui cabe o
+// dia inteiro, com o que a célula não tem espaço para dizer — etapa, prazo e
+// o número do ticket para procurar no HubSpot.
+function Dia({
+  data,
+  itens,
+  aoFechar,
+  aoAbrirTicket,
+}: {
+  data: string
+  itens: Linha[]
+  aoFechar: () => void
+  aoAbrirTicket: (l: Linha) => void
+}) {
+  const dia = doIso(data)
+  const titulo = `${String(dia.getUTCDate()).padStart(2, '0')}/${String(dia.getUTCMonth() + 1).padStart(2, '0')}/${dia.getUTCFullYear()}`
+
+  return (
+    <section
+      style={{
+        marginTop: 16,
+        borderRadius: 12,
+        background: 'var(--card)',
+        boxShadow: 'inset 3px 0 0 var(--amarelo-ponto)',
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '14px 18px 10px',
+        }}
+      >
+        <span style={{ fontSize: 15, fontWeight: 700 }}>
+          {titulo}{' '}
+          <span style={{ fontWeight: 400, color: 'var(--text-2)', fontSize: 13 }}>
+            · {itens.length} {itens.length === 1 ? 'evento' : 'eventos'}
+          </span>
+        </span>
+        <button
+          onClick={aoFechar}
+          aria-label="Fechar"
+          style={{ ...CONTROLE, width: 32, padding: 0, fontSize: 15, color: 'var(--text-2)' }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div style={{ padding: '0 18px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {itens.map((l) => {
+          const m = modalidade(l.tipoProduto)
+          return (
+            <div
+              key={l.id}
+              style={{
+                borderRadius: 10,
+                padding: '11px 14px',
+                background: `var(--${l.cor}-bg)`,
+                boxShadow: `inset 3px 0 0 var(--${l.cor}-ponto)`,
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 14,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ minWidth: 0, flex: '1 1 320px' }}>
+                <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>{l.cliente}</span>
+                <span style={{ display: 'block', fontSize: 12.5, color: 'var(--text-2)' }}>
+                  {l.palestrante || 'sem palestrante'}
+                  {m ? ` · ${m.curto}` : ''}
+                </span>
+                <span style={{ display: 'block', fontSize: 12.5, marginTop: 2 }}>
+                  Responsável: <b style={{ fontWeight: 600 }}>{l.proprietario ?? 'sem proprietário'}</b>
+                  {l.proprietarioInativo ? ' · inativo' : ''}
+                </span>
+
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 7 }}>
+                  <span
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: 99,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: `var(--${l.cor})`,
+                      boxShadow: `inset 0 0 0 1px var(--${l.cor})`,
+                    }}
+                  >
+                    {l.etapa}
+                  </span>
+                  <span
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: 99,
+                      fontSize: 11,
+                      color: 'var(--text-2)',
+                      background: 'var(--cinza-bg)',
+                    }}
+                  >
+                    {prazo(l)}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                <a
+                  href={l.link}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    fontSize: 12,
+                    color: 'var(--text-2)',
+                    textDecoration: 'none',
+                    fontVariantNumeric: 'tabular-nums',
+                  }}
+                >
+                  #{l.id}
+                </a>
+                <button
+                  onClick={() => aoAbrirTicket(l)}
+                  style={{ ...CONTROLE, width: 'auto', padding: '0 12px', fontSize: 12 }}
+                >
+                  Ver prazos
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
 
 export default function Calendario({
   linhas: todas,
@@ -74,6 +212,10 @@ export default function Calendario({
   const [mes, setMes] = useState(() => new Date(Date.UTC(inicio.getUTCFullYear(), inicio.getUTCMonth(), 1)))
   const [cor, setCor] = useState<Cor | null>(null)
   const [conta, setConta] = useState<Linha | null>(null)
+  // Dia aberto no painel de baixo. A célula mostra no máximo CHIPS_POR_DIA
+  // eventos: com 9 num dia só, a linha da semana inteira esticava e o mês
+  // deixava de caber na tela.
+  const [diaAberto, setDiaAberto] = useState<string | null>(null)
 
   const porDia = useMemo(() => {
     const m = new Map<string, Linha[]>()
@@ -113,6 +255,9 @@ export default function Calendario({
   }, [doMes])
 
   const mostra = (l: Linha) => !cor || l.cor === cor
+
+  // O dia aberto respeita o filtro de cor e o de squad, como a grade.
+  const aberto = diaAberto ? (porDia.get(diaAberto) ?? []).filter(mostra) : null
 
   // Semana corrente, de domingo a sábado, para o "quais eventos tenho na
   // semana" sair da tela sem contar no dedo.
@@ -218,11 +363,14 @@ export default function Calendario({
                 background: fora ? 'transparent' : 'var(--bg)',
                 border: fora ? '1px solid transparent' : '1px solid var(--line)',
                 opacity: fora ? 0.45 : 1,
-                boxShadow: deste
-                  ? 'inset 0 0 0 2px var(--link)'
-                  : naSemana(d) && !fora
-                    ? 'inset 0 0 0 1px var(--text-3)'
-                    : 'none',
+                boxShadow:
+                  diaAberto === k
+                    ? 'inset 0 0 0 2px var(--amarelo-ponto)'
+                    : deste
+                      ? 'inset 0 0 0 2px var(--link)'
+                      : naSemana(d) && !fora
+                        ? 'inset 0 0 0 1px var(--text-3)'
+                        : 'none',
               }}
             >
               <div
@@ -237,11 +385,41 @@ export default function Calendario({
                 }}
               >
                 <span>{d.getUTCDate()}</span>
-                {eventos.length > 1 && <span style={{ fontSize: 11 }}>{eventos.length}</span>}
+                {eventos.length > 0 && (
+                  <button
+                    onClick={() => setDiaAberto(diaAberto === k ? null : k)}
+                    aria-label={`Ver os ${eventos.length} eventos de ${d.getUTCDate()}`}
+                    aria-expanded={diaAberto === k}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 3,
+                      border: 0,
+                      background: 'transparent',
+                      padding: 0,
+                      font: 'inherit',
+                      fontSize: 11,
+                      color: 'var(--text-2)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {eventos.length}
+                    <span
+                      aria-hidden
+                      style={{
+                        fontSize: 9,
+                        transform: diaAberto === k ? 'rotate(180deg)' : 'none',
+                        display: 'inline-block',
+                      }}
+                    >
+                      ▾
+                    </span>
+                  </button>
+                )}
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {eventos.map((l) => {
+                {eventos.slice(0, CHIPS_POR_DIA).map((l) => {
                   const m = modalidade(l.tipoProduto)
                   return (
                     <button
@@ -312,11 +490,39 @@ export default function Calendario({
                     </button>
                   )
                 })}
+
+                {eventos.length > CHIPS_POR_DIA && (
+                  <button
+                    onClick={() => setDiaAberto(diaAberto === k ? null : k)}
+                    style={{
+                      border: 0,
+                      background: 'transparent',
+                      padding: '1px 3px',
+                      font: 'inherit',
+                      fontSize: 10.5,
+                      fontWeight: 600,
+                      color: 'var(--text-2)',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    +{eventos.length - CHIPS_POR_DIA}
+                  </button>
+                )}
               </div>
             </div>
           )
         })}
       </div>
+
+      {aberto && (
+        <Dia
+          data={diaAberto!}
+          itens={aberto}
+          aoFechar={() => setDiaAberto(null)}
+          aoAbrirTicket={(l) => setConta(l)}
+        />
+      )}
 
       <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '16px 0 0' }}>
         {doMes.length} {doMes.length === 1 ? 'evento' : 'eventos'} em {MES[mes.getUTCMonth()]}

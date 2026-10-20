@@ -59,7 +59,7 @@ export type Linha = {
 
 // Todo controle da barra usa esta medida. Antes o segmented, os selects e os
 // chips tinham três alturas diferentes na mesma linha.
-const CONTROLE: React.CSSProperties = {
+export const CONTROLE: React.CSSProperties = {
   height: 34,
   borderRadius: 8,
   border: 0,
@@ -157,7 +157,7 @@ function tarefa(l: Linha) {
   }
 }
 
-function prazo(l: Linha) {
+export function prazo(l: Linha) {
   // Etapa medida por relogio traz a frase pronta: o numero sozinho nao diz se
   // conta desde o onboarding, desde a assinatura ou ate o evento.
   if (l.texto) return l.texto
