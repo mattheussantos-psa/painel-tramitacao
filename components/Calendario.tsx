@@ -62,7 +62,7 @@ function Dia({
   return (
     <section
       style={{
-        marginTop: 16,
+        margin: '2px 0 10px',
         borderRadius: 12,
         background: 'var(--card)',
         boxShadow: 'inset 3px 0 0 var(--amarelo-ponto)',
@@ -243,6 +243,12 @@ export default function Calendario({
     return Array.from({ length: Math.max(total, 35) }, (_, i) => new Date(comeco.getTime() + i * DIA))
   }, [mes])
 
+  // Uma linha por semana: o painel do dia entra entre elas.
+  const semanas = useMemo(
+    () => Array.from({ length: dias.length / 7 }, (_, i) => dias.slice(i * 7, i * 7 + 7)),
+    [dias],
+  )
+
   const doMes = useMemo(
     () => dias.filter((d) => d.getUTCMonth() === mes.getUTCMonth()).flatMap((d) => porDia.get(chave(d)) ?? []),
     [dias, mes, porDia],
@@ -347,8 +353,12 @@ export default function Calendario({
             {d}
           </div>
         ))}
+      </div>
 
-        {dias.map((d) => {
+      {semanas.map((semana) => (
+        <div key={chave(semana[0])}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6, marginBottom: 6 }}>
+        {semana.map((d) => {
           const k = chave(d)
           const deste = k === hoje
           const fora = d.getUTCMonth() !== mes.getUTCMonth()
@@ -513,16 +523,18 @@ export default function Calendario({
             </div>
           )
         })}
-      </div>
+        </div>
 
-      {aberto && (
-        <Dia
-          data={diaAberto!}
-          itens={aberto}
-          aoFechar={() => setDiaAberto(null)}
-          aoAbrirTicket={(l) => setConta(l)}
-        />
-      )}
+        {aberto && semana.some((d) => chave(d) === diaAberto) && (
+          <Dia
+            data={diaAberto!}
+            itens={aberto}
+            aoFechar={() => setDiaAberto(null)}
+            aoAbrirTicket={(l) => setConta(l)}
+          />
+        )}
+        </div>
+      ))}
 
       <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '16px 0 0' }}>
         {doMes.length} {doMes.length === 1 ? 'evento' : 'eventos'} em {MES[mes.getUTCMonth()]}
