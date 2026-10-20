@@ -348,15 +348,23 @@ export const jaRealizado = (l: Linha) => passou(l) >= 0
 // trás — exigia comparar dois blocos distantes na tela.
 // O "passou > 0" não é redundante: sem ele um evento no futuro (diasEvento
 // positivo) satisfaz "<= 15" e cai na primeira faixa de passado.
+// Blocos de 30 dias, a mesma régua dos dois lados do eixo: comparar "há
+// 31–60" com "em 31–60" só funciona se a largura da faixa for igual. O dia do
+// evento fica na linha do meio, com nome próprio — se entrasse no "até 30" o
+// mesmo ticket apareceria em duas barras e o total pararia de fechar.
+//
+// O futuro ia só até 30 dias e 75 tickets não caíam em faixa nenhuma, 18
+// deles em atraso: o card somava 247 numa base de 322 com data de evento.
 const FAIXAS: Faixa[] = [
   { rotulo: 'há mais de 90 dias', dentro: (l) => passou(l) > 90 },
-  { rotulo: 'há 31–90 dias', dentro: (l) => passou(l) >= 31 && passou(l) <= 90 },
-  { rotulo: 'há 16–30 dias', dentro: (l) => passou(l) >= 16 && passou(l) <= 30 },
-  { rotulo: 'há até 15 dias', dentro: (l) => passou(l) > 0 && passou(l) <= 15 },
+  { rotulo: 'há 61–90 dias', dentro: (l) => passou(l) >= 61 && passou(l) <= 90 },
+  { rotulo: 'há 31–60 dias', dentro: (l) => passou(l) >= 31 && passou(l) <= 60 },
+  { rotulo: 'há até 30 dias', dentro: (l) => passou(l) > 0 && passou(l) <= 30 },
   { rotulo: 'é hoje', dentro: (l) => l.diasEvento === 0 },
-  { rotulo: 'em até 7 dias', dentro: (l) => l.diasEvento >= 1 && l.diasEvento <= 7 },
-  { rotulo: 'em 8–15 dias', dentro: (l) => l.diasEvento >= 8 && l.diasEvento <= 15 },
-  { rotulo: 'em 16–30 dias', dentro: (l) => l.diasEvento >= 16 && l.diasEvento <= 30 },
+  { rotulo: 'em até 30 dias', dentro: (l) => l.diasEvento >= 1 && l.diasEvento <= 30 },
+  { rotulo: 'em 31–60 dias', dentro: (l) => l.diasEvento >= 31 && l.diasEvento <= 60 },
+  { rotulo: 'em 61–90 dias', dentro: (l) => l.diasEvento >= 61 && l.diasEvento <= 90 },
+  { rotulo: 'em mais de 90 dias', dentro: (l) => l.diasEvento > 90 },
 ]
 
 // Texto sobre a barra: no laranja o branco não passa no contraste, então vai
@@ -562,7 +570,7 @@ function Horizonte({
               Por data do evento
             </span>
             <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>
-              Eventos já realizados e os dos próximos 30 dias · por sinal
+              Todos os eventos, do mais antigo ao mais distante · por sinal
             </span>
           </span>
         </div>
