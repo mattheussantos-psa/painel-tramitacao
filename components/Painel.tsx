@@ -221,14 +221,14 @@ function EventoRealizado({
       <div
         style={{
           display: 'flex',
-          alignItems: 'baseline',
+          alignItems: 'center',
           justifyContent: 'space-between',
           gap: 18,
           flexWrap: 'wrap',
           padding: '15px 20px 16px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <span
             style={{
               fontFamily: 'var(--display)',
