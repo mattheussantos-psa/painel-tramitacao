@@ -239,7 +239,11 @@ export function avaliar(
   const atraso = emDias(agora, vencimento)
   const base = { regua, dias: atraso, etapa: regra.label, vence: brasil(vencimento) }
 
-  if (atraso > TOLERANCIA) return { cor: 'vermelho', ...base }
+  // Aguardando Evento nao tem tolerancia: a etapa existe para esperar o
+  // evento, entao evento realizado com o ticket ainda nela e atraso no dia
+  // seguinte. Os 7 dias de TOLERANCIA valem para prazo por tempo na etapa,
+  // onde um dia a mais nao muda nada.
+  if (atraso > (regra.tipo === 'evento' ? 0 : TOLERANCIA)) return { cor: 'vermelho', ...base }
   if (atraso > -AMARELO_ANTES) return { cor: 'amarelo', ...base }
   return { cor: 'verde', ...base }
 }

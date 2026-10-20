@@ -206,15 +206,16 @@ function EventoRealizado({
   linhas: Linha[]
   aoAbrir: (titulo: string, itens: Linha[]) => void
 }) {
-  const atrasados = linhas.filter((l) => jaRealizado(l) && l.cor === 'vermelho')
-  if (!atrasados.length) return null
+  const realizados = linhas.filter(jaRealizado)
+  const atrasados = realizados.filter((l) => l.cor === 'vermelho')
+  if (!realizados.length) return null
 
   // Onde o atraso se concentra. Sem isso o número grande não diz o que fazer.
   const porEtapa = [...new Map(atrasados.map((l) => [l.etapa, 0])).keys()]
     .map((etapa) => ({ etapa, n: atrasados.filter((l) => l.etapa === etapa).length }))
     .sort((a, b) => b.n - a.n)
 
-  const pior = atrasados.reduce((a, b) => (b.dias > a.dias ? b : a))
+  const pior = atrasados.length ? atrasados.reduce((a, b) => (b.dias > a.dias ? b : a)) : null
 
   return (
     <Grupo style={{ marginBottom: 18, background: 'var(--vermelho-bg)' }}>
@@ -254,14 +255,15 @@ function EventoRealizado({
               Evento já aconteceu e segue em atraso
             </span>
             <span style={{ display: 'block', fontSize: 12 }}>
-              O pior é {pior.cliente}, {pior.dias}d · {porEtapa.length}{' '}
-              {porEtapa.length === 1 ? 'etapa' : 'etapas'} envolvidas
+              de {realizados.length} eventos já realizados
+              {pior ? ` · o pior é ${pior.cliente}, ${pior.dias}d` : ''}
             </span>
           </span>
         </div>
 
         <button
           onClick={() => aoAbrir('Evento já aconteceu e segue em atraso', atrasados)}
+          disabled={!atrasados.length}
           style={{
             ...CONTROLE,
             width: 'auto',
@@ -348,19 +350,11 @@ export const jaRealizado = (l: Linha) => passou(l) >= 0
 // trás — exigia comparar dois blocos distantes na tela.
 // O "passou > 0" não é redundante: sem ele um evento no futuro (diasEvento
 // positivo) satisfaz "<= 15" e cai na primeira faixa de passado.
-// Blocos de 30 dias, a mesma régua dos dois lados do eixo: comparar "há
-// 31–60" com "em 31–60" só funciona se a largura da faixa for igual. O dia do
-// evento fica na linha do meio, com nome próprio — se entrasse no "até 30" o
-// mesmo ticket apareceria em duas barras e o total pararia de fechar.
-//
-// O futuro ia só até 30 dias e 75 tickets não caíam em faixa nenhuma, 18
-// deles em atraso: o card somava 247 numa base de 322 com data de evento.
+// Só o que ainda vai acontecer, em blocos de 30 dias. O passado inteiro,
+// incluindo o dia do evento, vive no card de cima: evento realizado é outro
+// tipo de pergunta — não dá para antecipar, só para fechar — e misturar os
+// dois deixava o olho procurando a divisória no meio de nove barras.
 const FAIXAS: Faixa[] = [
-  { rotulo: 'há mais de 90 dias', dentro: (l) => passou(l) > 90 },
-  { rotulo: 'há 61–90 dias', dentro: (l) => passou(l) >= 61 && passou(l) <= 90 },
-  { rotulo: 'há 31–60 dias', dentro: (l) => passou(l) >= 31 && passou(l) <= 60 },
-  { rotulo: 'há até 30 dias', dentro: (l) => passou(l) > 0 && passou(l) <= 30 },
-  { rotulo: 'é hoje', dentro: (l) => l.diasEvento === 0 },
   { rotulo: 'em até 30 dias', dentro: (l) => l.diasEvento >= 1 && l.diasEvento <= 30 },
   { rotulo: 'em 31–60 dias', dentro: (l) => l.diasEvento >= 31 && l.diasEvento <= 60 },
   { rotulo: 'em 61–90 dias', dentro: (l) => l.diasEvento >= 61 && l.diasEvento <= 90 },
@@ -567,10 +561,10 @@ function Horizonte({
                 textTransform: 'uppercase',
               }}
             >
-              Por data do evento
+              Eventos por vir
             </span>
             <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>
-              Todos os eventos, do mais antigo ao mais distante · por sinal
+              Eventos que ainda vão acontecer · por sinal
             </span>
           </span>
         </div>

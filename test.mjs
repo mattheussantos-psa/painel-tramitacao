@@ -1028,3 +1028,18 @@ assert.match(pre({ evento: '' }).texto, /sem data de evento/)
 assert.equal(R['pgto-pre']({ evento: '2026-10-20' }).prazo, '2026-10-13')
 
 console.log('ok — pagamento pre-palestra ate D-7')
+
+// ---- Aguardando Evento nao tem tolerancia depois do evento ----
+// A etapa existe para esperar o evento: realizado o evento com o ticket ainda
+// nela, e atraso no dia seguinte. Antes havia 7 dias de tolerancia, e isso
+// deixava 5 tickets amarelos com o evento ja passado.
+const AGU = '1448673032'
+assert.equal(avaliar(t({ stage: AGU, evento: '2026-10-05' }), HOJE).cor, 'verde', 'D-6, ainda falta')
+assert.equal(avaliar(t({ stage: AGU, evento: '2026-10-02' }), HOJE).cor, 'amarelo', 'D-3, na janela de atencao')
+assert.equal(avaliar(t({ stage: AGU, evento: '2026-09-29' }), HOJE).cor, 'amarelo', 'e hoje')
+assert.equal(avaliar(t({ stage: AGU, evento: '2026-09-28' }), HOJE).cor, 'vermelho', 'passou ontem')
+assert.equal(avaliar(t({ stage: AGU, evento: '2026-09-25' }), HOJE).cor, 'vermelho', 'passou ha 4 dias')
+// Prazo por tempo na etapa mantem os 7 dias: um dia a mais nao muda nada.
+assert.equal(avaliar(t({ stage: '1333136740', entrouEtapa: '2026-09-04' }), HOJE).cor, 'amarelo', '25 dias, 5 depois dos 20')
+
+console.log('ok — Aguardando Evento vira vermelho no dia seguinte')
