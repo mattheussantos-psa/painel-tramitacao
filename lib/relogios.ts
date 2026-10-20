@@ -126,10 +126,17 @@ export const PRAZO_AQUISICAO = 5
 // Dias entre a realização do evento e a coleta de NPS e fotos.
 export const PRAZO_NPS = 5
 
+// Confirmação do pagamento pós-palestra: 30 dias do evento, amarelo quando
+// faltam 15 dias ou menos, vermelho quando faltam 10 ou menos. Numa janela de
+// 30 dias, "a partir de 15 dias" e "faltando 15 dias" são o mesmo instante.
+export const PRAZO_PGTO_POS = 30
+export const PGTO_POS_ATENCAO = 15
+export const PGTO_POS_ATRASO = 10
+
 // Etapas de trabalho DEPOIS do evento. Nelas o evento ter passado é a
 // condição para o prazo começar, não um atraso — sem esta lista, a regra de
 // eventoPassou pintaria de vermelho todo ticket que chega em Coletar NPS.
-export const ETAPAS_POS_EVENTO = ['Coletar NPS e Fotos']
+export const ETAPAS_POS_EVENTO = ['Coletar NPS e Fotos', 'Confirmar PGTO Pós palestra']
 
 const LOG_REEMBOLSO = 'Sim, com reembolso do cliente'
 const LOG_CUSTO_PSA = 'Sim, com custo para PSA'
@@ -463,6 +470,32 @@ export const RELOGIOS: Relogio[] = [
       if (D < 0) return { estado: 'nao-aplica', dias: D, texto: 'evento já realizado', cumpriu: null }
       if (D > 15) return { estado: 'nao-iniciado', dias: D, texto: `evento a D-${D}`, cumpriu: null }
       return { estado: D >= 11 ? 'verde' : D >= 8 ? 'amarelo' : 'vermelho', dias: D, texto: `evento a D-${D}`, cumpriu: null }
+    },
+  },
+  {
+    chave: 'pgto-pos',
+    etapa: ['Confirmar PGTO Pós palestra'],
+    nome: 'Confirmação do pagamento pós-palestra',
+    curto: 'pagamento',
+    regra: `Até ${PRAZO_PGTO_POS} dias após o evento · amarelo faltando ${PGTO_POS_ATENCAO} dias ou menos · vermelho faltando ${PGTO_POS_ATRASO} ou menos`,
+    confianca: 'fechado',
+    gatilho: 'data_do_evento__ganho_',
+    marco: '— sair da etapa é o único sinal de que o pagamento foi confirmado',
+    pendencia: 'Não há campo que marque a confirmação do pagamento; o relógio corre enquanto o ticket estiver na etapa.',
+    ver: (t, hoje) => {
+      if (!tem(t.evento))
+        return { estado: 'sem-dado', dias: null, texto: 'sem data de evento', cumpriu: null }
+      const limite = dia(t.evento) + PRAZO_PGTO_POS * DIA
+      const prazo = iso(limite)
+      // Dias que ainda faltam para o prazo; negativo já é atraso.
+      const faltam = emDias(limite, hojeEmDias(hoje))
+      return {
+        estado: faltam > PGTO_POS_ATENCAO ? 'verde' : faltam > PGTO_POS_ATRASO ? 'amarelo' : 'vermelho',
+        dias: -faltam,
+        prazo,
+        texto: faltam >= 0 ? `faltam ${faltam}d para o prazo` : `${-faltam}d depois do prazo`,
+        cumpriu: null,
+      }
     },
   },
   {

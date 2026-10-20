@@ -42,16 +42,17 @@ const t = (over) => ({
 })
 
 // Prazo e tempo NA ETAPA: o relogio comeca quando o ticket entra nela.
-// Pagamento Pos-Palestra tem 20 dias. (Aguardando Onboarding, que era o caso
-// original deste teste, deixou de existir no pipeline em 05/10/2026.)
-const onb = avaliar(t({ stage: '1088361911', entrouEtapa: '2026-09-13' }), HOJE)
+// "Em andamento" tem 20 dias. (Aguardando Onboarding, que era o caso original
+// deste teste, deixou de existir no pipeline em 05/10/2026, e Pagamento
+// Pos-Palestra virou relogio por data do evento em 20/10/2026.)
+const onb = avaliar(t({ stage: '1088360205', entrouEtapa: '2026-09-13' }), HOJE)
 assert.equal(onb.vence, '2026-10-03')
 assert.equal(onb.dias, -4)
 assert.equal(onb.cor, 'amarelo')
 
 // O caso que a regua antiga errava: ticket criado dias antes do evento nao
 // pode nascer atrasado por um prazo anterior a propria entrada na etapa.
-const deloitte = avaliar(t({ stage: '1088361911', evento: '2026-09-30', entrouEtapa: '2026-09-25' }), HOJE)
+const deloitte = avaliar(t({ stage: '1088360205', evento: '2026-09-30', entrouEtapa: '2026-09-25' }), HOJE)
 assert.equal(deloitte.cor, 'verde', 'nao pode ser vermelho: entrou ha 4 dias e tem 20')
 
 // Em andamento tem 20 dias na etapa
@@ -86,14 +87,14 @@ for (const id of ['1450325173', '1450325174', '1450325175', '1450683393']) {
   assert.equal(SLA[id].tipo, 'relogio', 'essas tres medem marco, nao tempo parado')
 }
 
-// As duas etapas de financeiro voltaram com prazo de 20 dias na etapa.
-for (const id of ['1088361911', '1333136740']) {
-  assert.equal(avaliar(t({ stage: id, entrouEtapa: '2026-09-20' }), HOJE).cor, 'verde')
-  const velho = avaliar(t({ stage: id, entrouEtapa: '2026-03-01' }), HOJE)
-  assert.equal(velho.cor, 'vermelho')
-  assert.equal(velho.dias, 192)
-  assert.equal(velho.vence, '2026-03-21')
-}
+// Solicitar NF Palestrante segue por tempo na etapa, 20 dias. Pagamento
+// Pos-Palestra saiu desta lista em 20/10/2026: virou relogio por data do
+// evento, 30 dias.
+assert.equal(avaliar(t({ stage: '1333136740', entrouEtapa: '2026-09-20' }), HOJE).cor, 'verde')
+const nfVelha = avaliar(t({ stage: '1333136740', entrouEtapa: '2026-03-01' }), HOJE)
+assert.equal(nfVelha.cor, 'vermelho')
+assert.equal(nfVelha.dias, 192)
+assert.equal(nfVelha.vence, '2026-03-21')
 
 // Todo ticket do snapshot recebe uma cor
 const snap = JSON.parse(readFileSync(new URL('./data/snapshot.json', import.meta.url), 'utf8'))
@@ -367,9 +368,9 @@ assert.equal(
   'agendado fecha um relogio, sobra o da realizacao',
 )
 
-// As cinco etapas antigas seguem por tempo na etapa, sem relogio.
-assert.equal(E({ stage: '1088361911', entrouEtapa: '2026-09-27', evento: '2026-11-01' }).cor, 'verde')
-assert.equal(E({ stage: '1088361911', entrouEtapa: '2026-03-01', evento: '2026-11-01' }).cor, 'vermelho')
+// Solicitar NF Palestrante segue por tempo na etapa, sem relogio.
+assert.equal(E({ stage: '1333136740', entrouEtapa: '2026-09-27', evento: '2026-11-01' }).cor, 'verde')
+assert.equal(E({ stage: '1333136740', entrouEtapa: '2026-03-01', evento: '2026-11-01' }).cor, 'vermelho')
 
 // Contrato so entre cliente e palestrante: a PSA nao e parte, entao os prazos
 // do contrato do cliente nao correm.
@@ -516,7 +517,7 @@ assert.equal(avaliarEtapa(futuro, HOJE, QUADROS.cs.sla).cor, 'verde', 'pagamento
 
 // Etapa pos-evento nao e afetada: ali o evento passado e o normal.
 assert.equal(
-  avaliarEtapa(T({ stage: '1088361911', evento: '2026-09-01', entrouEtapa: '2026-09-27' }), HOJE, QUADROS.cs.sla).cor,
+  avaliarEtapa(T({ stage: '1088361911', evento: '2026-09-25', entrouEtapa: '2026-09-27' }), HOJE, QUADROS.cs.sla).cor,
   'verde',
   'Pagamento Pos-Palestra existe justamente depois do evento',
 )
@@ -967,3 +968,33 @@ const doPalestrante = comAnexo.datas.find((d) => d.rotulo === 'Prazo de Assinatu
 assert.equal(doPalestrante.cumprido, false, 'o que ainda corre segue sem marca')
 
 console.log('ok — prazo de relogio fechado nao tem cara de cobranca')
+
+// ---- pagamento pós-palestra: 30 dias do evento ----
+// 30 dias do evento, amarelo faltando 15 ou menos, vermelho faltando 10 ou
+// menos. Etapa de trabalho DEPOIS do evento: eventoPassou nao pode pinta-la
+// de vermelho, senao todo ticket que chega nela nasce atrasado.
+const PGTO = '1088361911'
+const pgto = (over) => avaliarEtapa(T({ stage: PGTO, entrouEtapa: '2026-09-20', ...over }), HOJE, QUADROS.cs.sla)
+
+// HOJE = 29/09. Evento 20/09 → prazo 20/10, faltam 21 dias.
+assert.equal(pgto({ evento: '2026-09-20' }).cor, 'verde')
+assert.match(pgto({ evento: '2026-09-20' }).texto, /^pagamento · faltam 21d/)
+// Evento 15/09 → prazo 15/10, faltam 16: ainda verde.
+assert.equal(pgto({ evento: '2026-09-15' }).cor, 'verde', 'faltam 16')
+// Evento 14/09 → prazo 14/10, faltam 15: entra no amarelo.
+assert.equal(pgto({ evento: '2026-09-14' }).cor, 'amarelo', 'faltam 15')
+// Evento 09/09 → prazo 09/10, faltam 10: entra no vermelho.
+assert.equal(pgto({ evento: '2026-09-09' }).cor, 'vermelho', 'faltam 10')
+assert.equal(pgto({ evento: '2026-09-10' }).cor, 'amarelo', 'faltam 11')
+// Depois do prazo segue vermelho, dizendo o atraso.
+assert.equal(pgto({ evento: '2026-08-20' }).cor, 'vermelho')
+assert.match(pgto({ evento: '2026-08-20' }).texto, /10d depois do prazo/)
+// Evento ainda por vir: prazo la longe, verde.
+assert.equal(pgto({ evento: '2026-10-20' }).cor, 'verde')
+// Sem data de evento nao da para contar.
+assert.equal(pgto({ evento: '' }).cor, 'cinza')
+assert.match(pgto({ evento: '' }).texto, /sem data de evento/)
+// O tempo na etapa deixou de pintar: entrou ha meses mas o prazo e do evento.
+assert.equal(pgto({ evento: '2026-09-20', entrouEtapa: '2026-01-01' }).cor, 'verde')
+
+console.log('ok — pagamento pos-palestra em 30 dias do evento')
