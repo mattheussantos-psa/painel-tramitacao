@@ -276,8 +276,19 @@ function EventoRealizado({
         </button>
       </div>
 
-      {/* Uma linha por etapa: é onde a cobrança acontece. */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 1, background: 'var(--line)' }}>
+      {/* Uma célula por etapa: é onde a cobrança acontece. Grid e não flex —
+          com flex as células ficavam de larguras diferentes e a última,
+          sozinha na segunda linha, esticava para o card inteiro. O gutter de
+          20px é o mesmo do cabeçalho, senão a primeira etapa nasce fora do
+          prumo do número grande. */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          borderTop: '1px solid var(--line)',
+          background: 'var(--card)',
+        }}
+      >
         {porEtapa.map((e) => (
           <button
             key={e.etapa}
@@ -288,19 +299,29 @@ function EventoRealizado({
               )
             }
             style={{
-              flex: '1 1 150px',
-              maxWidth: 300,
               border: 0,
-              background: 'var(--card)',
-              padding: '9px 14px',
+              background: 'transparent',
+              padding: '10px 20px 12px',
               textAlign: 'left',
               font: 'inherit',
               color: 'var(--text)',
               cursor: 'pointer',
+              minWidth: 0,
             }}
           >
-            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-2)' }}>{e.etapa}</span>
-            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--vermelho)' }}>{e.n}</span>
+            <span
+              style={{
+                display: 'block',
+                fontSize: 12,
+                color: 'var(--text-2)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {e.etapa}
+            </span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--vermelho)' }}>{e.n}</span>
           </button>
         ))}
       </div>
