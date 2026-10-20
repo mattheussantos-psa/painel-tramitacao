@@ -205,6 +205,11 @@ type Faixa = { rotulo: string; dentro: (l: Linha) => boolean }
 // Dias desde o evento. Negativo quando o evento ainda nao aconteceu.
 const passou = (l: Linha) => -l.diasEvento
 
+// Evento já realizado, contando o próprio dia: é assim que a sinaleira conta
+// atraso em etapa de trabalho, e dois critérios dariam dois números para a
+// mesma pergunta.
+export const jaRealizado = (l: Linha) => passou(l) >= 0
+
 // Uma linha do tempo só, do evento mais antigo ao mais próximo. Eram dois
 // cards empilhados, um para antes e outro para depois do evento; separados,
 // a leitura mais útil — o quanto o atraso cresce conforme o evento fica para
@@ -448,6 +453,47 @@ function Horizonte({
           ))}
         </div>
       </div>
+
+      {/* Uma linha antes das faixas: o total de eventos já realizados que
+          seguem em atraso. Espalhado pelas quatro faixas de passado, esse
+          número exigia somar na cabeça. */}
+      {(() => {
+        const atrasados = linhas.filter((l) => jaRealizado(l) && l.cor === 'vermelho')
+        if (!atrasados.length) return null
+        return (
+          <button
+            onClick={() => aoAbrir('Eventos já realizados e em atraso', atrasados)}
+            style={{
+              display: 'flex',
+              width: '100%',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+              gap: 12,
+              marginBottom: 12,
+              padding: '9px 12px',
+              border: '1px solid var(--line)',
+              borderRadius: 7,
+              background: 'var(--vermelho-bg)',
+              color: 'var(--text)',
+              font: 'inherit',
+              textAlign: 'left',
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <span
+                aria-hidden
+                style={{ width: 9, height: 9, borderRadius: 3, background: 'var(--vermelho-ponto)', flexShrink: 0 }}
+              />
+              <span style={{ fontSize: 14 }}>Eventos já realizados e em atraso</span>
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--text-2)', flexShrink: 0 }}>
+              <b style={{ color: 'var(--vermelho)', fontWeight: 600 }}>{atrasados.length}</b>{' '}
+              {atrasados.length === 1 ? 'ticket' : 'tickets'} · ver lista
+            </span>
+          </button>
+        )
+      })()}
 
       {faixas.map((f) => {
         return (
