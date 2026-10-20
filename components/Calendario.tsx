@@ -24,6 +24,16 @@ const CORES: { cor: Cor; label: string }[] = [
 // começar no dia errado quando o navegador está fora de São Paulo, e o evento
 // cairia na célula vizinha.
 const chave = (d: Date) => d.toISOString().slice(0, 10)
+
+// "Tipo de produto" traz o produto inteiro — "Palestra Presencial",
+// "Treinamento Online", "Mestre de Cerimônias Presencial". No chip cabe só a
+// modalidade; o resto vai no title do botão.
+const MODALIDADE: { teste: RegExp; curto: string; cor: string }[] = [
+  { teste: /presencial/i, curto: 'Presencial', cor: 'var(--verde)' },
+  { teste: /online/i, curto: 'Online', cor: 'var(--link)' },
+  { teste: /híbrid/i, curto: 'Híbrida', cor: 'var(--amarelo)' },
+]
+const modalidade = (tipo: string) => MODALIDADE.find((m) => m.teste.test(tipo)) ?? null
 const doIso = (iso: string) => new Date(iso.slice(0, 10) + 'T00:00:00Z')
 
 export default function Calendario({
@@ -198,7 +208,7 @@ export default function Calendario({
             <div
               key={k}
               style={{
-                minHeight: 112,
+                minHeight: 130,
                 borderRadius: 11,
                 padding: 7,
                 background: fora ? 'transparent' : 'var(--cinza-bg)',
@@ -226,33 +236,77 @@ export default function Calendario({
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {eventos.map((l) => (
-                  <button
-                    key={l.id}
-                    onClick={() => setConta(l)}
-                    title={`${l.cliente} — ${l.palestrante || 'sem palestrante'} · ${l.etapa}`}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'left',
-                      border: 0,
-                      borderRadius: 6,
-                      padding: '3px 6px',
-                      font: 'inherit',
-                      fontSize: 11,
-                      lineHeight: 1.3,
-                      color: `var(--${l.cor})`,
-                      background: `var(--${l.cor}-bg)`,
-                      boxShadow: `inset 2px 0 0 var(--${l.cor}-ponto)`,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {l.cliente}
-                  </button>
-                ))}
+                {eventos.map((l) => {
+                  const m = modalidade(l.tipoProduto)
+                  return (
+                    <button
+                      key={l.id}
+                      onClick={() => setConta(l)}
+                      title={`${l.cliente} — ${l.palestrante || 'sem palestrante'} · ${l.etapa}${
+                        l.tipoProduto ? ` · ${l.tipoProduto}` : ''
+                      }`}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        border: 0,
+                        borderRadius: 7,
+                        padding: '5px 7px',
+                        font: 'inherit',
+                        lineHeight: 1.25,
+                        color: `var(--${l.cor})`,
+                        background: `var(--${l.cor}-bg)`,
+                        boxShadow: `inset 2px 0 0 var(--${l.cor}-ponto)`,
+                        minWidth: 0,
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: 'block',
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {l.cliente}
+                      </span>
+                      {m && (
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            margin: '3px 0 2px',
+                            padding: '0 5px',
+                            borderRadius: 4,
+                            fontSize: 9.5,
+                            fontWeight: 600,
+                            letterSpacing: '0.02em',
+                            color: m.cor,
+                            boxShadow: `inset 0 0 0 1px ${m.cor}`,
+                          }}
+                        >
+                          {m.curto}
+                        </span>
+                      )}
+                      {/* Quem responde pelo ticket. Nome do proprietário, que é
+                          por onde as squads são montadas. */}
+                      <span
+                        style={{
+                          display: 'block',
+                          fontSize: 10,
+                          fontWeight: 500,
+                          opacity: 0.8,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {l.proprietario ?? 'sem proprietário'}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )

@@ -48,6 +48,7 @@ export type Linha = {
   proprietario: string | null
   proprietarioInativo: boolean
   squad: string | null
+  tipoProduto: string
   cor: Cor
   regua: Regua
   dias: number

@@ -69,6 +69,7 @@ export function linhasDe(fonte: Fonte, quadro: Quadro, hoje: number) {
         // Pelo proprietário: nenhum ticket ativo tem gente de squad como
         // curador, e 230 têm como proprietário.
         squad: squadDe(owners, t.proprietario),
+        tipoProduto: t.tipoProduto,
         ...a,
       }
     })

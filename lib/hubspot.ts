@@ -22,6 +22,9 @@ const PROPS = [
   'formato_de_contrato__ganho_',
   'palestrante_e_exclusivo',
   'palestrante_principal',
+  // Presencial/Online sai daqui: não há propriedade de modalidade, e o
+  // "Formato do Evento" é sobre público (aberto/fechado), não sobre formato.
+  'tipo_de_produto',
   'assinar_contrato',
   // Duplicata de "Prazo de Assinatura de Contrato": 285 na antiga, 4 na nova.
   'prazo_para_assinatura_de_contrato',
@@ -151,6 +154,7 @@ async function buscarAoVivo(
         formatoContrato: p.formato_de_contrato__ganho_ ?? '',
         palestranteExclusivo: p.palestrante_e_exclusivo ?? '',
         palestrantePrincipal: p.palestrante_principal ?? '',
+        tipoProduto: p.tipo_de_produto ?? '',
         prazoAssinatura: primeira(p.assinar_contrato, p.prazo_para_assinatura_de_contrato),
         dataAssinatura: iso(p.data_de_assinatura_do_contrato),
         prazoBriefing: iso(p.data_para_realizacao_de_briefing),

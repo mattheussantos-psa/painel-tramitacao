@@ -20,6 +20,7 @@ export type Ticket = {
   formatoContrato: string
   palestranteExclusivo: string
   palestrantePrincipal: string
+  tipoProduto: string
   prazoAssinatura: string
   dataAssinatura: string
   prazoBriefing: string
@@ -49,7 +50,7 @@ export const completar = (t: Partial<Ticket>): Ticket => ({
   id: '', subject: '', stage: '', evento: '', curador: null, proprietario: null,
   proximaTarefa: '', onboarding: '', statusContrato: '', entrouEtapa: '',
   logistica: '', tipoEmpresa: '', formatoEmpresa: '', formatoContrato: '',
-  palestranteExclusivo: '', palestrantePrincipal: '', prazoAssinatura: '',
+  palestranteExclusivo: '', palestrantePrincipal: '', tipoProduto: '', prazoAssinatura: '',
   dataAssinatura: '', prazoBriefing: '', callBriefing: '', entrouBriefing: '', dataFaturamento: '',
   dataEmissao: '', prazoDespacho: '', prazoLogistica: '', ganhoNegocio: '', pagamentoLogistica: '', envioCliente: '',
   envioPalestrante: '', prazoAssinaturaPalestrante: '', dataAssinaturaPalestrante: '',
