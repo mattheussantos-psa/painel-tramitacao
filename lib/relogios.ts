@@ -135,12 +135,12 @@ export const PRAZO_NPS = 5
 export const PGTO_PRE_PRAZO = 7
 export const PGTO_PRE_ATRASO = 3
 
-// Confirmação do pagamento pós-palestra: 30 dias do evento, amarelo quando
-// faltam 15 dias ou menos, vermelho quando faltam 10 ou menos. Numa janela de
-// 30 dias, "a partir de 15 dias" e "faltando 15 dias" são o mesmo instante.
+// Confirmação do pagamento pós-palestra, contada em dias DECORRIDOS do
+// evento: verde até 24, amarelo de 25 a 30, vermelho de 31 em diante. O
+// prazo é o dia 30 — o amarelo é a semana final dentro dele, e o vermelho
+// começa quando ele estoura.
 export const PRAZO_PGTO_POS = 30
-export const PGTO_POS_ATENCAO = 15
-export const PGTO_POS_ATRASO = 10
+export const PGTO_POS_ATENCAO = 25
 
 // Etapas de trabalho DEPOIS do evento. Nelas o evento ter passado é a
 // condição para o prazo começar, não um atraso — sem esta lista, a regra de
@@ -512,7 +512,7 @@ export const RELOGIOS: Relogio[] = [
     etapa: ['Confirmar PGTO Pós palestra'],
     nome: 'Confirmação do pagamento pós-palestra',
     curto: 'pagamento',
-    regra: `Até ${PRAZO_PGTO_POS} dias após o evento · amarelo faltando ${PGTO_POS_ATENCAO} dias ou menos · vermelho faltando ${PGTO_POS_ATRASO} ou menos`,
+    regra: `Até ${PRAZO_PGTO_POS} dias após o evento · verde até ${PGTO_POS_ATENCAO - 1} dias · amarelo de ${PGTO_POS_ATENCAO} a ${PRAZO_PGTO_POS} · vermelho de ${PRAZO_PGTO_POS + 1} em diante`,
     confianca: 'fechado',
     gatilho: 'data_do_evento__ganho_',
     marco: '— sair da etapa é o único sinal de que o pagamento foi confirmado',
@@ -520,15 +520,22 @@ export const RELOGIOS: Relogio[] = [
     ver: (t, hoje) => {
       if (!tem(t.evento))
         return { estado: 'sem-dado', dias: null, texto: 'sem data de evento', cumpriu: null }
-      const limite = dia(t.evento) + PRAZO_PGTO_POS * DIA
-      const prazo = iso(limite)
-      // Dias que ainda faltam para o prazo; negativo já é atraso.
-      const faltam = emDias(limite, hojeEmDias(hoje))
+      const prazo = iso(dia(t.evento) + PRAZO_PGTO_POS * DIA)
+      const decorridos = emDias(hojeEmDias(hoje), dia(t.evento))
+
+      // Evento ainda por vir: a contagem nem começou.
+      if (decorridos < 0)
+        return { estado: 'verde', dias: decorridos, prazo, texto: `evento a D-${-decorridos}`, cumpriu: null }
+
       return {
-        estado: faltam > PGTO_POS_ATENCAO ? 'verde' : faltam > PGTO_POS_ATRASO ? 'amarelo' : 'vermelho',
-        dias: -faltam,
+        estado:
+          decorridos < PGTO_POS_ATENCAO ? 'verde' : decorridos <= PRAZO_PGTO_POS ? 'amarelo' : 'vermelho',
+        dias: decorridos,
         prazo,
-        texto: faltam >= 0 ? `faltam ${faltam}d para o prazo` : `${-faltam}d depois do prazo`,
+        texto:
+          decorridos <= PRAZO_PGTO_POS
+            ? `${decorridos}d desde o evento`
+            : `${decorridos - PRAZO_PGTO_POS}d depois do prazo`,
         cumpriu: null,
       }
     },

@@ -970,32 +970,33 @@ assert.equal(doPalestrante.cumprido, false, 'o que ainda corre segue sem marca')
 console.log('ok — prazo de relogio fechado nao tem cara de cobranca')
 
 // ---- pagamento pós-palestra: 30 dias do evento ----
-// 30 dias do evento, amarelo faltando 15 ou menos, vermelho faltando 10 ou
-// menos. Etapa de trabalho DEPOIS do evento: eventoPassou nao pode pinta-la
-// de vermelho, senao todo ticket que chega nela nasce atrasado.
+// Contado em dias DECORRIDOS do evento: verde até 24, amarelo de 25 a 30,
+// vermelho de 31 em diante. Etapa de trabalho DEPOIS do evento, entao
+// eventoPassou nao pode pinta-la de vermelho — senao todo ticket que chega
+// nela nasce atrasado.
 const PGTO = '1088361911'
 const pgto = (over) => avaliarEtapa(T({ stage: PGTO, entrouEtapa: '2026-09-20', ...over }), HOJE, QUADROS.cs.sla)
 
-// HOJE = 29/09. Evento 20/09 → prazo 20/10, faltam 21 dias.
-assert.equal(pgto({ evento: '2026-09-20' }).cor, 'verde')
-assert.match(pgto({ evento: '2026-09-20' }).texto, /^pagamento · faltam 21d/)
-// Evento 15/09 → prazo 15/10, faltam 16: ainda verde.
-assert.equal(pgto({ evento: '2026-09-15' }).cor, 'verde', 'faltam 16')
-// Evento 14/09 → prazo 14/10, faltam 15: entra no amarelo.
-assert.equal(pgto({ evento: '2026-09-14' }).cor, 'amarelo', 'faltam 15')
-// Evento 09/09 → prazo 09/10, faltam 10: entra no vermelho.
-assert.equal(pgto({ evento: '2026-09-09' }).cor, 'vermelho', 'faltam 10')
-assert.equal(pgto({ evento: '2026-09-10' }).cor, 'amarelo', 'faltam 11')
-// Depois do prazo segue vermelho, dizendo o atraso.
-assert.equal(pgto({ evento: '2026-08-20' }).cor, 'vermelho')
+// HOJE = 29/09.
+assert.equal(pgto({ evento: '2026-09-20' }).cor, 'verde', '9 dias')
+assert.match(pgto({ evento: '2026-09-20' }).texto, /^pagamento · 9d desde o evento/)
+assert.equal(pgto({ evento: '2026-09-05' }).cor, 'verde', '24 dias, ultimo do verde')
+assert.equal(pgto({ evento: '2026-09-04' }).cor, 'amarelo', '25 dias, entra no amarelo')
+assert.equal(pgto({ evento: '2026-08-30' }).cor, 'amarelo', '30 dias, o prazo')
+assert.equal(pgto({ evento: '2026-08-29' }).cor, 'vermelho', '31 dias, estourou')
+assert.match(pgto({ evento: '2026-08-29' }).texto, /1d depois do prazo/)
+assert.equal(pgto({ evento: '2026-08-20' }).cor, 'vermelho', '40 dias')
 assert.match(pgto({ evento: '2026-08-20' }).texto, /10d depois do prazo/)
-// Evento ainda por vir: prazo la longe, verde.
+// Evento ainda por vir: a contagem nem comecou.
 assert.equal(pgto({ evento: '2026-10-20' }).cor, 'verde')
+assert.match(pgto({ evento: '2026-10-20' }).texto, /evento a D-21/)
 // Sem data de evento nao da para contar.
 assert.equal(pgto({ evento: '' }).cor, 'cinza')
 assert.match(pgto({ evento: '' }).texto, /sem data de evento/)
 // O tempo na etapa deixou de pintar: entrou ha meses mas o prazo e do evento.
 assert.equal(pgto({ evento: '2026-09-20', entrouEtapa: '2026-01-01' }).cor, 'verde')
+// O prazo que vai para o dialogo e o dia 30, nao a data do evento.
+assert.equal(R['pgto-pos']({ evento: '2026-09-20' }).prazo, '2026-10-20')
 
 console.log('ok — pagamento pos-palestra em 30 dias do evento')
 
