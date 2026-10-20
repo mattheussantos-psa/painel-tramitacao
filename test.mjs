@@ -75,10 +75,10 @@ for (const id of Object.keys(ENCERRADAS))
   assert.ok(!(id in SLA), `etapa encerrada ${id} nao devia ter prazo`)
 assert.equal(Object.keys(SLA).length, 10)
 
-// Confirmar PGTO Pre palestra segue sem regra do CS: cinza mostrando o tempo
-// parado, nunca verde. Coletar NPS saiu desta lista quando ganhou prazo.
-assert.equal(SLA['1452885000'].tipo, 'sem-prazo', 'etapa sem regra do CS')
-assert.equal(avaliar(t({ stage: '1452885000', entrouEtapa: '2026-09-01' }), HOJE).cor, 'cinza')
+// Todas as dez etapas do quadro do CS tem regra: as ultimas duas sem prazo
+// ganharam a sua em 20/10/2026.
+for (const [id, r] of Object.entries(SLA))
+  assert.notEqual(r.tipo, 'sem-prazo', `etapa ${r.label} ficou sem regra`)
 
 // Logistica, Contrato e Briefing entraram no CS em 02/10/2026 e levaram os
 // tickets de "Em andamento". Sem elas na tabela o painel perdia 152 tickets.
@@ -820,11 +820,11 @@ assert.equal(R['contrato-assinatura']({ prazoAssinatura: '2026-06-20', anexoClie
 console.log('ok — anexo do contrato conta como prova')
 
 // Etapa sem relogio nao deve dizer que o evento passado manda na cor: em
-// Confirmar PGTO Pre palestra (1452885000) a cor e cinza, e avaliarEtapa nem
-// olha o evento. O dialogo afirmava o contrario.
-const semRelogio = T({ stage: '1452885000', evento: '2026-09-24', entrouEtapa: '2026-10-08' })
-assert.equal(explicar(semRelogio, 'Confirmar PGTO Pré palestra', HOJE).eventoPassou, false)
-assert.equal(avaliarEtapa(semRelogio, HOJE, QUADROS.cs.sla).cor, 'cinza')
+// Solicitar NF Palestrante (1333136740) a cor sai do tempo na etapa, e
+// avaliarEtapa nem olha o evento. O dialogo afirmava o contrario.
+const semRelogio = T({ stage: '1333136740', evento: '2026-09-24', entrouEtapa: '2026-09-28' })
+assert.equal(explicar(semRelogio, 'Solicitar NF Palestrante', HOJE).eventoPassou, false)
+assert.equal(avaliarEtapa(semRelogio, HOJE, QUADROS.cs.sla).cor, 'verde')
 // Em etapa com relogio continua mandando.
 assert.equal(explicar(T({ stage: LOG, evento: '2026-09-24', logistica: REEMBOLSO }), 'Contratar Logística', HOJE).eventoPassou, true)
 
@@ -998,3 +998,32 @@ assert.match(pgto({ evento: '' }).texto, /sem data de evento/)
 assert.equal(pgto({ evento: '2026-09-20', entrouEtapa: '2026-01-01' }).cor, 'verde')
 
 console.log('ok — pagamento pos-palestra em 30 dias do evento')
+
+// ---- pagamento pré-palestra: até D-7 do evento ----
+// Tres ancoras do CS: D-7 verde, D-5 amarelo, D-3 vermelho. Etapa de trabalho
+// ANTES do evento, entao evento realizado com o ticket aqui manda na cor.
+const PRE = '1452885000'
+// entrouBriefing preenchido: o ticket ja passou por Realizar Briefing, que e
+// o normal nesta altura do funil. Sem isso a regra de briefing pendente
+// atravessa e pinta por cima.
+const pre = (over) => avaliarEtapa(T({ stage: PRE, entrouEtapa: '2026-09-20', entrouBriefing: '2026-09-15', ...over }), HOJE, QUADROS.cs.sla)
+
+// HOJE = 29/09.
+assert.equal(pre({ evento: '2026-10-20' }).cor, 'verde', 'D-21')
+assert.equal(pre({ evento: '2026-10-06' }).cor, 'verde', 'D-7, o dia do prazo')
+assert.equal(pre({ evento: '2026-10-05' }).cor, 'amarelo', 'D-6')
+assert.equal(pre({ evento: '2026-10-04' }).cor, 'amarelo', 'D-5')
+assert.equal(pre({ evento: '2026-10-03' }).cor, 'amarelo', 'D-4')
+assert.equal(pre({ evento: '2026-10-02' }).cor, 'vermelho', 'D-3')
+assert.equal(pre({ evento: '2026-09-30' }).cor, 'vermelho', 'D-1')
+assert.match(pre({ evento: '2026-10-02' }).texto, /^pagamento · evento a D-3/)
+// Evento realizado com o ticket ainda aqui: manda a regra de evento passado.
+assert.equal(pre({ evento: '2026-09-20' }).cor, 'vermelho')
+assert.match(pre({ evento: '2026-09-20' }).texto, /evento foi em 20\/09\/2026/)
+// Sem data de evento nao da para contar.
+assert.equal(pre({ evento: '' }).cor, 'cinza')
+assert.match(pre({ evento: '' }).texto, /sem data de evento/)
+// O prazo que vai para o dialogo e D-7, nao a data do evento.
+assert.equal(R['pgto-pre']({ evento: '2026-10-20' }).prazo, '2026-10-13')
+
+console.log('ok — pagamento pre-palestra ate D-7')

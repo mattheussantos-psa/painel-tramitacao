@@ -96,7 +96,7 @@ export const SLA: Record<string, Regra> = {
   // tempo parado. Fica antes do evento no board, mas sem regra nao entra na
   // conta de "evento passado manda na cor" — isso vale so para etapa com
   // relogio, e inventar aqui seria supor.
-  '1452885000': { label: 'Confirmar PGTO Pré palestra', ordem: 5, tipo: 'sem-prazo' },
+  '1452885000': { label: 'Confirmar PGTO Pré palestra', ordem: 5, tipo: 'relogio' },
   '1448673032': { label: 'Aguardando Evento', ordem: 6, tipo: 'evento' },
   '1451268423': { label: 'Coletar NPS e Fotos', ordem: 7, tipo: 'relogio' },
   '1088361911': { label: 'Confirmar PGTO Pós palestra', ordem: 8, tipo: 'relogio' },
@@ -132,6 +132,7 @@ const REGRA_EM_TEXTO: Record<string, string> = {
   'Realizar Briefing': 'agendar entre D-30 e D-25 · realizar entre D-15 e D-10',
   'Faturar': 'emissão em até 3 dias após a assinatura',
   'Coletar NPS e Fotos': 'até 5 dias após a realização do evento',
+  'Confirmar PGTO Pré palestra': 'até 7 dias antes do evento · amarelo em D-6 · vermelho em D-3',
   'Confirmar PGTO Pós palestra': 'até 30 dias após o evento · amarelo faltando 15 · vermelho faltando 10',
 }
 

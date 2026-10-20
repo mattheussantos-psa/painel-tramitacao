@@ -126,6 +126,15 @@ export const PRAZO_AQUISICAO = 5
 // Dias entre a realização do evento e a coleta de NPS e fotos.
 export const PRAZO_NPS = 5
 
+// Confirmação do pagamento pré-palestra: tem que estar fechada até D-7 do
+// evento. O CS deu três âncoras — D-7 verde, D-5 amarelo, D-3 vermelho — e as
+// faixas saem delas: verde enquanto falta uma semana ou mais, amarelo de D-6 a
+// D-4, vermelho de D-3 em diante. Diferente do pós-palestra, esta é etapa de
+// trabalho ANTES do evento: com o evento realizado e o ticket ainda aqui,
+// manda a regra de evento passado.
+export const PGTO_PRE_PRAZO = 7
+export const PGTO_PRE_ATRASO = 3
+
 // Confirmação do pagamento pós-palestra: 30 dias do evento, amarelo quando
 // faltam 15 dias ou menos, vermelho quando faltam 10 ou menos. Numa janela de
 // 30 dias, "a partir de 15 dias" e "faltando 15 dias" são o mesmo instante.
@@ -470,6 +479,32 @@ export const RELOGIOS: Relogio[] = [
       if (D < 0) return { estado: 'nao-aplica', dias: D, texto: 'evento já realizado', cumpriu: null }
       if (D > 15) return { estado: 'nao-iniciado', dias: D, texto: `evento a D-${D}`, cumpriu: null }
       return { estado: D >= 11 ? 'verde' : D >= 8 ? 'amarelo' : 'vermelho', dias: D, texto: `evento a D-${D}`, cumpriu: null }
+    },
+  },
+  {
+    chave: 'pgto-pre',
+    etapa: ['Confirmar PGTO Pré palestra'],
+    nome: 'Confirmação do pagamento pré-palestra',
+    curto: 'pagamento',
+    regra: `Até D-${PGTO_PRE_PRAZO} do evento · verde até D-${PGTO_PRE_PRAZO} · amarelo de D-${PGTO_PRE_PRAZO - 1} a D-${PGTO_PRE_ATRASO + 1} · vermelho de D-${PGTO_PRE_ATRASO} em diante`,
+    confianca: 'fechado',
+    gatilho: 'data_do_evento__ganho_',
+    marco: '— sair da etapa é o único sinal de que o pagamento foi confirmado',
+    pendencia: 'Não há campo que marque a confirmação do pagamento; o relógio corre enquanto o ticket estiver na etapa.',
+    ver: (t, hoje) => {
+      if (!tem(t.evento))
+        return { estado: 'sem-dado', dias: null, texto: 'sem data de evento', cumpriu: null }
+      const D = emDias(dia(t.evento), hojeEmDias(hoje))
+      const prazo = iso(dia(t.evento) - PGTO_PRE_PRAZO * DIA)
+      if (D < 0)
+        return { estado: 'vermelho', dias: -D, prazo, texto: 'evento já realizado', cumpriu: null }
+      return {
+        estado: D >= PGTO_PRE_PRAZO ? 'verde' : D > PGTO_PRE_ATRASO ? 'amarelo' : 'vermelho',
+        dias: D,
+        prazo,
+        texto: `evento a D-${D}`,
+        cumpriu: null,
+      }
     },
   },
   {
