@@ -70,6 +70,9 @@ export function linhasDe(fonte: Fonte, quadro: Quadro, hoje: number) {
         // curador, e 230 têm como proprietário.
         squad: squadDe(owners, t.proprietario),
         tipoProduto: t.tipoProduto,
+        // Do campo, não do assunto: o assunto rende "Pondé" sem sobrenome e
+        // "Mauricio Schneider l 28/01/2026" como se fosse nome.
+        palestrantePrincipal: t.palestrantePrincipal,
         ...a,
       }
     })

@@ -318,6 +318,21 @@ async function buscarGanho(token: string, ticketIds: string[]) {
   return out
 }
 
+// "Palestrante Principal" é enum, e a API devolve o VALUE: 858 das 1281
+// opções têm value diferente do label — "Ricardo-Basaglia" contra "Ricardo
+// Basaglia", "Vabo-" contra "Vabo". Sem traduzir, o filtro e o diálogo
+// mostram um nome que ninguém escreveu assim.
+async function rotulosDePalestrante(token: string) {
+  const p = await chamar(
+    'https://api.hubapi.com/crm/v3/properties/tickets/palestrante_principal',
+    { headers: { Authorization: `Bearer ${token}` } },
+    'properties/palestrante_principal',
+  )
+  const m: Record<string, string> = {}
+  for (const o of p.options ?? []) m[String(o.value)] = String(o.label ?? o.value).trim()
+  return m
+}
+
 // Os owners arquivados não vêm na listagem padrão, e são justamente os que
 // interessam: ticket parado com curador que saiu não tem quem atue.
 export async function buscarOwners(token: string): Promise<Owners> {
@@ -422,6 +437,18 @@ async function buscarTudo(q: Quadro): Promise<Fonte> {
         `Data de ganho do negócio não carregou: a aquisição da logística fica sem prazo e cai em cinza. ${e instanceof Error ? e.message : String(e)}`,
       )
     }
+  }
+
+  // Nome do palestrante é acessório, igual aos owners: sem ele o painel
+  // mostra o value cru em vez do nome, mas segue servindo.
+  try {
+    const rotulos = await rotulosDePalestrante(token)
+    for (const t of tickets)
+      if (t.palestrantePrincipal) t.palestrantePrincipal = rotulos[t.palestrantePrincipal] ?? t.palestrantePrincipal
+  } catch (e) {
+    avisos.push(
+      `Nomes dos palestrantes não carregaram, aparecem com hífen. ${e instanceof Error ? e.message : String(e)}`,
+    )
   }
 
   if (ignorados > 0) {

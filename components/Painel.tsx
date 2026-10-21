@@ -49,6 +49,7 @@ export type Linha = {
   proprietarioInativo: boolean
   squad: string | null
   tipoProduto: string
+  palestrantePrincipal: string
   cor: Cor
   regua: Regua
   dias: number
@@ -1511,7 +1512,9 @@ export function Filtro({
 }: {
   vazio: string
   valor: string
-  opcoes: string[]
+  // String simples quando o rótulo é o próprio valor; par quando o rótulo
+  // precisa dizer mais, como o nome do palestrante com a contagem ao lado.
+  opcoes: (string | { v: string; r: string })[]
   aoMudar: (v: string) => void
 }) {
   return (
@@ -1521,11 +1524,14 @@ export function Filtro({
       style={{ ...CONTROLE, font: 'inherit', fontSize: 13, color: 'var(--text)', maxWidth: 210 }}
     >
       <option value="">{vazio}</option>
-      {opcoes.map((o) => (
-        <option key={o} value={o}>
-          {o}
-        </option>
-      ))}
+      {opcoes.map((o) => {
+        const v = typeof o === 'string' ? o : o.v
+        return (
+          <option key={v} value={v}>
+            {typeof o === 'string' ? o : o.r}
+          </option>
+        )
+      })}
     </select>
   )
 }
@@ -1547,6 +1553,7 @@ export default function Painel({
 }) {
   const [cor, setCor] = useState<Cor | null>(null)
   const [squad, setSquad] = useState('')
+  const [palestrante, setPalestrante] = useState('')
   const [curador, setCurador] = useState('')
   const [proprietario, setProprietario] = useState('')
   const [semDono, setSemDono] = useState(false)
@@ -1562,10 +1569,11 @@ export default function Painel({
       linhas.filter(
         (l) =>
           (!squad || (squad === FORA_DAS_SQUADS ? !l.squad : l.squad === squad)) &&
+          (!palestrante || l.palestrantePrincipal === palestrante) &&
           (!curador || l.curador === curador) &&
           (!proprietario || l.proprietario === proprietario),
       ),
-    [linhas, squad, curador, proprietario],
+    [linhas, squad, palestrante, curador, proprietario],
   )
 
   // Ninguém ativo no ticket: nem curador, nem proprietário. Não adianta cobrar
@@ -1654,12 +1662,24 @@ export default function Painel({
     return linhas.some((l) => !l.squad) ? [...existentes, FORA_DAS_SQUADS] : existentes
   }, [linhas])
 
+  // Por volume, não por ordem alfabética: a pergunta é quem tem mais evento
+  // na fila, e numa lista de 182 nomes em ordem alfabética isso não aparece.
+  // A contagem vai no rótulo para responder sem precisar selecionar.
+  const palestrantes = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const l of linhas) if (l.palestrantePrincipal) m.set(l.palestrantePrincipal, (m.get(l.palestrantePrincipal) ?? 0) + 1)
+    return [...m.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'))
+      .map(([nome, n]) => ({ v: nome, r: `${nome} (${n})` }))
+  }, [linhas])
+
   const curadores = useMemo(() => nomes('curador'), [linhas])
   const proprietarios = useMemo(() => nomes('proprietario'), [linhas])
 
   const limpar = () => {
     setCor(null)
     setSquad('')
+    setPalestrante('')
     setCurador('')
     setProprietario('')
     setSemDono(false)
@@ -1667,7 +1687,7 @@ export default function Painel({
     setAlerta('')
   }
 
-  const filtrando = !!(cor || squad || curador || proprietario || semDono || comTarefa || alerta)
+  const filtrando = !!(cor || squad || palestrante || curador || proprietario || semDono || comTarefa || alerta)
   const visiveisCores = CORES.filter(({ cor: c }) => c !== 'cinza' || contagem[c] > 0)
 
   return (
@@ -1712,6 +1732,14 @@ export default function Painel({
             olhar qualquer outra coisa. */}
         {squads.length > 0 && (
           <Filtro vazio="Squad" valor={squad} opcoes={squads} aoMudar={setSquad} />
+        )}
+        {palestrantes.length > 0 && (
+          <Filtro
+            vazio="Palestrante"
+            valor={palestrante}
+            opcoes={palestrantes}
+            aoMudar={setPalestrante}
+          />
         )}
         {curadores.length > 0 && (
           <Filtro vazio="Curador" valor={curador} opcoes={curadores} aoMudar={setCurador} />
