@@ -1,7 +1,7 @@
 'use client'
 
 import Cabecalho from './Cabecalho'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   ABAS,
   AMARELO_ANTES,
@@ -1504,6 +1504,84 @@ function Escolha({
   )
 }
 
+function Busca({
+  vazio,
+  valor,
+  opcoes,
+  aoMudar,
+}: {
+  vazio: string
+  valor: string
+  opcoes: { v: string; r: string }[]
+  aoMudar: (v: string) => void
+}) {
+  const id = useId()
+  const [texto, setTexto] = useState(valor)
+
+  // "Limpar" zera o filtro por fora; o campo tem que acompanhar.
+  useEffect(() => setTexto(valor), [valor])
+
+  const achar = (t: string) => {
+    const alvo = t.trim().toLowerCase()
+    return opcoes.find((o) => o.v.toLowerCase() === alvo)?.v ?? ''
+  }
+
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <input
+        list={id}
+        value={texto}
+        placeholder={vazio}
+        onChange={(e) => {
+          setTexto(e.target.value)
+          // Enquanto o que está escrito não for um nome inteiro, o quadro
+          // segue sem recorte — meio nome não é uma escolha.
+          aoMudar(achar(e.target.value))
+        }}
+        style={{
+          ...CONTROLE,
+          font: 'inherit',
+          fontSize: 13,
+          color: 'var(--text)',
+          width: 210,
+          padding: '0 28px 0 11px',
+        }}
+      />
+      {texto && (
+        <button
+          onClick={() => {
+            setTexto('')
+            aoMudar('')
+          }}
+          aria-label={`Limpar ${vazio}`}
+          style={{
+            position: 'absolute',
+            right: 2,
+            top: 0,
+            height: '100%',
+            width: 24,
+            border: 0,
+            background: 'transparent',
+            color: 'var(--text-3)',
+            font: 'inherit',
+            fontSize: 14,
+            cursor: 'pointer',
+          }}
+        >
+          ×
+        </button>
+      )}
+      <datalist id={id}>
+        {opcoes.map((o) => (
+          <option key={o.v} value={o.v}>
+            {o.r}
+          </option>
+        ))}
+      </datalist>
+    </span>
+  )
+}
+
 export function Filtro({
   vazio,
   valor,
@@ -1670,7 +1748,7 @@ export default function Painel({
     for (const l of linhas) if (l.palestrantePrincipal) m.set(l.palestrantePrincipal, (m.get(l.palestrantePrincipal) ?? 0) + 1)
     return [...m.entries()]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'))
-      .map(([nome, n]) => ({ v: nome, r: `${nome} (${n})` }))
+      .map(([nome, n]) => ({ v: nome, r: `${n} ${n === 1 ? 'evento' : 'eventos'}` }))
   }, [linhas])
 
   const curadores = useMemo(() => nomes('curador'), [linhas])
@@ -1734,7 +1812,7 @@ export default function Painel({
           <Filtro vazio="Squad" valor={squad} opcoes={squads} aoMudar={setSquad} />
         )}
         {palestrantes.length > 0 && (
-          <Filtro
+          <Busca
             vazio="Palestrante"
             valor={palestrante}
             opcoes={palestrantes}
