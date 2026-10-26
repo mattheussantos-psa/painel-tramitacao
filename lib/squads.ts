@@ -18,6 +18,7 @@ export const SQUADS: Record<string, string[]> = {
     'vitoria.schaeffer@profissionaissa.com',
     'nathalia.pereira@profissionaissa.com',
     'rhayssa.wolkmer@profissionaissa.com',
+    'talita.cruz@profissionaissa.com',
   ],
   'Squad Katy': [
     'juliano.marques@profissionaissa.com',
@@ -27,6 +28,7 @@ export const SQUADS: Record<string, string[]> = {
     'thaina.malta@profissionaissa.com',
     'eduardo.godoy@profissionaissa.com',
     'matheus.lirio@profissionaissa.com',
+    'bruno.beck@profissionaissa.com',
   ],
 }
 
