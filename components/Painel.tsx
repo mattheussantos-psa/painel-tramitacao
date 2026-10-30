@@ -1504,6 +1504,70 @@ function Escolha({
   )
 }
 
+// Busca livre de ticket. Casa com cliente, palestrante e número, sem acento
+// e sem caixa: quem procura digita "nexxus" ou cola o id do HubSpot, não o
+// nome exato que está no assunto.
+const semAcento = (s: string) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+function CampoBusca({ valor, aoMudar }: { valor: string; aoMudar: (v: string) => void }) {
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <span
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: 10,
+          top: 0,
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          fontSize: 14,
+          color: 'var(--text-3)',
+          pointerEvents: 'none',
+        }}
+      >
+        ⌕
+      </span>
+      <input
+        value={valor}
+        onChange={(e) => aoMudar(e.target.value)}
+        placeholder="Buscar cliente, palestrante ou nº"
+        aria-label="Buscar ticket"
+        style={{
+          ...CONTROLE,
+          font: 'inherit',
+          fontSize: 13,
+          color: 'var(--text)',
+          width: 268,
+          padding: '0 28px 0 26px',
+        }}
+      />
+      {valor && (
+        <button
+          onClick={() => aoMudar('')}
+          aria-label="Limpar busca"
+          style={{
+            position: 'absolute',
+            right: 2,
+            top: 0,
+            height: '100%',
+            width: 24,
+            border: 0,
+            background: 'transparent',
+            color: 'var(--text-3)',
+            font: 'inherit',
+            fontSize: 14,
+            cursor: 'pointer',
+          }}
+        >
+          ×
+        </button>
+      )}
+    </span>
+  )
+}
+
 function Busca({
   vazio,
   valor,
@@ -1528,26 +1592,10 @@ function Busca({
 
   return (
     <span style={{ position: 'relative', display: 'inline-flex' }}>
-      <span
-        aria-hidden
-        style={{
-          position: 'absolute',
-          left: 10,
-          top: 0,
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          fontSize: 13,
-          color: 'var(--text-3)',
-          pointerEvents: 'none',
-        }}
-      >
-        ⌕
-      </span>
       <input
         list={id}
         value={texto}
-        placeholder={`Buscar ${vazio.toLowerCase()}…`}
+        placeholder={vazio}
         onChange={(e) => {
           setTexto(e.target.value)
           // Enquanto o que está escrito não for um nome inteiro, o quadro
@@ -1560,7 +1608,7 @@ function Busca({
           fontSize: 13,
           color: 'var(--text)',
           width: 210,
-          padding: '0 28px 0 26px',
+          padding: '0 28px 0 11px',
         }}
       />
       {texto && (
@@ -1647,6 +1695,7 @@ export default function Painel({
 }) {
   const [cor, setCor] = useState<Cor | null>(null)
   const [squad, setSquad] = useState('')
+  const [busca, setBusca] = useState('')
   const [palestrante, setPalestrante] = useState('')
   const [curador, setCurador] = useState('')
   const [proprietario, setProprietario] = useState('')
@@ -1656,18 +1705,22 @@ export default function Painel({
   const [detalhe, setDetalhe] = useState<{ titulo: string; itens: Linha[] } | null>(null)
   const [conta, setConta] = useState<Linha | null>(null)
 
+  const termo = semAcento(busca.trim())
+
   // A aba e controle do kanban, nao da pagina: filtros, alertas, horizontes e
   // ranking leem a base inteira e so o quadro recorta por regua.
   const porPessoa = useMemo(
     () =>
       linhas.filter(
         (l) =>
+          (!termo ||
+            semAcento(`${l.cliente} ${l.palestrante} ${l.palestrantePrincipal} ${l.id}`).includes(termo)) &&
           (!squad || (squad === FORA_DAS_SQUADS ? !l.squad : l.squad === squad)) &&
           (!palestrante || l.palestrantePrincipal === palestrante) &&
           (!curador || l.curador === curador) &&
           (!proprietario || l.proprietario === proprietario),
       ),
-    [linhas, squad, palestrante, curador, proprietario],
+    [linhas, termo, squad, palestrante, curador, proprietario],
   )
 
   // Ninguém ativo no ticket: nem curador, nem proprietário. Não adianta cobrar
@@ -1772,6 +1825,7 @@ export default function Painel({
 
   const limpar = () => {
     setCor(null)
+    setBusca('')
     setSquad('')
     setPalestrante('')
     setCurador('')
@@ -1781,7 +1835,7 @@ export default function Painel({
     setAlerta('')
   }
 
-  const filtrando = !!(cor || squad || palestrante || curador || proprietario || semDono || comTarefa || alerta)
+  const filtrando = !!(cor || busca || squad || palestrante || curador || proprietario || semDono || comTarefa || alerta)
   const visiveisCores = CORES.filter(({ cor: c }) => c !== 'cinza' || contagem[c] > 0)
 
   return (
@@ -1822,6 +1876,7 @@ export default function Painel({
         }}
       >
         {/* Etapa nao entra aqui: no kanban a coluna ja e o filtro de etapa. */}
+        <CampoBusca valor={busca} aoMudar={setBusca} />
         {/* A squad vem primeiro: e o recorte que a gestora abre antes de
             olhar qualquer outra coisa. */}
         {squads.length > 0 && (
