@@ -1528,10 +1528,26 @@ function Busca({
 
   return (
     <span style={{ position: 'relative', display: 'inline-flex' }}>
+      <span
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: 10,
+          top: 0,
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          fontSize: 13,
+          color: 'var(--text-3)',
+          pointerEvents: 'none',
+        }}
+      >
+        ⌕
+      </span>
       <input
         list={id}
         value={texto}
-        placeholder={vazio}
+        placeholder={`Buscar ${vazio.toLowerCase()}…`}
         onChange={(e) => {
           setTexto(e.target.value)
           // Enquanto o que está escrito não for um nome inteiro, o quadro
@@ -1544,7 +1560,7 @@ function Busca({
           fontSize: 13,
           color: 'var(--text)',
           width: 210,
-          padding: '0 28px 0 11px',
+          padding: '0 28px 0 26px',
         }}
       />
       {texto && (
